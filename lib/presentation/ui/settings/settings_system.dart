@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/desktop_platform.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/branding/brand_logo.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -55,24 +56,26 @@ class SettingsBridgesPage extends StatelessWidget {
           child: SettingsAsideList(
             rows: [
               for (final (name, tone, text) in [
-                (
-                  'Krita',
-                  !krita
-                      ? SettingsTone.idle
-                      : (b.kritaConnected
-                            ? SettingsTone.ok
-                            : SettingsTone.warn),
-                  !krita
-                      ? l.set_brOff
-                      : (b.kritaConnected
-                            ? l.set_brConnected
-                            : l.set_brWaiting),
-                ),
-                (
-                  l.set_brAgents,
-                  b.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
-                  l.set_brAgentsShort('${b.agentClients}'),
-                ),
+                if (supportsKritaBridge)
+                  (
+                    'Krita',
+                    !krita
+                        ? SettingsTone.idle
+                        : (b.kritaConnected
+                              ? SettingsTone.ok
+                              : SettingsTone.warn),
+                    !krita
+                        ? l.set_brOff
+                        : (b.kritaConnected
+                              ? l.set_brConnected
+                              : l.set_brWaiting),
+                  ),
+                if (supportsKritaBridge)
+                  (
+                    l.set_brAgents,
+                    b.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
+                    l.set_brAgentsShort('${b.agentClients}'),
+                  ),
                 (
                   'ComfyUI',
                   !comfy ? SettingsTone.idle : b.comfyTone,
@@ -99,158 +102,160 @@ class SettingsBridgesPage extends StatelessWidget {
         SettingsHint.text(context, l.set_brTip),
       ],
       children: [
-        SettingsSection(
-          title: 'Krita',
-          subtitle: l.set_brKritaSub,
-          children: [
-            SettingKeyRow(
-              SettingKey.kritaBridge,
-              title: l.set_brKrita,
-              subtitle: l.set_brLoopback,
-              control: const SetSwitch(SettingKey.kritaBridge),
-            ),
-            if (krita) ...[
-              SettingsRow(
-                sub: true,
-                titleLead: SettingsDot(
-                  b.kritaConnected ? SettingsTone.ok : SettingsTone.idle,
+        if (supportsKritaBridge)
+          SettingsSection(
+            title: 'Krita',
+            subtitle: l.set_brKritaSub,
+            children: [
+              SettingKeyRow(
+                SettingKey.kritaBridge,
+                title: l.set_brKrita,
+                subtitle: l.set_brLoopback,
+                control: const SetSwitch(SettingKey.kritaBridge),
+              ),
+              if (krita) ...[
+                SettingsRow(
+                  sub: true,
+                  titleLead: SettingsDot(
+                    b.kritaConnected ? SettingsTone.ok : SettingsTone.idle,
+                  ),
+                  title: b.kritaConnected ? l.set_brConnected : l.set_brWaiting,
+                  subtitle: b.kritaConnected ? b.kritaClient : null,
+                  control: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 8,
+                    children: [
+                      Text(
+                        b.kritaEndpoint,
+                        style: UiText.mono(12, color: c.muted),
+                      ),
+                      SettingsIconBtn(
+                        glyph: SettingsGlyphs.copy,
+                        tooltip: l.set_copy,
+                        onTap: a.onCopyKritaEndpoint,
+                      ),
+                      SettingsBtn(
+                        label: l.set_brRegenerate,
+                        glyph: UiGlyphs.refresh,
+                        small: true,
+                        onTap: a.onRegenerateKritaSession,
+                      ),
+                    ],
+                  ),
                 ),
-                title: b.kritaConnected ? l.set_brConnected : l.set_brWaiting,
-                subtitle: b.kritaConnected ? b.kritaClient : null,
+                SettingsRow(
+                  sub: true,
+                  title: l.set_brDiscovery,
+                  subtitle: b.kritaDiscovery,
+                  control: SettingsIconBtn(
+                    glyph: SettingsGlyphs.external,
+                    tooltip: l.set_open,
+                    onTap: a.onOpenKritaDiscovery,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        if (supportsKritaBridge)
+          SettingsSection(
+            title: l.set_brAgents,
+            subtitle: l.set_brAgentsSub,
+            children: [
+              SettingsRow(
+                key: const Key('external-agent-bridge'),
+                anchor: 'agents',
+                title: l.set_brLocal,
+                disabled: !krita,
+                subtitleWidget: krita
+                    ? null
+                    : Text(
+                        l.set_brAgentsRequiresKrita,
+                        key: const Key('agent-krita-required'),
+                        style: UiText.sans(11, color: c.ink),
+                      ),
                 control: Row(
                   mainAxisSize: MainAxisSize.min,
                   spacing: 8,
                   children: [
-                    Text(
-                      b.kritaEndpoint,
-                      style: UiText.mono(12, color: c.muted),
-                    ),
-                    SettingsIconBtn(
-                      glyph: SettingsGlyphs.copy,
-                      tooltip: l.set_copy,
-                      onTap: a.onCopyKritaEndpoint,
+                    _state(
+                      context,
+                      b.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
+                      b.agentClients > 0
+                          ? l.set_brClients('${b.agentClients}')
+                          : l.set_brNoClients,
                     ),
                     SettingsBtn(
-                      label: l.set_brRegenerate,
-                      glyph: UiGlyphs.refresh,
+                      key: const Key('agent-copy-takeover'),
+                      label: l.set_brTakeover,
+                      glyph: SettingsGlyphs.copy,
                       small: true,
-                      onTap: a.onRegenerateKritaSession,
+                      onTap: krita ? a.onCopyAgentTakeover : null,
+                    ),
+                    SettingsBtn(
+                      key: const Key('agent-end-connections'),
+                      label: l.set_brEnd,
+                      small: true,
+                      tone: SettingsBtnTone.ghost,
+                      onTap: !krita || b.agentClients == 0
+                          ? null
+                          : a.onEndAgentConnections,
                     ),
                   ],
                 ),
               ),
-              SettingsRow(
-                sub: true,
-                title: l.set_brDiscovery,
-                subtitle: b.kritaDiscovery,
-                control: SettingsIconBtn(
-                  glyph: SettingsGlyphs.external,
-                  tooltip: l.set_open,
-                  onTap: a.onOpenKritaDiscovery,
-                ),
-              ),
-            ],
-          ],
-        ),
-        SettingsSection(
-          title: l.set_brAgents,
-          subtitle: l.set_brAgentsSub,
-          children: [
-            SettingsRow(
-              key: const Key('external-agent-bridge'),
-              anchor: 'agents',
-              title: l.set_brLocal,
-              disabled: !krita,
-              subtitleWidget: krita
-                  ? null
-                  : Text(
-                      l.set_brAgentsRequiresKrita,
-                      key: const Key('agent-krita-required'),
-                      style: UiText.sans(11, color: c.ink),
-                    ),
-              control: Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 8,
-                children: [
-                  _state(
-                    context,
-                    b.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
-                    b.agentClients > 0
-                        ? l.set_brClients('${b.agentClients}')
-                        : l.set_brNoClients,
-                  ),
-                  SettingsBtn(
-                    key: const Key('agent-copy-takeover'),
-                    label: l.set_brTakeover,
-                    glyph: SettingsGlyphs.copy,
-                    small: true,
-                    onTap: krita ? a.onCopyAgentTakeover : null,
-                  ),
-                  SettingsBtn(
-                    key: const Key('agent-end-connections'),
-                    label: l.set_brEnd,
-                    small: true,
-                    tone: SettingsBtnTone.ghost,
-                    onTap: !krita || b.agentClients == 0
-                        ? null
-                        : a.onEndAgentConnections,
-                  ),
-                ],
-              ),
-            ),
-            if (b.activity.isNotEmpty)
-              SettingsBlock(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        l.set_brActivity,
-                        style: UiText.sans(11, color: c.faint),
+              if (b.activity.isNotEmpty)
+                SettingsBlock(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          l.set_brActivity,
+                          style: UiText.sans(11, color: c.faint),
+                        ),
                       ),
-                    ),
-                    SettingsAsideList(
-                      rows: [
-                        for (final x in b.activity)
-                          Row(
-                            spacing: 8,
-                            children: [
-                              SettingsDot(x.tone),
-                              SizedBox(
-                                width: 96,
-                                child: Text(
-                                  x.client,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: UiText.sans(
-                                    12,
-                                    weight: FontWeight.w500,
-                                    color: c.ink,
+                      SettingsAsideList(
+                        rows: [
+                          for (final x in b.activity)
+                            Row(
+                              spacing: 8,
+                              children: [
+                                SettingsDot(x.tone),
+                                SizedBox(
+                                  width: 96,
+                                  child: Text(
+                                    x.client,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: UiText.sans(
+                                      12,
+                                      weight: FontWeight.w500,
+                                      color: c.ink,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  x.action,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: UiText.sans(12, color: c.muted),
+                                Expanded(
+                                  child: Text(
+                                    x.action,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: UiText.sans(12, color: c.muted),
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                SettingsFormat.ago(context, x.at, d.now),
-                                style: UiText.sans(11, color: c.faint),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ],
+                                Text(
+                                  SettingsFormat.ago(context, x.at, d.now),
+                                  style: UiText.sans(11, color: c.faint),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
         SettingsSection(
           title: 'ComfyUI',
           subtitle: l.set_brComfySub,
@@ -1133,11 +1138,9 @@ class SettingsAboutPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  key: const Key('about-brand-header'),
-                  spacing: 16,
-                  children: [
-                    const SizedBox(
+                Builder(
+                  builder: (context) {
+                    const slot = SizedBox(
                       key: Key('about-brand-slot'),
                       width: 112,
                       height: 56,
@@ -1149,8 +1152,8 @@ class SettingsAboutPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
-                    Expanded(
+                    );
+                    final name = Expanded(
                       child: Column(
                         key: const Key('about-brand-name'),
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1173,8 +1176,8 @@ class SettingsAboutPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ),
-                    Column(
+                    );
+                    final status = Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       spacing: 6,
                       children: [
@@ -1187,8 +1190,31 @@ class SettingsAboutPage extends StatelessWidget {
                             style: UiText.sans(11, color: c.faint),
                           ),
                       ],
-                    ),
-                  ],
+                    );
+                    // 手机竖屏：品牌图 + 名称 + 状态一行放不下，状态换到下一行。
+                    if (usesMobileLayout || debugForceMobileSettingsLayout) {
+                      return Column(
+                        key: const Key('about-brand-header'),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 10,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [slot, const SizedBox(width: 16), name],
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: status,
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      key: const Key('about-brand-header'),
+                      spacing: 16,
+                      children: [slot, name, status],
+                    );
+                  },
                 ),
                 if (hasNew && ab.notes.isNotEmpty)
                   Container(
@@ -1202,18 +1228,17 @@ class SettingsAboutPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          spacing: 8,
-                          children: [
-                            Text(
+                        Builder(
+                          builder: (context) {
+                            final title = Text(
                               l.set_abNotes(ab.latest),
                               style: UiText.sans(
                                 12,
                                 weight: FontWeight.w600,
                                 color: c.ink,
                               ),
-                            ),
-                            Text(
+                            );
+                            final meta = Text(
                               [
                                 if (ab.releasedAt != null)
                                   SettingsFormat.date(ab.releasedAt!),
@@ -1221,8 +1246,19 @@ class SettingsAboutPage extends StatelessWidget {
                                   SettingsFormat.bytes(ab.updateBytes),
                               ].join(' · '),
                               style: UiText.sans(12, color: c.faint),
-                            ),
-                          ],
+                            );
+                            // 手机竖屏：版本标题 + 日期/大小时可能换行。
+                            if (usesMobileLayout ||
+                                debugForceMobileSettingsLayout) {
+                              return Wrap(
+                                spacing: 8,
+                                runSpacing: 2,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [title, meta],
+                              );
+                            }
+                            return Row(spacing: 8, children: [title, meta]);
+                          },
                         ),
                         const SizedBox(height: 6),
                         for (final n in ab.notes)
@@ -1242,30 +1278,58 @@ class SettingsAboutPage extends StatelessWidget {
                   SettingsBar(value: ab.progress),
                 ],
                 const SizedBox(height: 14),
-                Row(
-                  spacing: 8,
-                  children: [
-                    if (ab.update == SettingsUpdateState.available)
-                      SettingsBtn(
-                        key: const Key('install-update'),
-                        label: l.set_abInstall,
-                        glyph: UiGlyphs.download,
-                        tone: SettingsBtnTone.primary,
-                        onTap: a.onInstallUpdate,
-                      ),
-                    SettingsBtn(
+                Builder(
+                  builder: (context) {
+                    final install = ab.update == SettingsUpdateState.available
+                        ? SettingsBtn(
+                            key: const Key('install-update'),
+                            label: l.set_abInstall,
+                            glyph: UiGlyphs.download,
+                            tone: SettingsBtnTone.primary,
+                            onTap: a.onInstallUpdate,
+                          )
+                        : null;
+                    final changelog = SettingsBtn(
                       label: l.set_abChangelog,
                       glyph: SettingsGlyphs.external,
                       tone: SettingsBtnTone.ghost,
                       onTap: a.onOpenChangelog,
-                    ),
-                    const Spacer(),
-                    Text(
+                    );
+                    final prerelease = Text(
                       l.set_abPrerelease,
                       style: UiText.sans(12, color: c.muted),
-                    ),
-                    const SetSwitch(SettingKey.includePrerelease),
-                  ],
+                    );
+                    // 手机竖屏：安装 / 更新日志 / 预发布开关一行放不下。
+                    if (usesMobileLayout || debugForceMobileSettingsLayout) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 10,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [if (install != null) install, changelog],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(child: prerelease),
+                              const SetSwitch(SettingKey.includePrerelease),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      spacing: 8,
+                      children: [
+                        if (install != null) install,
+                        changelog,
+                        const Spacer(),
+                        prerelease,
+                        const SetSwitch(SettingKey.includePrerelease),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

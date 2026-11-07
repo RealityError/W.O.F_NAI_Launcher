@@ -19,6 +19,7 @@ import 'settings_create.dart';
 import 'settings_format.dart';
 import 'settings_intel.dart';
 import 'settings_kit.dart';
+import 'settings_mobile.dart';
 import 'settings_models.dart';
 import 'settings_overview.dart';
 import 'settings_personal.dart';
@@ -30,6 +31,7 @@ import 'settings_system.dart';
 ///
 /// 左目录 248（搜索、6 组 17 页、版本）+ 右主区（顶栏面包屑与本页操作、页面、底部“已保存 · 撤销”）。
 /// 界面自己管：搜索词与结果选择、搜索跳转后的高亮、确认框、Agent 指令的未保存保护、底部提示的显示时长。
+/// 移动端隐藏的页面由 `settings_contract.dart` 的 [settingsPageAvailable] 统一判定。
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
     super.key,
@@ -135,19 +137,22 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _open(SettingsPageId page, {String? anchor}) => _guard(() {
-    _highlightTimer?.cancel();
-    setState(() {
-      _query = '';
-      _highlight = anchor;
-    });
-    if (anchor != null) {
-      _highlightTimer = Timer(const Duration(milliseconds: 2600), () {
-        if (mounted) setState(() => _highlight = null);
+  void _open(SettingsPageId page, {String? anchor}) {
+    final available = settingsAvailablePage(page);
+    return _guard(() {
+      _highlightTimer?.cancel();
+      setState(() {
+        _query = '';
+        _highlight = anchor;
       });
-    }
-    if (page != widget.data.page) widget.actions.onOpenPage(page);
-  });
+      if (anchor != null) {
+        _highlightTimer = Timer(const Duration(milliseconds: 2600), () {
+          if (mounted) setState(() => _highlight = null);
+        });
+      }
+      if (available != widget.data.page) widget.actions.onOpenPage(available);
+    });
+  }
 
   void _ask({
     required String title,
@@ -213,10 +218,95 @@ class _SettingsPageState extends State<SettingsPage> {
     final c = context.ui;
     final data = widget.data;
     final searching = _query.trim().isNotEmpty;
-    final page = KeyedSubtree(
-      key: ValueKey(data.page),
-      child: _pageOf(data.page),
-    );
+    final pageId = settingsAvailablePage(data.page);
+    final page = KeyedSubtree(key: ValueKey(pageId), child: _pageOf(pageId));
+    // 手机端走独立布局（列表 → 详情）；桌面端仍用下面的双栏结构，逐字节保持原样。
+    final Widget content = settingsUsesMobileLayout
+        ? MobileSettingsView(
+            data: data,
+            pageBuilder: _pageOf,
+            guard: _guard,
+            initialQuery: widget.initialQuery,
+            initialAnchor: widget.initialAnchor,
+            toast: _toast,
+            onDismissToast: () => setState(() => _toast = null),
+          )
+        : Focus(
+            focusNode: _rootFocus,
+            autofocus: true,
+            onKeyEvent: _onKey,
+            child: ColoredBox(
+              color: c.page,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final sidebar = constraints.maxWidth < 1000 ? 208.0 : 248.0;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: sidebar,
+                        child: _Sidebar(
+                          query: _query,
+                          focus: _searchFocus,
+                          onQuery: (q) => setState(() {
+                            _query = q;
+                            _sel = 0;
+                          }),
+                          onOpen: _open,
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _Header(searching: searching),
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Visibility(
+                                      visible: !searching,
+                                      maintainState: true,
+                                      child: page,
+                                    ),
+                                  ),
+                                  if (searching)
+                                    Positioned.fill(
+                                      child: SettingsSearchResults(
+                                        query: _query.trim(),
+                                        selected: _sel,
+                                        onHits: (h) => _hits = h,
+                                        onJump: (p, anchor) =>
+                                            _open(p, anchor: anchor),
+                                      ),
+                                    ),
+                                  if (_toast != null && !searching)
+                                    Positioned(
+                                      left: 0,
+                                      right: 0,
+                                      bottom: 22,
+                                      child: Center(
+                                        child: _ToastDock(
+                                          change: _toast!,
+                                          onUndo: () {
+                                            widget.actions.onUndo(_toast!.id);
+                                            setState(() => _toast = null);
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          );
     return SettingsScope(
       data: data,
       actions: widget.actions,
@@ -232,82 +322,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onClose: () => setState(() => _confirm = null),
               ),
         onDismiss: () => setState(() => _confirm = null),
-        child: Focus(
-          focusNode: _rootFocus,
-          autofocus: true,
-          onKeyEvent: _onKey,
-          child: ColoredBox(
-            color: c.page,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final sidebar = constraints.maxWidth < 1000 ? 208.0 : 248.0;
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: sidebar,
-                      child: _Sidebar(
-                        query: _query,
-                        focus: _searchFocus,
-                        onQuery: (q) => setState(() {
-                          _query = q;
-                          _sel = 0;
-                        }),
-                        onOpen: _open,
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _Header(searching: searching),
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: Visibility(
-                                    visible: !searching,
-                                    maintainState: true,
-                                    child: page,
-                                  ),
-                                ),
-                                if (searching)
-                                  Positioned.fill(
-                                    child: SettingsSearchResults(
-                                      query: _query.trim(),
-                                      selected: _sel,
-                                      onHits: (h) => _hits = h,
-                                      onJump: (p, anchor) =>
-                                          _open(p, anchor: anchor),
-                                    ),
-                                  ),
-                                if (_toast != null && !searching)
-                                  Positioned(
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 22,
-                                    child: Center(
-                                      child: _ToastDock(
-                                        change: _toast!,
-                                        onUndo: () {
-                                          widget.actions.onUndo(_toast!.id);
-                                          setState(() => _toast = null);
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
+        child: content,
       ),
     );
   }
@@ -357,7 +372,7 @@ class _Sidebar extends StatelessWidget {
     final searching = query.trim().isNotEmpty;
     final items = <Widget>[];
     SettingsGroup? last;
-    for (final p in SettingsPageId.values) {
+    for (final p in SettingsPageId.values.where(settingsPageAvailable)) {
       if (p.group != last && p.group != SettingsGroup.none) {
         items.add(
           Padding(

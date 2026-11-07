@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -463,7 +464,8 @@ class _GenerationViewerWiringState
             ViewerAction.img2img,
             ViewerAction.styleTransfer,
             ViewerAction.preciseRef,
-            ViewerAction.upscale,
+            // Local / advanced upscale has no Android implementation.
+            if (!Platform.isAndroid) ViewerAction.upscale,
             ViewerAction.copyImage,
             ViewerAction.copyAllPrompts,
             ViewerAction.saveToRefLibrary,

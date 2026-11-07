@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
 import '../utils/app_logger.dart';
+import '../utils/desktop_platform.dart';
+import 'android_system_proxy.dart';
 import 'windows_proxy_helper.dart';
 import '../utils/localization_extension.dart';
 
@@ -41,7 +43,11 @@ class ProxyService {
   /// 返回格式: "host:port" 或 null（未检测到代理）
   static String? getSystemProxyAddress() {
     try {
-      if (Platform.isWindows) {
+      // Android 没有注册表/scutil：启动时已把系统代理缓存下来。
+      if (Platform.isAndroid) {
+        return androidSystemProxyAddress;
+      }
+      if (supportsWindowsProxy) {
         return _getWindowsProxy();
       }
       if (Platform.isMacOS) {
@@ -84,8 +90,10 @@ class ProxyService {
   }
 
   /// Runs the settings page's system read off the UI isolate.
-  static Future<String?> readSystemProxyAddress() =>
-      Isolate.run(getSystemProxyAddress);
+  static Future<String?> readSystemProxyAddress() {
+    if (Platform.isAndroid) return readAndroidSystemProxy();
+    return Isolate.run(getSystemProxyAddress);
+  }
 
   /// Windows: 通过注册表读取代理
   static String? _getWindowsProxy() {

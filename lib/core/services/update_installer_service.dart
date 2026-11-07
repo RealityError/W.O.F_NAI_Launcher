@@ -12,6 +12,7 @@ import '../../data/models/version/release_asset_info.dart';
 import '../../data/models/version/version_info.dart';
 import '../utils/app_logger.dart';
 import '../utils/app_bundle_paths.dart';
+import '../utils/desktop_platform.dart';
 import '../utils/studio_sandbox.dart';
 import 'app_installation_service.dart';
 import 'desktop_app_shutdown_service.dart';
@@ -493,7 +494,9 @@ class UpdateInstallerService {
       await revealMacUpdate(update);
       return;
     }
-    if (!Platform.isWindows || update.asset.requiresManualReplace) {
+    if (!supportsInAppUpdateInstall ||
+        !Platform.isWindows ||
+        update.asset.requiresManualReplace) {
       throw UpdateInstallException(currentL10n.update_errorPlatformUnsupported);
     }
     if (!await update.file.exists()) {

@@ -63,6 +63,9 @@ class GalleryTimelineView extends ConsumerStatefulWidget {
     required this.onFavoriteMenu,
     required this.onClearFilters,
     this.onDeleteRequested,
+    this.mobileMode = false,
+    this.onMobileLongPress,
+    this.maxTileSize,
   });
 
   final GalleryTimelineController? controller;
@@ -76,6 +79,21 @@ class GalleryTimelineView extends ConsumerStatefulWidget {
 
   /// Delete 键：删除多选内容或当前查看的图片（由宿主确认）
   final VoidCallback? onDeleteRequested;
+
+  /// 手机端触屏交互：单击直接打开大图；长按交给 [onMobileLongPress]。
+  ///
+  /// 默认 false 时保持桌面行为（单击聚焦、双击打开、长按多选），桌面布局与
+  /// 交互零变化。
+  final bool mobileMode;
+
+  /// 手机端长按上下文菜单（由宿主弹出 bottom sheet）。
+  final void Function(LocalImageRecord record)? onMobileLongPress;
+
+  /// 手机端缩略图目标边长上限；null 表示沿用用户列宽（桌面行为）。
+  ///
+  /// 桌面列宽默认 260dp，直接放到 360dp 手机上会变成单列大图，因此移动端
+  /// 只在排版时把目标边长压到手机适配值，不改用户持久化偏好。
+  final double? maxTileSize;
 
   @override
   ConsumerState<GalleryTimelineView> createState() =>
@@ -243,6 +261,16 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
       return;
     }
 
+    // 手机端没有双击入口：单击直接打开查看器（多选态仍由上一步处理为切换）。
+    if (widget.mobileMode) {
+      focusNotifier.focus(path);
+      unawaited(
+        ref.read(localGalleryNotifierProvider.notifier).recordViewed(path),
+      );
+      widget.onOpenViewer(index);
+      return;
+    }
+
     focusNotifier.focus(path);
     unawaited(
       ref.read(localGalleryNotifierProvider.notifier).recordViewed(path),
@@ -383,12 +411,16 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
   // ============================================================
 
   GalleryTimelineLayout _layoutFor(LocalGalleryState state, double width) {
+    // 手机端把目标边长压到上限以内（用户持久化列宽不变，桌面仍按原值排版）。
+    final tileSize = widget.maxTileSize == null
+        ? state.columnWidth
+        : math.min(state.columnWidth, widget.maxTileSize!);
     final key = _LayoutKey(
       timeline: state.timeline,
       width: width,
       viewMode: state.viewMode,
       groupMode: state.effectiveGroupMode,
-      tileSize: state.columnWidth,
+      tileSize: tileSize,
     );
     if (key != _layoutKey) {
       _layoutKey = key;
@@ -397,7 +429,7 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
         viewMode: state.viewMode,
         groupMode: state.effectiveGroupMode,
         width: width,
-        tileSize: state.columnWidth,
+        tileSize: tileSize,
         gap: galleryTimelineGap,
         leftPadding: galleryTimelineLeftPadding,
         rightPadding: galleryTimelineRightPadding,
@@ -540,6 +572,8 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
                           onUseImage: widget.onUseImage,
                           onFavoriteMenu: widget.onFavoriteMenu,
                           onWindowBuilt: _afterWindowBuilt,
+                          mobileMode: widget.mobileMode,
+                          onMobileLongPress: widget.onMobileLongPress,
                         ),
                       ),
                     ),
@@ -675,6 +709,8 @@ class _TimelineTiles extends ConsumerStatefulWidget {
     required this.onUseImage,
     required this.onFavoriteMenu,
     required this.onWindowBuilt,
+    required this.mobileMode,
+    this.onMobileLongPress,
   });
 
   final GalleryTimelineLayout layout;
@@ -690,6 +726,8 @@ class _TimelineTiles extends ConsumerStatefulWidget {
   final Future<void> Function(LocalImageRecord record) onUseImage;
   final void Function(LocalImageRecord record, Offset anchor) onFavoriteMenu;
   final void Function(List<int> visibleIndices) onWindowBuilt;
+  final bool mobileMode;
+  final void Function(LocalImageRecord record)? onMobileLongPress;
 
   @override
   ConsumerState<_TimelineTiles> createState() => _TimelineTilesState();
@@ -780,8 +818,12 @@ class _TimelineTilesState extends ConsumerState<_TimelineTiles> {
                   ? ThumbnailPriority.highest
                   : ThumbnailPriority.normal,
               onTap: () => widget.onTap(index),
-              onDoubleTap: () => widget.onDoubleTap(index),
-              onLongPress: () => widget.onToggleSelection(index),
+              onDoubleTap: widget.mobileMode
+                  ? null
+                  : () => widget.onDoubleTap(index),
+              onLongPress: widget.mobileMode
+                  ? () => widget.onMobileLongPress?.call(record)
+                  : () => widget.onToggleSelection(index),
               onSelectionToggle: () => widget.onToggleSelection(index),
               onSecondaryTapDown: (details) =>
                   widget.onContextMenu(record, details.globalPosition),
@@ -789,7 +831,9 @@ class _TimelineTilesState extends ConsumerState<_TimelineTiles> {
                   ? null
                   : (anchor) => widget.onFavoriteMenu(record, anchor),
               onUseImage: trash ? null : () => widget.onUseImage(record),
-              dragWrapper: trash
+              // 手机端不做桌面拖出：拖拽包装器的长按手势会抢走卡片长按菜单，
+              // 且 Android 没有可投放的外部窗口。
+              dragWrapper: trash || widget.mobileMode
                   ? null
                   : DraggableImageCard.createDragWrapper(
                       record: record,

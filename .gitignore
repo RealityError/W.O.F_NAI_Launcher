@@ -17,6 +17,10 @@ build/
 *.js.deps
 *.js.map
 
+# Android 构建产物（APK/AAB；Gradle 目录由 android/.gitignore 忽略）
+*.apk
+*.aab
+
 # 生成的插件注册文件
 lib/generated_plugin_registrant.dart
 
@@ -80,6 +84,9 @@ Desktop.ini
 
 # Windows（Flutter 特定）
 **/windows/flutter/ephemeral
+
+# Android（Flutter/Gradle 特定）
+android/.kotlin/
 
 
 # ===========================================================================
@@ -229,6 +236,9 @@ dist/checksums.txt
 # Local NAI Agent dependencies and synthetic test sessions.
 /tool/nai_agent/node_modules/
 /tool/nai_agent/.runs/
+
+# scripts/build_android.ps1 输出的 APK
+dist/android/
 
 # Executable-adjacent private application data and migration backups.
 user-data/

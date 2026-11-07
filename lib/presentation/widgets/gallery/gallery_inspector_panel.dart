@@ -36,6 +36,7 @@ class GalleryInspectorPanel extends ConsumerStatefulWidget {
     required this.onClose,
     required this.onFavoriteMenu,
     this.onRestore,
+    this.touchOptimized = false,
   });
 
   /// 复用参数、发送、在文件夹中显示、删除等操作（由宿主执行确认与跳转）
@@ -48,6 +49,9 @@ class GalleryInspectorPanel extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final ValueChanged<String>? onRestore;
   final void Function(LocalImageRecord record, Offset anchor) onFavoriteMenu;
+
+  /// 手机端：顶部操作按钮放大到 48dp 触摸目标（桌面保持 32dp 紧凑样式）。
+  final bool touchOptimized;
 
   @override
   ConsumerState<GalleryInspectorPanel> createState() =>
@@ -189,6 +193,7 @@ class _GalleryInspectorPanelState extends ConsumerState<GalleryInspectorPanel> {
                         ? StudioIcons.galleryHeartFilled
                         : StudioIcons.galleryHeart,
                     tooltip: l10n.common_favorite,
+                    size: _headerButtonSize,
                     onPressed: () {
                       final box =
                           buttonContext.findRenderObject() as RenderBox?;
@@ -203,6 +208,7 @@ class _GalleryInspectorPanelState extends ConsumerState<GalleryInspectorPanel> {
               _HeaderButton(
                 icon: StudioIcons.galleryReveal,
                 tooltip: l10n.localGallery_showInFolder,
+                size: _headerButtonSize,
                 onPressed: () => widget.onAction(
                   record,
                   LocalImageContextAction.showInFolder,
@@ -213,6 +219,7 @@ class _GalleryInspectorPanelState extends ConsumerState<GalleryInspectorPanel> {
                 tooltip: widget.onRestore == null
                     ? l10n.common_delete
                     : l10n.localGallery_deleteForever,
+                size: _headerButtonSize,
                 onPressed: () =>
                     widget.onAction(record, LocalImageContextAction.delete),
               ),
@@ -220,6 +227,7 @@ class _GalleryInspectorPanelState extends ConsumerState<GalleryInspectorPanel> {
             _HeaderButton(
               icon: StudioIcons.galleryClose,
               tooltip: l10n.localGallery_hideInspector,
+              size: _headerButtonSize,
               onPressed: widget.onClose,
             ),
           ],
@@ -227,6 +235,9 @@ class _GalleryInspectorPanelState extends ConsumerState<GalleryInspectorPanel> {
       ),
     );
   }
+
+  /// 手机端顶部按钮 48dp（Material 建议触摸目标），桌面维持 32dp 紧凑布局。
+  double get _headerButtonSize => widget.touchOptimized ? 48 : 32;
 
   Widget _buildEmpty(BuildContext context) {
     final theme = Theme.of(context);
@@ -585,11 +596,13 @@ class _HeaderButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.size = 32,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onPressed;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -597,11 +610,11 @@ class _HeaderButton extends StatelessWidget {
       onPressed: onPressed,
       tooltip: tooltip,
       icon: Icon(icon, size: 18),
-      visualDensity: VisualDensity.compact,
+      visualDensity: size > 32 ? VisualDensity.standard : VisualDensity.compact,
       style: IconButton.styleFrom(
         padding: EdgeInsets.zero,
-        minimumSize: const Size(32, 32),
-        fixedSize: const Size(32, 32),
+        minimumSize: Size(size, size),
+        fixedSize: Size(size, size),
       ),
     );
   }

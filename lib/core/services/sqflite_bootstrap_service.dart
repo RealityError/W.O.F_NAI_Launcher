@@ -5,7 +5,7 @@ import '../utils/desktop_platform.dart';
 
 /// Sqflite 启动初始化服务
 ///
-/// 在桌面端统一初始化 sqflite FFI，全局仅执行一次，支持并发安全。
+/// 在桌面端与 Android 统一初始化 sqflite FFI，全局仅执行一次，支持并发安全。
 class SqfliteBootstrapService {
   SqfliteBootstrapService._();
 
@@ -24,7 +24,9 @@ class SqfliteBootstrapService {
   }
 
   Future<void> _doInitialize() async {
-    if (!isSupportedDesktop) {
+    // 桌面端与 Android 都走 sqflite_common_ffi：
+    // Android 的 libsqlite3.so 由 sqlite3_flutter_libs 随包提供。
+    if (!isSupportedDesktop && !isAndroidPlatform) {
       _initialized = true;
       return;
     }
@@ -43,6 +45,6 @@ class SqfliteBootstrapService {
     }
 
     _initialized = true;
-    AppLogger.i('Sqflite FFI initialized for desktop', 'SqfliteBootstrap');
+    AppLogger.i('Sqflite FFI initialized', 'SqfliteBootstrap');
   }
 }

@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../../core/utils/pica_lanczos_resizer.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../models/upscale/local_upscale_models.dart';
 import 'local_upscale_model_manager.dart';
 import 'advanced_upscale_component_manager.dart';
@@ -29,8 +30,7 @@ class LocalUpscaleService {
     this.afterInference,
   }) : _startProcess =
            startProcess ?? ((exe, args) => Process.start(exe, args)),
-       _supportedPlatform =
-           supportedPlatform ?? (Platform.isWindows || Platform.isMacOS);
+       _supportedPlatform = supportedPlatform ?? supportsLocalUpscale;
 
   final LocalUpscaleModelManager models;
   final AdvancedUpscaleComponentManager? advanced;

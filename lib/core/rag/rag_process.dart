@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import '../utils/app_bundle_paths.dart';
 import '../utils/app_logger.dart';
+import '../utils/desktop_platform.dart';
 import 'rag_platform.dart';
 
 typedef RagProcessStarter =
@@ -38,6 +39,9 @@ Future<Process> startRagProcess({
   RagPlatform? platform,
   RagProcessStarter start = Process.start,
 }) async {
+  if (!supportsExternalProcesses) {
+    throw const FileSystemException('rag_unsupported_platform');
+  }
   final target = platform ?? RagPlatform.host;
   if (target.isMacOS) {
     final host = ragMacOSHostPath;

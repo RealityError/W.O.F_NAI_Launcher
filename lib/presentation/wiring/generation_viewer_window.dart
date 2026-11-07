@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../core/utils/desktop_platform.dart';
+
 final generationViewerPlatformProvider = Provider<GenerationViewerPlatform>(
   (ref) => GenerationViewerPlatform(),
 );
@@ -15,6 +17,7 @@ class GenerationViewerPlatform {
   }
 
   Future<bool> fullscreen() async {
+    if (isMobilePlatform) return false;
     try {
       return await windowManager.isFullScreen();
     } on MissingPluginException {
@@ -23,6 +26,7 @@ class GenerationViewerPlatform {
   }
 
   Future<bool> maximized() async {
+    if (isMobilePlatform) return false;
     try {
       return await windowManager.isMaximized();
     } on MissingPluginException {
@@ -31,6 +35,7 @@ class GenerationViewerPlatform {
   }
 
   Future<void> setFullscreen(bool value) async {
+    if (isMobilePlatform) return;
     try {
       await windowManager.setFullScreen(value);
     } on MissingPluginException {
@@ -39,6 +44,7 @@ class GenerationViewerPlatform {
   }
 
   Future<void> maximize() async {
+    if (isMobilePlatform) return;
     try {
       await windowManager.maximize();
     } on MissingPluginException {

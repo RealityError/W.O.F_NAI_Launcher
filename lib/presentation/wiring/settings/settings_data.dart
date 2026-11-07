@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_version.dart';
 import '../../../core/rag/rag_settings.dart';
 import '../../../core/services/system_font_service.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../data/models/upscale/local_upscale_models.dart';
 import '../../../data/services/anlas_statistics_service.dart';
@@ -208,7 +209,7 @@ SettingsViewData settingsViewData(
   final update = ref.watch(updateStateProvider);
   final models = settingsModelsData(context, ref);
   final attention = <SettingsAttention>[
-    if (update.hasNewVersion)
+    if (supportsInAppUpdateInstall && update.hasNewVersion)
       SettingsAttention(
         kind: SettingsAttentionKind.update,
         tone: SettingsTone.warn,
@@ -287,7 +288,7 @@ SettingsViewData settingsViewData(
     },
     lastChange: edits.last,
     recent: edits.entries.map((e) => e.change).take(5).toList(),
-    restartPending: edits.restartPending,
+    restartPending: edits.restartPending && supportsExternalProcesses,
     attention: attention,
     account: accounts,
     canvas: SettingsCanvasData(
@@ -380,11 +381,10 @@ SettingsViewData settingsViewData(
           )
         : const SettingsDictionaryData(),
     models: models,
-    agent: settingsAgentData(
-      ref,
-      context,
-      inspect: page == SettingsPageId.agent,
-    ),
+    // 桌面端才提供 Agent 设置；移动端不创建 Agent 工作区/运行时。
+    agent: supportsNaiAgentRuntime
+        ? settingsAgentData(ref, context, inspect: page == SettingsPageId.agent)
+        : const SettingsAgentData(),
     rag: rag,
     upscale: settingsUpscaleData(
       upscaleModels,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/nai_agent/panel_layout.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../providers/nai_agent/nai_agent_window_controller.dart';
 import '../widgets/nai_agent/nai_agent_shared.dart';
 import '../providers/nai_agent/nai_agent_workspace_provider.dart';
@@ -15,8 +16,10 @@ class NaiAgentIntegrationScope extends InheritedWidget {
   const NaiAgentIntegrationScope({super.key, required super.child});
 
   static bool activeOf(BuildContext context) =>
+      // Agent 依赖随包 Node 宿主与桌面窗口扩展，移动端不提供入口。
+      supportsNaiAgentRuntime &&
       context.dependOnInheritedWidgetOfExactType<NaiAgentIntegrationScope>() !=
-      null;
+          null;
 
   @override
   bool updateShouldNotify(NaiAgentIntegrationScope oldWidget) => false;

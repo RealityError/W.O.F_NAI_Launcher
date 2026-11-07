@@ -4,6 +4,7 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/models/resources/floating_window_data.dart';
+import '../utils/desktop_platform.dart';
 import 'resource_window_host.dart';
 import 'resource_window_protocol.dart';
 
@@ -37,6 +38,12 @@ class ResourceWindowService {
         ?.completeError(PlatformException(code: 'cancelled'));
   }
 
+  void _forgetAll() {
+    for (final id in _windows.keys.toList()) {
+      _forget(id);
+    }
+  }
+
   Future<ResourceWindowArguments> Function(FloatingResourceKind)? argumentsFor;
   Future<void> Function()? onAllClosed;
   void Function(String, FloatingResourceKind)? onKind;
@@ -47,6 +54,8 @@ class ResourceWindowService {
   };
 
   Future<void> initialize() async {
+    // 移动端没有多窗口引擎；保持注册表为空，所有入口退化为应用内浮层。
+    if (!supportsMultiWindow) return;
     await hostChannel.setMethodCallHandler(handle);
     _subscription ??= onWindowsChanged.listen((_) => unawaited(_reconcile()));
   }
@@ -115,6 +124,7 @@ class ResourceWindowService {
     ResourceWindowArguments arguments, {
     bool newWindow = false,
   }) async {
+    if (!supportsMultiWindow) resourceError('unsupported_platform');
     if (_closing) resourceError('cancelled');
     if (!newWindow) {
       final existing = _windows.values
@@ -147,6 +157,7 @@ class ResourceWindowService {
   }
 
   Future<WindowController> _create(ResourceWindowArguments arguments) async {
+    if (!supportsMultiWindow) resourceError('unsupported_platform');
     final window = await WindowController.create(
       WindowConfiguration(hiddenAtLaunch: true, arguments: arguments.encode()),
     );
@@ -207,6 +218,11 @@ class ResourceWindowService {
   }
 
   Future<void> closeAll() async {
+    if (!supportsMultiWindow) {
+      _forgetAll();
+      await onAllClosed?.call();
+      return;
+    }
     _closing = true;
     try {
       // Creating an HWND finishes before the child ready handshake. Wait for

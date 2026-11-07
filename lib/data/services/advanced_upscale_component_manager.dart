@@ -11,6 +11,7 @@ import 'package:nai_launcher/core/utils/app_support_directory.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/utils/fatal_diagnostics.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../models/upscale/local_upscale_models.dart';
 import 'owned_upscale_process.dart';
 
@@ -490,6 +491,9 @@ class AdvancedUpscaleComponentManager {
     void Function(String, double?)? onProgress,
   }) async {
     final key = _key(id);
+    if (!supportsLocalUpscale) {
+      throw const LocalUpscaleException(LocalUpscaleError.unsupportedPlatform);
+    }
     claimInference();
     Directory? stage;
     try {

@@ -37,6 +37,8 @@ Get the package for your operating system from [Releases](https://github.com/z15
 | `WOF_NAI_Studio_Windows_<version>_Portable.zip` | For keeping the app in a folder of your choice, on a USB drive, or taking it between computers. Extract it and run `nai_launcher.exe`. |
 | `WOF_NAI_Studio_macOS_<version>_Portable_Test.zip` | For Apple silicon and Intel Macs on macOS 13.5 or later. [Download the 2.3.0 universal test build](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/download/v2.3.0/WOF_NAI_Studio_macOS_2.3.0_Portable_Test.zip). |
 
+The Android port is still in progress and no installable package is published yet; build it yourself as described under “Android” below.
+
 Both Windows packages support in-app updates. Settings, the gallery database and Agent data live in `user-data/` and `agent-data/` beside the program. On Mac, data lives in your Application Support directory. The app downloads and verifies updates, then opens Finder for you to replace the app.
 
 > **First upgrade from Portable 2.2.3 or earlier:** Exit the app completely, then extract the new release over the existing program folder, keeping `user-data/` and `agent-data/`. In-app updates work normally from 2.2.4 onward. Setup updates are unaffected by this older script issue.
@@ -215,6 +217,20 @@ flutter build windows --release --no-tree-shake-icons
 ```
 
 Use `scripts/package_windows_release.ps1` to package the installer and portable versions. See [DEVELOPMENT.md](DEVELOPMENT.md) for development guidelines and [CHANGELOG.md](CHANGELOG.md) for version history.
+
+### Android (port in progress)
+
+The Android port is still in progress and no installable package is published yet. Building it requires Flutter 3.47.7 (see `tool/flutter-sdk.json`), JDK 17, and the Android SDK (API 36, NDK 28.2.13676358). Pull the Git LFS assets and generate the ignored Dart sources first:
+
+```bash
+git lfs install && git lfs pull
+flutter pub get
+dart run tool/generate.dart
+flutter gen-l10n
+flutter build apk --release --split-per-abi
+```
+
+Use `flutter build apk --debug --target-platform android-x64` for x86_64 emulators (for example MuMu) and `android-arm64` for most phones; the APKs are written to `build/app/outputs/flutter-apk/`. `scripts/build_android.ps1` in the repository root runs the SDK/JDK/NDK, Git LFS and generated-source checks and copies the APKs to `dist/android/`. Release builds currently use the debug signing key and must not be distributed. See [Android port notes](docs/android-port.md) for platform differences, known limitations and troubleshooting.
 
 </details>
 

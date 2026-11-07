@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/storage_keys.dart';
 import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/app_support_directory.dart';
 import '../../../core/utils/file_explorer_utils.dart';
 import '../../../core/utils/gallery_path_utils.dart';
 import '../../../core/utils/zip_utils.dart';
@@ -33,6 +34,9 @@ import '../../../data/services/gallery/gallery_nai_only_store.dart';
 import '../../../data/services/gallery/gallery_sort_store.dart';
 import '../../../data/services/gallery/gallery_thumbnail_quality_store.dart';
 import '../../../data/services/gallery/gallery_view_mode_store.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
+import '../../mobile/mobile_sheet.dart';
 import '../../providers/bulk_operation_provider.dart';
 import '../../providers/collection_provider.dart';
 import '../../providers/gallery_category_provider.dart';
@@ -77,6 +81,7 @@ import '../../widgets/gallery/local_image_context_menu.dart';
 import '../../widgets/gallery/timeline/gallery_timeline_view.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../../widgets/shortcuts/shortcut_aware_widget.dart';
+import 'mobile_local_gallery.dart';
 
 /// 本地画廊屏幕：侧栏 / 连续时间线 / 右侧详情三栏。
 class LocalGalleryScreen extends StatelessWidget {
@@ -291,6 +296,11 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
       ),
     );
 
+    // 手机端（Android）走独立触屏布局；桌面端继续使用原三栏结构。
+    if (usesMobileLayout) {
+      return _buildMobileLayout(context, bulkOpState);
+    }
+
     return PageShortcuts(
       contextType: ShortcutContext.gallery,
       shortcuts: _shortcuts,
@@ -389,6 +399,163 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
         ),
       ),
     );
+  }
+
+  /// 手机端布局：业务动作仍由本 State 执行，只把排版/手势换成触屏版本。
+  Widget _buildMobileLayout(
+    BuildContext context,
+    BulkOperationState bulkOpState,
+  ) {
+    final trashScope = ref.watch(
+      localGalleryNotifierProvider.select(
+        (s) => s.browseScope == GalleryBrowseScope.trash,
+      ),
+    );
+    final collectionId = ref.watch(
+      localGalleryNotifierProvider.select((s) => s.filterCriteria.collectionId),
+    );
+    return MobileLocalGallery(
+      actions: MobileGalleryActions(
+        openViewerAt: (index) => unawaited(_openViewerAt(index)),
+        showRecordMenu: (record) => unawaited(_showMobileImageMenu(record)),
+        openInspector: () => unawaited(_openMobileInspector()),
+        onImageAction: (record, action) => _handleImageAction(record, action),
+        openViewerForPath: _openViewerForPath,
+        showFavoriteMenu: _showFavoriteMenu,
+        selectScope: (id) => unawaited(_handleCategorySelected(id)),
+        createCategory: () => unawaited(_createCategory()),
+        createCollection: () => unawaited(_createCollection(null, false)),
+        clearFilters: _clearFilters,
+        refresh: () => unawaited(_refreshGallery()),
+        importImages: () => unawaited(_importFolder()),
+        openGalleryFolder: () => unawaited(_openGalleryFolder()),
+        undo: bulkOpState.canUndo ? () => unawaited(_undo()) : null,
+        redo: bulkOpState.canRedo ? () => unawaited(_redo()) : null,
+        selectAllResults: _selectAllResults,
+        moveSelected: () => unawaited(_moveSelectedToCategory()),
+        copySelected: () => unawaited(_copySelectedToCategory()),
+        packSelected: () => unawaited(_packSelectedImages()),
+        editSelectedMetadata: () => unawaited(_editSelectedMetadata()),
+        addSelectedToCollection: () => unawaited(_addSelectedToCollection()),
+        removeSelectedFromCollection: collectionId != null
+            ? () => unawaited(_removeSelectedFromCollection())
+            : null,
+        deleteSelected: () => unawaited(_deleteSelectedImages()),
+        restoreSelected: trashScope
+            ? () => unawaited(
+                _restoreTrash(
+                  ref
+                      .read(localGallerySelectionNotifierProvider)
+                      .selectedIds
+                      .toList(),
+                ),
+              )
+            : null,
+        restoreTrashAll: () => unawaited(_restoreAllTrash()),
+        purgeTrashAll: () => unawaited(_purgeAllTrash()),
+      ),
+    );
+  }
+
+  /// 手机端长按卡片菜单：复用桌面右键动作集合（回收站走恢复/彻底删除）。
+  Future<void> _showMobileImageMenu(LocalImageRecord record) async {
+    final l10n = context.l10n;
+    final title = path.basename(record.path);
+    if (ref.read(localGalleryNotifierProvider).browseScope ==
+        GalleryBrowseScope.trash) {
+      await showMobileContextMenu(
+        context,
+        title: title,
+        items: [
+          MobileMenuItem(
+            label: l10n.localGallery_trashRestore,
+            icon: Icons.restore,
+            onTap: () => unawaited(_restoreTrash([record.path])),
+          ),
+          MobileMenuItem(
+            label: l10n.localGallery_deleteForever,
+            icon: Icons.delete_forever_outlined,
+            destructive: true,
+            onTap: () => unawaited(_purgeTrash([record.path])),
+          ),
+        ],
+      );
+      return;
+    }
+    final metadata = record.metadata;
+    final action = await LocalImageContextMenu.showMobile(
+      context,
+      title: title,
+      hasImportableMetadata: metadata?.hasData == true,
+      hasPrompt: metadata?.fullPrompt.isNotEmpty == true,
+      hasSeed: metadata?.seed != null,
+      isFavorite: record.isFavorite,
+      canPlaceOnCanvas: !ref.read(imageGenerationNotifierProvider).isGenerating,
+      isKritaConnected:
+          ref.read(kritaBridgeNotifierProvider).status ==
+          KritaBridgeStatus.connected,
+    );
+    if (action == null || !mounted) return;
+    if (action == LocalImageContextAction.details) {
+      ref.read(localGalleryFocusNotifierProvider.notifier).focus(record.path);
+      await _openMobileInspector();
+      return;
+    }
+    await _handleImageAction(record, action, metadata: metadata);
+  }
+
+  /// 手机端详情面板：底部弹层复用桌面 `GalleryInspectorPanel`。
+  Future<void> _openMobileInspector() {
+    return showMobileSheet<void>(
+      context: context,
+      heightFactor: 0.92,
+      builder: (sheetContext) {
+        final trash =
+            ref.read(localGalleryNotifierProvider).browseScope ==
+            GalleryBrowseScope.trash;
+        return GalleryInspectorPanel(
+          touchOptimized: true,
+          onRestore: trash
+              ? (path) {
+                  Navigator.of(sheetContext).pop();
+                  unawaited(_restoreTrash([path]));
+                }
+              : null,
+          onAction: (record, action) => _handleImageAction(record, action),
+          onOpenViewer: (path) => _openViewerForPath(path),
+          onClose: () => Navigator.of(sheetContext).pop(),
+          onFavoriteMenu: _showFavoriteMenu,
+        );
+      },
+    );
+  }
+
+  /// Android：把画廊图片写入系统相册（Pictures）；桌面端不展示该入口。
+  Future<void> _saveRecordToAlbum(LocalImageRecord record) async {
+    final l10n = context.l10n;
+    final displayName = path.basename(record.path);
+    final uri = await PlatformFileChannel.saveImageToMediaStore(
+      record.path,
+      displayName: displayName,
+    );
+    if (!mounted) return;
+    if (uri != null) {
+      AppToast.success(context, l10n.image_imageSaved(displayName));
+    } else {
+      AppToast.error(context, l10n.image_saveFailed('MediaStore'));
+    }
+  }
+
+  Future<void> _restoreAllTrash() async {
+    final paths = await const GalleryDeletePoolStore().load();
+    if (!mounted) return;
+    await _restoreTrash(paths);
+  }
+
+  Future<void> _purgeAllTrash() async {
+    final paths = await const GalleryDeletePoolStore().load();
+    if (!mounted) return;
+    await _purgeTrash(paths);
   }
 
   Widget _buildSidebar(
@@ -735,6 +902,13 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
   }
 
   Future<void> _importFolder() async {
+    if (Platform.isAndroid) {
+      // Android has no desktop folder browser and its gallery root is an
+      // app-private directory, so "导入" means picking images and copying
+      // them into the writable gallery root instead of registering a root.
+      await _importImagesToGallery();
+      return;
+    }
     final addedPath = await GalleryExtraRootAddFlow.pickAndAdd(
       context: context,
       ref: ref,
@@ -758,6 +932,78 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
     await ref
         .read(localGalleryNotifierProvider.notifier)
         .showImportedCategory(importedRoot.id, importedRoot.folderPath);
+  }
+
+  /// Android 导入图片：多选文件后复制进画廊根目录（应用私有 documents 目录）。
+  ///
+  /// file_picker 会把 SAF content:// 选中项缓存成真实文件路径，所以这里可以
+  /// 复用桌面文件系统路径的复制流程，而不是走不可写的 scoped storage 根。
+  Future<void> _importImagesToGallery() async {
+    final l10n = context.l10n;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+      allowMultiple: true,
+      withData: false,
+      lockParentWindow: true,
+    );
+    if (result == null || !mounted) return;
+
+    final rootPath = await GalleryFolderRepository.instance.getRootPath();
+    if (!mounted) return;
+    if (rootPath == null || rootPath.isEmpty) {
+      AppToast.info(context, l10n.localGallery_saveDirectoryNotSet);
+      return;
+    }
+
+    final repository = GalleryFolderRepository.instance;
+    final importedPaths = <String>[];
+    var failed = 0;
+    for (final file in result.files) {
+      final sourcePath = file.path;
+      if (sourcePath == null || sourcePath.isEmpty) {
+        failed++;
+        continue;
+      }
+      try {
+        final copied = await repository.transferImageToFolder(
+          sourcePath,
+          rootPath,
+          copy: true,
+          updateIndex: false,
+        );
+        if (copied != null) {
+          importedPaths.add(copied);
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        failed++;
+        AppLogger.w('Android 导入图片失败: $sourcePath ($error)', 'LocalGallery');
+      }
+    }
+    if (!mounted) return;
+    if (failed > 0) {
+      AppLogger.w('Android 导入图片失败 $failed 张', 'LocalGallery');
+    }
+    if (importedPaths.isEmpty) {
+      AppToast.error(context, l10n.localGallery_copyFailed);
+      return;
+    }
+
+    // 即时插入（未初始化时返回 0），再整表刷新一次保证分类/计数一致。
+    await ref
+        .read(localGalleryNotifierProvider.notifier)
+        .addNewlySavedImages(importedPaths);
+    if (!mounted) return;
+    await ref.read(localGalleryNotifierProvider.notifier).refresh();
+    if (!mounted) return;
+    await ref.read(galleryCategoryNotifierProvider.notifier).refresh();
+    if (!mounted) return;
+    AppToast.success(
+      context,
+      l10n.localGallery_copySuccess(importedPaths.length),
+    );
   }
 
   /// 新建收藏集/收藏文件夹（parentId=null 为收藏根级）
@@ -1082,6 +1328,15 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
         return;
       }
 
+      if (Platform.isAndroid) {
+        // No explorer.exe on Android; best-effort file manager intent.
+        final opened = await PlatformFileChannel.openDirectory(rootPath);
+        if (!opened && mounted) {
+          AppLogger.w('Android 无法打开画廊目录: $rootPath', 'LocalGallery');
+        }
+        return;
+      }
+
       await Process.start('explorer', [rootPath]);
     } catch (e) {
       if (mounted) {
@@ -1212,12 +1467,22 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
     if (selectedImages.isEmpty || !mounted) return;
 
     final defaultName = 'images_${DateTime.now().millisecondsSinceEpoch}';
-    final outputPath = await FilePicker.platform.saveFile(
-      dialogTitle: context.l10n.localGallery_saveZipArchive,
-      fileName: '$defaultName.zip',
-      type: FileType.custom,
-      allowedExtensions: ['zip'],
-    );
+    String? outputPath;
+    if (Platform.isAndroid) {
+      // file_picker's Android save dialog needs the bytes up front and returns
+      // a guessed public path, so export into app cache and share instead.
+      final tempDir = await getTemporaryDirectory();
+      final exportDir = Directory(path.join(tempDir.path, 'gallery_exports'));
+      await exportDir.create(recursive: true);
+      outputPath = path.join(exportDir.path, '$defaultName.zip');
+    } else {
+      outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: context.l10n.localGallery_saveZipArchive,
+        fileName: '$defaultName.zip',
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+      );
+    }
 
     if (outputPath == null || !mounted) return;
 
@@ -1244,6 +1509,14 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
           context.l10n.localGallery_packedImages(selectedImages.length),
         );
         ref.read(localGallerySelectionNotifierProvider.notifier).exit();
+        if (Platform.isAndroid) {
+          // The archive lives in app cache; hand it to the share sheet so the
+          // user can actually reach it from scoped storage.
+          await PlatformFileChannel.shareFile(
+            finalPath,
+            mimeType: 'application/zip',
+          );
+        }
       } else {
         AppToast.error(context, context.l10n.localGallery_packFailed);
       }
@@ -1629,6 +1902,11 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
   }
 
   Future<void> _sendToUpscale(LocalImageRecord record) async {
+    if (Platform.isAndroid) {
+      // 本地 / 高级超分依赖随包的桌面可执行文件，Android 没有实现。
+      AppLogger.w('Android 不支持本地超分，忽略请求', 'LocalGallery');
+      return;
+    }
     try {
       final file = File(record.path);
       if (!await file.exists()) {
@@ -1992,6 +2270,20 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
         await _moveSingleImage(record);
       case LocalImageContextAction.copyTo:
         await _copySingleImage(record);
+      case LocalImageContextAction.toggleFavorite:
+        final nowFavorite = await ref
+            .read(localGalleryNotifierProvider.notifier)
+            .toggleFavorite(record.path);
+        if (mounted) {
+          AppToast.success(
+            context,
+            nowFavorite
+                ? context.l10n.online_favorited
+                : context.l10n.common_unfavorite,
+          );
+        }
+      case LocalImageContextAction.saveToAlbum:
+        await _saveRecordToAlbum(record);
       case LocalImageContextAction.delete:
         await _confirmDeleteImage(record);
     }

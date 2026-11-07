@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../../data/services/nai_agent/agent_workspace_store.dart';
+import '../../../core/utils/desktop_platform.dart';
 import 'nai_agent_workspace_provider.dart';
 
 abstract class NaiAgentWindowHost {
@@ -293,7 +293,7 @@ class NaiAgentWindowController extends ChangeNotifier {
 }
 
 final naiAgentWindowHostProvider = Provider<NaiAgentWindowHost?>(
-  (ref) => Platform.isWindows ? NaiAgentDesktopWindowHost() : null,
+  (ref) => supportsNativeTitleBarRegion ? NaiAgentDesktopWindowHost() : null,
 );
 
 final naiAgentWindowControllerProvider =

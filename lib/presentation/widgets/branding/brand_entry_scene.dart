@@ -444,32 +444,41 @@ class _Footer extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        ExcludeSemantics(
-          child: ListenableBuilder(
-            listenable: Listenable.merge([EntryField.seed, EntryField.level]),
-            builder: (context, _) {
-              final denoising = loading || busy;
-              final level = loading ? progress : EntryField.level.value;
-              final step = (level.clamp(0.0, 1.0) * 28).round();
-              return Text.rich(
-                TextSpan(
-                  children: [
-                    if (denoising) ...[
-                      TextSpan(
-                        text: 'DENOISE  ',
-                        style: TextStyle(color: palette.muted),
-                      ),
-                      TextSpan(
-                        text: 'STEP ${step.toString().padLeft(2, '0')}/28  ·  ',
-                      ),
-                    ],
-                    TextSpan(text: 'SEED ${EntryField.seed.value}  ·  '),
-                    TextSpan(text: AppVersion.versionName),
-                  ],
-                ),
-                style: hud,
-              );
-            },
+        Flexible(
+          child: ExcludeSemantics(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([EntryField.seed, EntryField.level]),
+              builder: (context, _) {
+                final denoising = loading || busy;
+                final level = loading ? progress : EntryField.level.value;
+                final step = (level.clamp(0.0, 1.0) * 28).round();
+                // 窄屏（手机）上 DENOISE/SEED 文本可能超出可用宽度，
+                // 只在实际放不下时等比缩小，桌面布局保持不变。
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        if (denoising) ...[
+                          TextSpan(
+                            text: 'DENOISE  ',
+                            style: TextStyle(color: palette.muted),
+                          ),
+                          TextSpan(
+                            text:
+                                'STEP ${step.toString().padLeft(2, '0')}/28  ·  ',
+                          ),
+                        ],
+                        TextSpan(text: 'SEED ${EntryField.seed.value}  ·  '),
+                        TextSpan(text: AppVersion.versionName),
+                      ],
+                    ),
+                    style: hud,
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ],

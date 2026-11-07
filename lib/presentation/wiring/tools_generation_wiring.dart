@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/services/anlas_calculator.dart';
 
 import '../../core/constants/model_display.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../../core/utils/localization_extension.dart';
 import '../../core/utils/max_enhance_utils.dart';
 import '../../data/models/upscale/local_upscale_models.dart';
@@ -59,9 +60,12 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
       for (final factor in controller.availableEnhanceFactors)
         ToolsEnhanceScale.factor(factor),
       if (controller.isEnhanceMaxUpscaleEligible) ToolsEnhanceScale.max,
-      ToolsEnhanceScale.local,
+      // 本地放大依赖随包可执行文件，Android 不提供入口。
+      if (!isMobilePlatform) ToolsEnhanceScale.local,
     ],
-    scale: settings.localUpscale
+    scale: isMobilePlatform
+        ? ToolsEnhanceScale.factor(settings.upscaleFactor)
+        : settings.localUpscale
         ? ToolsEnhanceScale.local
         : settings.maxUpscale && controller.isEnhanceMaxUpscaleEligible
         ? ToolsEnhanceScale.max

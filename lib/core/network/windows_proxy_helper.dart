@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:win32_registry/win32_registry.dart';
 
 import '../utils/app_logger.dart';
+import '../utils/desktop_platform.dart';
 
 /// Windows 系统代理辅助类
 /// 用于读取 Windows 注册表中的代理设置
@@ -24,7 +23,7 @@ class WindowsProxyHelper {
   /// - "DIRECT" 如果代理未启用或获取失败
   static String? getSystemProxy() {
     // 仅在 Windows 平台执行
-    if (!Platform.isWindows) {
+    if (!supportsWindowsProxy) {
       return null;
     }
 

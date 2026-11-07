@@ -59,9 +59,12 @@ bool galleryPathIsWithin(String rootPath, String childPath) {
   return childKey.startsWith('$rootKey${Platform.pathSeparator}');
 }
 
-/// [path] 是否为绝对路径（Windows 盘符或 UNC 前缀）
+/// [path] 是否为绝对路径（Windows 盘符或 UNC 前缀，POSIX 以 `/` 开头）
 bool isAbsoluteGalleryPath(String path) {
   final normalized = normalizeGalleryFilePath(path);
+  // POSIX 绝对路径（Android / macOS / Linux）；Windows 下不可能以 `/` 开头，
+  // 因此不影响桌面既有判定。
+  if (normalized.startsWith('/')) return true;
   return RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(normalized) ||
       normalized.startsWith(r'\\');
 }

@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 import '../utils/app_bundle_paths.dart';
+import '../utils/desktop_platform.dart';
 
 part 'app_installation_service.g.dart';
 
@@ -45,6 +46,7 @@ class AppInstallationService {
   }
 
   bool get supportsInAppInstall =>
+      supportsInAppUpdateInstall &&
       getInstallationType() != AppInstallationType.unsupported;
 
   bool _isInstalledWindowsApp() {

@@ -3,7 +3,10 @@ import 'dart:io';
 
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/file_explorer_utils.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../../../../core/utils/image_save_utils.dart';
 import '../../../../data/models/gallery/nai_image_metadata.dart';
@@ -121,6 +124,9 @@ class GenerationSaveService {
               ?.filePath ??
           image.fileInfo?.path;
       if (knownPath != null && await File(knownPath).exists()) {
+        // Auto-save already put the image in the gallery; a manual "save"
+        // still exposes it in the Android album (the native side de-dupes).
+        await _mirrorToAndroidAlbum(knownPath);
         if (context.mounted) {
           ref
               .read(imageGenerationNotifierProvider.notifier)
@@ -132,6 +138,9 @@ class GenerationSaveService {
       final saveDirPath = await GalleryFolderRepository.instance.getRootPath();
       if (saveDirPath == null) return;
       final path = await saveToDirectory(image, rootPath: saveDirPath);
+      // One user save action writes the gallery file once; Android additionally
+      // mirrors that freshly written file into the system Pictures album.
+      await _mirrorToAndroidAlbum(path);
 
       if (context.mounted) {
         ref
@@ -152,6 +161,22 @@ class GenerationSaveService {
   }
 
   static final _pendingWrites = <String, Future<String>>{};
+
+  /// Android only: exposes a fresh gallery save in the system Pictures album.
+  ///
+  /// Best effort — old APIs (pre Android 10) and OEM MediaStore quirks must
+  /// never turn a successful gallery save into an error.
+  static Future<void> _mirrorToAndroidAlbum(String path) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await PlatformFileChannel.saveImageToMediaStore(
+        path,
+        displayName: p.basename(path),
+      );
+    } catch (error) {
+      AppLogger.w('保存图片到相册失败: $path ($error)', 'GenerationSaveService');
+    }
+  }
 
   /// Shared file operation, also used with a temporary root by offline tests.
   static Future<String> saveToDirectory(

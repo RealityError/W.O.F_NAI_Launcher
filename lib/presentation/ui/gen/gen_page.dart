@@ -13,6 +13,7 @@ import '../kit/ui_glyph.dart';
 import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
 import '../kit/ui_text.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import 'gen_canvas.dart';
 import 'gen_character.dart';
 import 'gen_contract.dart';
@@ -361,8 +362,215 @@ class GenerationPage extends StatelessWidget {
     data: data,
     actions: actions,
     slots: slots,
-    child: ColoredBox(color: context.ui.bg, child: const _GenLayoutRow()),
+    child: ColoredBox(
+      color: context.ui.bg,
+      // 手机端：画布优先 + 底部参数/生成条；提示词与历史走页面内浮层。
+      // 桌面端保持原三栏布局与拖拽改宽逻辑不变。
+      child: usesMobileLayout
+          ? const _GenMobileLayout()
+          : const _GenLayoutRow(),
+    ),
   );
+}
+
+/// 手机端生成页布局。
+///
+/// 复用同一套 [GenScope] / 模块组件：顶部模型胶囊、画布、参数条、生成条，
+/// 提示词编辑器与历史栏用「页面内浮层」承载（不能放进 Navigator overlay，
+/// 否则会丢失 GenScope 与页面级菜单/弹层宿主），从而避免三栏在 360dp 下互相挤压。
+class _GenMobileLayout extends StatefulWidget {
+  const _GenMobileLayout();
+
+  @override
+  State<_GenMobileLayout> createState() => _GenMobileLayoutState();
+}
+
+class _GenMobileLayoutState extends State<_GenMobileLayout> {
+  bool _editorOpen = false;
+  bool _historyOpen = false;
+
+  bool get _overlayOpen => _editorOpen || _historyOpen;
+
+  void _closeOverlays() {
+    if (_overlayOpen) {
+      setState(() {
+        _editorOpen = false;
+        _historyOpen = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return PopScope(
+      // 浮层打开时，系统返回键先关闭浮层，而不是退出页面。
+      canPop: !_overlayOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeOverlays();
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const GenHeader(collapsible: false),
+              Expanded(
+                child: GenParamDrawerHost(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const GenCanvas(),
+                      Positioned(
+                        left: 12,
+                        bottom: 12,
+                        child: _MobileCanvasAction(
+                          key: const Key('gen-mobile-editor'),
+                          icon: Icons.edit_note_rounded,
+                          label: context.l10n.gen_edit,
+                          onTap: () => setState(() => _editorOpen = true),
+                        ),
+                      ),
+                      Positioned(
+                        right: 12,
+                        bottom: 12,
+                        child: _MobileCanvasAction(
+                          key: const Key('gen-mobile-history'),
+                          icon: Icons.history_rounded,
+                          label: context.l10n.gen_history,
+                          onTap: () => setState(() => _historyOpen = true),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const GenParamStrip(),
+              const GenGenerateBar(),
+            ],
+          ),
+          if (_editorOpen)
+            _MobileOverlayPanel(
+              key: const Key('gen-mobile-editor-panel'),
+              title: context.l10n.gen_edit,
+              onClose: _closeOverlays,
+              child: const GenEditorColumn(collapsible: false),
+            ),
+          if (_historyOpen)
+            _MobileOverlayPanel(
+              key: const Key('gen-mobile-history-panel'),
+              title: context.l10n.gen_history,
+              onClose: _closeOverlays,
+              child: GenHistoryPanel(width: width),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 页面内全屏浮层：标题栏 + 关闭按钮 + 内容，保留在 GenScope 的子树里。
+class _MobileOverlayPanel extends StatelessWidget {
+  const _MobileOverlayPanel({
+    super.key,
+    required this.title,
+    required this.child,
+    required this.onClose,
+  });
+
+  final String title;
+  final Widget child;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    return Material(
+      color: c.bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: 48,
+            padding: const EdgeInsets.only(left: 4),
+            decoration: BoxDecoration(
+              color: c.bg,
+              border: Border(bottom: BorderSide(color: c.line)),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  key: const Key('gen-mobile-overlay-close'),
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close_rounded, size: 22),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                ),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: UiText.sans(
+                      14.5,
+                      weight: FontWeight.w600,
+                      color: c.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+/// 画布上的浮动操作按钮（手机端）。
+class _MobileCanvasAction extends StatelessWidget {
+  const _MobileCanvasAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    return Material(
+      color: c.bg,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: c.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 6,
+            children: [
+              Icon(icon, size: 16, color: c.ink),
+              Text(label, style: UiText.sans(12.5, color: c.ink)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _GenLayoutRow extends StatefulWidget {
@@ -476,6 +684,14 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
     );
     final (:left, :history, :dock, :leftOpen, :historyOpen, :canvasVisible) =
         geometry;
+    // 固定宽度面板（左栏 + Agent dock + 历史栏）之和不能超过视口宽度。
+    // 桌面最小窗口 800 时不会触发；360dp 手机上左栏必须让步，否则外层
+    // Row 会溢出（左栏 minLeft 352 + 历史竖条 40 > 360）。画布区域由
+    // Expanded 吸收剩余宽度（可能为 0），用户可收起左栏后查看画布。
+    final fixedWidth = left + dock + history;
+    final effectiveLeft = fixedWidth > w
+        ? math.min(left, math.max(0.0, w - dock - history))
+        : left;
     double previewPosition(GenLayout next, {required bool isLeft}) {
       final g = _geometry(next, w, keepHistory, scope.slots.dock != null);
       return isLeft ? g.left : w - g.history;
@@ -504,7 +720,7 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
           children: [
             if (layout.leftOpen)
               SizedBox(
-                width: left,
+                width: effectiveLeft,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -514,10 +730,10 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
                         excluding: !leftOpen,
                         child: OverflowBox(
                           alignment: Alignment.topLeft,
-                          minWidth: leftOpen ? left : layout.leftWidth,
-                          maxWidth: leftOpen ? left : layout.leftWidth,
+                          minWidth: leftOpen ? effectiveLeft : layout.leftWidth,
+                          maxWidth: leftOpen ? effectiveLeft : layout.leftWidth,
                           child: GenLeftPanel(
-                            width: leftOpen ? left : layout.leftWidth,
+                            width: leftOpen ? effectiveLeft : layout.leftWidth,
                           ),
                         ),
                       ),
@@ -596,7 +812,7 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
         ),
         if (leftOpen)
           Positioned(
-            left: left - 4,
+            left: effectiveLeft - 4,
             top: 0,
             bottom: 0,
             width: 8,

@@ -23,6 +23,7 @@ import 'core/autocomplete/retired_dictionary_cleanup.dart';
 import 'core/utils/app_language.dart';
 import 'core/utils/initial_app_language.dart';
 import 'core/network/proxy_service.dart';
+import 'core/network/android_system_proxy.dart';
 import 'core/network/system_proxy_http_overrides.dart';
 import 'core/shortcuts/shortcut_storage.dart';
 import 'core/database/database_manager.dart';
@@ -370,6 +371,11 @@ Future<void> _bootstrapApplication() async {
 
 Future<void> _bootstrapMainWindow() async {
   AppVisibility.instance.attach();
+  if (Platform.isAndroid) {
+    // Android 15 forces edge-to-edge; opt in explicitly on older releases so the
+    // status bar stays transparent and MediaQuery insets match the drawn surface.
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
   if (Platform.isWindows) {
     final resources = ResourceWindowService.instance;
     await resources.initialize();
@@ -424,7 +430,9 @@ Future<void> _prepareDataAndStart() => startWithPreparedAppData(
         },
         onClose: () => Platform.isMacOS
             ? DesktopAppShutdownService.shutdownAndExit(0)
-            : windowManager.close(),
+            : isSupportedDesktop
+            ? windowManager.close()
+            : DesktopAppShutdownService.shutdownAndExit(0),
       ),
     );
     if (isSupportedDesktop) {
@@ -784,6 +792,17 @@ Future<void> _bootstrapPreparedApplication() async {
       }
     } else {
       AppLogger.d('Proxy disabled by user settings', 'NETWORK');
+    }
+  } else if (Platform.isAndroid) {
+    // Flutter/dart:io 不读取 Android 系统代理，这里在创建任何 HttpClient 之前
+    // 读取一次「Wi-Fi/移动网络 → 高级 → 代理」并注入全局 HttpOverrides，
+    // 让登录、生图、更新检查等全部走用户配置的代理。
+    final systemProxy = await readAndroidSystemProxy();
+    if (systemProxy != null) {
+      HttpOverrides.global = SystemProxyHttpOverrides('PROXY $systemProxy');
+      AppLogger.i('Applied Android system proxy: $systemProxy', 'NETWORK');
+    } else {
+      AppLogger.d('No Android system proxy configured', 'NETWORK');
     }
   }
 

@@ -82,8 +82,17 @@ class GalleryFileMonitor {
   bool _active = false, _applying = false, _disposed = false;
   Future<void>? _start;
 
-  static Stream<FileSystemEvent> _watchDirectory(Directory root) =>
-      root.watch(recursive: true);
+  static Stream<FileSystemEvent> _watchDirectory(Directory root) {
+    try {
+      // Recursive directory watching is unsupported on the Linux kernel
+      // (Android included). A non-recursive watch still reports files added to
+      // the gallery root, and the manual refresh path covers nested folders.
+      return Platform.isAndroid ? root.watch() : root.watch(recursive: true);
+    } on UnsupportedError {
+      // Degrade to no live monitor instead of failing gallery startup.
+      return const Stream<FileSystemEvent>.empty();
+    }
+  }
 
   Future<void> start() => _start ??= _startWatching();
 

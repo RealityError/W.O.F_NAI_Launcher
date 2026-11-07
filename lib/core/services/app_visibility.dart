@@ -1,7 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
+
+import '../utils/desktop_platform.dart';
 
 /// Visibility of the main window, shared by drawing and view-owned polling.
 class AppVisibility extends ValueNotifier<bool>
@@ -17,7 +17,7 @@ class AppVisibility extends ValueNotifier<bool>
   void attach() {
     final binding = WidgetsBinding.instance;
     binding.addObserver(this);
-    if (Platform.isWindows) windowManager.addListener(this);
+    if (supportsWindowManagerEvents) windowManager.addListener(this);
     final lifecycle = binding.lifecycleState;
     if (lifecycle != null) didChangeAppLifecycleState(lifecycle);
   }

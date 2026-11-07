@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import '../utils/desktop_platform.dart';
 
 /// FEAT-23 内置一体标题栏：命中区上报服务。
 ///
@@ -15,8 +16,9 @@ import 'package:flutter/services.dart';
 class TitleBarRegionService {
   TitleBarRegionService._();
 
-  static const MethodChannel _channel =
-      MethodChannel('com.nailauncher/titlebar');
+  static const MethodChannel _channel = MethodChannel(
+    'com.nailauncher/titlebar',
+  );
 
   /// 活跃标题栏实例计数。
   ///
@@ -28,7 +30,7 @@ class TitleBarRegionService {
   static int _activeBars = 0;
 
   /// 平台通道是否可用（Windows 桌面端才有对应原生实现）。
-  static bool get isSupported => !kIsWeb && Platform.isWindows;
+  static bool get isSupported => !kIsWeb && supportsNativeTitleBarRegion;
 
   /// 标题栏实例挂载时调用：计数 +1。
   static void retain() {

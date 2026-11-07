@@ -37,12 +37,32 @@ class GalleryFolderRepository {
     // 优先使用用户设置的自定义路径
     final customPath = _localStorage.getImageSavePath();
     if (customPath != null && customPath.isNotEmpty) {
+      if (Platform.isAndroid) {
+        await _ensureAndroidRootDirectory(customPath);
+      }
       return customPath;
     }
 
     // 使用默认路径
     final appDir = await getApplicationDocumentsDirectory();
-    return p.join(appDir.path, 'NAI_Launcher', 'images');
+    final rootPath = p.join(appDir.path, 'NAI_Launcher', 'images');
+    if (Platform.isAndroid) {
+      await _ensureAndroidRootDirectory(rootPath);
+    }
+    return rootPath;
+  }
+
+  /// Android 上画廊根目录位于应用私有目录，首次启动时没有任何桌面安装流程
+  /// 创建它；不主动建目录会让首次扫描直接报「目录不存在」。
+  Future<void> _ensureAndroidRootDirectory(String rootPath) async {
+    try {
+      await Directory(rootPath).create(recursive: true);
+    } catch (error) {
+      AppLogger.w(
+        '创建 Android 画廊根目录失败: $rootPath ($error)',
+        'GalleryFolderRepository',
+      );
+    }
   }
 
   // ============================================================

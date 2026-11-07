@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../core/nai_agent/node_runtime_environment.dart';
+import '../../../core/utils/desktop_platform.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
@@ -171,6 +172,10 @@ class NaiAgentManagement {
     NaiAgentCancellation? cancellation,
   }) async {
     cancellation?.check();
+    // 随包 Node 宿主只在桌面端存在；移动端给出可读错误，不触发 ProcessException。
+    if (!supportsNaiAgentRuntime) {
+      throw StateError('NAI Agent runtime is not available on this platform');
+    }
     final paths = ref.read(naiAgentRuntimePathsProvider);
     final helper = Platform.isMacOS && input['resource'] == 'packages'
         ? 'package-process-group.mjs'

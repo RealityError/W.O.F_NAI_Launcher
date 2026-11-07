@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../prompt_assistant/models/prompt_task_definitions.dart'
     show reasoningEffortLabel;
 import '../kit/ui_colors.dart';
@@ -76,48 +77,13 @@ class _SettingsModelsPageState extends State<SettingsModelsPage> {
               decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: c.rowLine)),
               ),
-              child: Row(
-                spacing: 2,
-                children: [
-                  for (final t in _Tab.values)
-                    UiPressable(
-                      key: Key('models-tab-${t.name}'),
-                      onTap: () => setState(() => _tab = t),
-                      builder: (context, hover) => Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: _tab == t ? c.ink : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          spacing: 6,
-                          children: [
-                            Text(
-                              labels[t]!,
-                              style: UiText.sans(
-                                13,
-                                weight: _tab == t
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: _tab == t || hover ? c.ink : c.muted,
-                              ),
-                            ),
-                            if (t == _Tab.requests && m.requestTotal > 0)
-                              Text(
-                                '${m.requestTotal}',
-                                style: UiText.mono(11, color: c.faint),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              // 手机竖屏：四个标签一行放不下，允许横向滚动（桌面保持原样）。
+              child: usesMobileLayout || debugForceMobileSettingsLayout
+                  ? SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: _tabBar(context, c, labels, m),
+                    )
+                  : _tabBar(context, c, labels, m),
             ),
             switch (_tab) {
               _Tab.providers => _providers(context, m),
@@ -154,6 +120,53 @@ class _SettingsModelsPageState extends State<SettingsModelsPage> {
       ],
     );
   }
+
+  /// 四个标签页按钮（手机端窄屏时放在横向滚动容器里，桌面端直接使用）。
+  Widget _tabBar(
+    BuildContext context,
+    UiColors c,
+    Map<_Tab, String> labels,
+    SettingsModelsData m,
+  ) => Row(
+    spacing: 2,
+    children: [
+      for (final t in _Tab.values)
+        UiPressable(
+          key: Key('models-tab-${t.name}'),
+          onTap: () => setState(() => _tab = t),
+          builder: (context, hover) => Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: _tab == t ? c.ink : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Row(
+              spacing: 6,
+              children: [
+                Text(
+                  labels[t]!,
+                  style: UiText.sans(
+                    13,
+                    weight: _tab == t ? FontWeight.w600 : FontWeight.w400,
+                    color: _tab == t || hover ? c.ink : c.muted,
+                  ),
+                ),
+                if (t == _Tab.requests && m.requestTotal > 0)
+                  Text(
+                    '${m.requestTotal}',
+                    style: UiText.mono(11, color: c.faint),
+                  ),
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
 
   Widget _providers(BuildContext context, SettingsModelsData m) {
     final s = SettingsScope.of(context);

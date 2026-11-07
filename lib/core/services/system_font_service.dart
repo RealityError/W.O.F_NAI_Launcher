@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../utils/desktop_platform.dart';
+
 part 'system_font_service.g.dart';
 
 /// 系统字体服务 - 通过 MethodChannel 获取系统字体列表
@@ -10,6 +12,8 @@ class SystemFontService {
 
   /// 获取系统字体列表
   Future<List<String>> getSystemFonts() async {
+    // 原生字体通道只在桌面 runner 注册；移动端直接返回空列表。
+    if (!supportsSystemFonts) return const [];
     try {
       final List<dynamic> fonts = await _channel.invokeMethod('getSystemFonts');
       return fonts.cast<String>();

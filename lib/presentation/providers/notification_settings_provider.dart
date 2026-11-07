@@ -9,6 +9,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/constants/storage_keys.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/storage/local_storage_service.dart';
+import '../../core/utils/desktop_platform.dart';
 import 'image_generation_provider.dart';
 
 part 'notification_settings_provider.g.dart';
@@ -23,6 +24,7 @@ final notificationSoundPreviewProvider =
 final completionWindowIsFocusedProvider = Provider<Future<bool> Function()>(
   (ref) => () async {
     if (!kIsWeb &&
+        !isMobilePlatform &&
         const [
           TargetPlatform.windows,
           TargetPlatform.linux,

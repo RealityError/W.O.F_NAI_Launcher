@@ -1,6 +1,10 @@
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
+import 'app_logger.dart';
+
 typedef FileExplorerProcessLauncher =
     Future<void> Function(String executable, List<String> arguments);
 
@@ -48,6 +52,112 @@ typedef _SHOpenFolderAndSelectItemsDart =
       int dwFlags,
     );
 
+/// Android bridge for file intents that have no desktop process equivalent.
+///
+/// Implemented by `MainActivity.kt` on the `com.nailauncher/platform` channel.
+/// Every call is a no-op returning `false`/`null` when the channel is missing
+/// (widget tests, desktop, future platforms), so callers never have to guard.
+class PlatformFileChannel {
+  PlatformFileChannel._();
+
+  static const MethodChannel channel = MethodChannel(
+    'com.nailauncher/platform',
+  );
+
+  static bool get isAndroid => Platform.isAndroid;
+
+  /// Opens [path] with an external viewer (ACTION_VIEW on a content:// uri).
+  static Future<bool> openFile(String path, {String? mimeType}) async {
+    if (!isAndroid) return false;
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return false;
+    return _invokeBool('openFile', {
+      'path': trimmed,
+      'mimeType': mimeType ?? mimeTypeForPath(trimmed),
+    });
+  }
+
+  /// Opens the Android share sheet with [path] attached.
+  static Future<bool> shareFile(String path, {String? mimeType}) async {
+    if (!isAndroid) return false;
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return false;
+    return _invokeBool('shareFile', {
+      'path': trimmed,
+      'mimeType': mimeType ?? mimeTypeForPath(trimmed),
+    });
+  }
+
+  /// Copies an image into the system Pictures album (Android 10+).
+  ///
+  /// Returns the resulting content:// uri, or null when unsupported/failed.
+  static Future<String?> saveImageToMediaStore(
+    String path, {
+    String? displayName,
+  }) async {
+    if (!isAndroid) return null;
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return null;
+    try {
+      return await channel.invokeMethod<String>('saveImageToMediaStore', {
+        'path': trimmed,
+        if (displayName != null && displayName.trim().isNotEmpty)
+          'displayName': displayName.trim(),
+      });
+    } on MissingPluginException {
+      return null;
+    } on PlatformException catch (error) {
+      AppLogger.w(
+        'saveImageToMediaStore failed: ${error.code} ${error.message}',
+        'PlatformFileChannel',
+      );
+      return null;
+    }
+  }
+
+  /// Best-effort attempt to show a directory in a file manager.
+  static Future<bool> openDirectory(String path) async {
+    if (!isAndroid) return false;
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return false;
+    return _invokeBool('openDirectory', {'path': trimmed});
+  }
+
+  static Future<bool> _invokeBool(
+    String method,
+    Map<String, Object?> arguments,
+  ) async {
+    try {
+      return await channel.invokeMethod<bool>(method, arguments) ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException catch (error) {
+      AppLogger.w(
+        '$method failed: ${error.code} ${error.message}',
+        'PlatformFileChannel',
+      );
+      return false;
+    }
+  }
+
+  static String mimeTypeForPath(String path) {
+    final dot = path.lastIndexOf('.');
+    final extension = dot < 0 ? '' : path.substring(dot + 1).toLowerCase();
+    return switch (extension) {
+      'png' => 'image/png',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      'bmp' => 'image/bmp',
+      'mp4' => 'video/mp4',
+      'webm' => 'video/webm',
+      'zip' => 'application/zip',
+      'json' => 'application/json',
+      _ => '*/*',
+    };
+  }
+}
+
 class FileExplorerUtils {
   FileExplorerUtils._();
 
@@ -70,6 +180,25 @@ class FileExplorerUtils {
     String directoryPath, {
     FileExplorerProcessLauncher? startProcess,
   }) async {
+    if (Platform.isAndroid) {
+      // Android has no explorer.exe; best-effort file-manager intent instead
+      // of throwing for the unsupported desktop action.
+      final path = directoryPath.trim();
+      if (path.isEmpty) {
+        AppLogger.w(
+          'openDirectory called with an empty path',
+          'FileExplorerUtils',
+        );
+        return;
+      }
+      if (!await PlatformFileChannel.openDirectory(path)) {
+        AppLogger.w(
+          'No Android file manager accepted: $path',
+          'FileExplorerUtils',
+        );
+      }
+      return;
+    }
     final dir = Directory(directoryPath.trim());
     if (dir.path.isEmpty) {
       throw ArgumentError.value(directoryPath, 'directoryPath', 'is empty');
@@ -91,6 +220,30 @@ class FileExplorerUtils {
     String filePath, {
     FileExplorerProcessLauncher? startProcess,
   }) async {
+    if (Platform.isAndroid) {
+      // There is no "reveal in folder" on Android and app-private gallery
+      // files are invisible to file managers, so offer the share sheet (and
+      // fall back to opening the file) instead of the desktop-only action.
+      final path = filePath.trim();
+      if (path.isEmpty) {
+        AppLogger.w(
+          'revealFile called with an empty path',
+          'FileExplorerUtils',
+        );
+        return;
+      }
+      if (!await File(path).exists()) {
+        AppLogger.w('revealFile target missing: $path', 'FileExplorerUtils');
+        return;
+      }
+      if (await PlatformFileChannel.shareFile(path)) return;
+      if (await PlatformFileChannel.openFile(path)) return;
+      AppLogger.w(
+        'No Android share/view target for: $path',
+        'FileExplorerUtils',
+      );
+      return;
+    }
     final file = File(filePath.trim());
     if (file.path.isEmpty) {
       throw ArgumentError.value(filePath, 'filePath', 'is empty');

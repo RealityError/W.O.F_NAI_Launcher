@@ -62,13 +62,13 @@ class DesktopAppShutdownService {
   static Future<void> _performShutdown({int? exitCode}) async {
     final elapsed = Stopwatch()..start();
     AppLogger.i('Application shutdown started', 'AppShutdown');
-    if (isSupportedDesktop) {
+    if (supportsDesktopWindowChrome) {
       await _cleanup('Window hide', windowManager.hide);
     }
     await prepareBackgroundShutdown();
     await _cleanup('Database', () => DatabaseManager.instance.dispose());
     await _cleanup('Hive', Hive.close);
-    if (isSupportedDesktop) {
+    if (supportsTray) {
       await _cleanup('Tray', trayManager.destroy);
     }
     AppLogger.i(

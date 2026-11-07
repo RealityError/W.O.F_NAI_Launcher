@@ -1,0 +1,122 @@
+name: Build Android APK
+
+# Builds the Android release APKs on Linux. The desktop release workflows are
+# Windows/macOS-only; this one is the Android counterpart and stays a plain
+# build+upload job (no signing, no store publishing).
+#
+# Notes:
+# - Flutter version follows tool/flutter-sdk.json and the existing Windows/macOS
+#   workflows. Bump it together with a regenerated pubspec.lock, never alone.
+# - `lfs: true` is required: assets/databases (~419 MB) is stored in Git LFS and
+#   the tags/wiki screens need the real SQLite files, not LFS pointers.
+# - Generated Dart files (*.g.dart, *.freezed.dart) and the ARB localizations
+#   are not all checked in, so the code generation steps must run before the
+#   build, like in the macOS and Windows workflows.
+# - The app bundles very large assets, so expect a long build and big artifacts
+#   until asset delivery is reworked (see docs/android-port.md).
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feat/android-port
+    paths:
+      - ".github/workflows/android-build.yml"
+      - "android/**"
+      - "assets/**"
+      - "l10n.yaml"
+      - "lib/**"
+      - "pubspec.lock"
+      - "pubspec.yaml"
+      - "scripts/build_android.ps1"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/android-build.yml"
+      - "android/**"
+      - "assets/**"
+      - "l10n.yaml"
+      - "lib/**"
+      - "pubspec.lock"
+      - "pubspec.yaml"
+      - "scripts/build_android.ps1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.7"
+
+jobs:
+  build:
+    name: Build release APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/**/*.gradle', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Generate localizations and code
+        run: |
+          flutter gen-l10n
+          dart run tool/generate.dart
+
+      - name: Build release APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: List artifacts
+        run: ls -lh build/app/outputs/flutter-apk/
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apks
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/app/outputs/flutter-apk/app-*-release.apk
+            build/app/outputs/flutter-apk/app-*-release.apk.sha1

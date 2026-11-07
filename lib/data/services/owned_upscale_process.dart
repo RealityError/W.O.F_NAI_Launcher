@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/upscale/local_upscale_models.dart';
+import '../../core/utils/desktop_platform.dart';
 
 typedef OwnedUpscaleStarter =
     Future<Process> Function(
@@ -29,6 +30,9 @@ Future<OwnedUpscaleProcessResult> runOwnedUpscaleProcess({
   void Function(String)? onLine,
   OwnedUpscaleStarter? startProcess,
 }) async {
+  if (startProcess == null && !supportsExternalProcesses) {
+    throw const LocalUpscaleException(LocalUpscaleError.unsupportedPlatform);
+  }
   cancellation.check();
   final process =
       await (startProcess ??

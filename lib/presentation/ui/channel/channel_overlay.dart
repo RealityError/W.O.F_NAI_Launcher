@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_text.dart';
@@ -132,7 +133,9 @@ class _Toast extends StatelessWidget {
     final c = context.ui;
     final env = ChannelEnv.of(data.settings);
     final top = data.batches.isEmpty ? 0.0 : data.batches.first.rect.top + 300;
-    final n = env.order.length < 4 ? env.order.length : 4;
+    // 手机窄屏上四种主题名并排会超出屏幕；桌面端维持 4 个。
+    final maxThemes = isMobilePlatform ? 2 : 4;
+    final n = env.order.length < maxThemes ? env.order.length : maxThemes;
     final seq = env.sequenceFrom(top, n);
     final arrow = Text('→', style: UiText.sans(11, color: c.muted));
     return Container(

@@ -1,7 +1,7 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import '../utils/desktop_platform.dart';
 
 /// Only the custom title bar reveals the native backdrop. Pages stay opaque.
 abstract final class WindowMaterialService {
@@ -14,7 +14,7 @@ abstract final class WindowMaterialService {
     required bool dark,
     required bool enabled,
   }) async {
-    if (kIsWeb || !Platform.isWindows) return;
+    if (kIsWeb || !supportsWindowBackdropMaterial) return;
     if (!_listening) {
       _channel.setMethodCallHandler((call) async {
         if (call.method == 'availabilityChanged') {
