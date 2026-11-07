@@ -15076,6 +15076,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get gen_scrollUnlock => '스크롤 고정 해제';
 
   @override
+  String get gen_unlockCamera => '캔버스 카메라 잠금 해제';
+
+  @override
   String get gen_saveAll => '모두 갤러리에 저장';
 
   @override

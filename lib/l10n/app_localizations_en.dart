@@ -15481,6 +15481,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gen_scrollUnlock => 'Unlock scroll';
 
   @override
+  String get gen_unlockCamera => 'Unlock canvas camera';
+
+  @override
   String get gen_saveAll => 'Save all to gallery';
 
   @override

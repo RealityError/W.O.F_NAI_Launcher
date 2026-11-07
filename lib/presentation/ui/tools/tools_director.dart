@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../gen/gen_parts.dart';
 import '../kit/ui_colors.dart';
@@ -95,6 +96,9 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
   WidgetBuilder? _popover;
   Object? _tag;
 
+  /// 手机端：右栏（选项 / 运行 / 结果）改为浮层，避免固定 320 宽把舞台挤爆。
+  var _mobileSideOpen = false;
+
   @override
   ToolsCompare get compare => _compare;
   @override
@@ -166,28 +170,222 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
                 child: ColoredBox(
                   key: const Key('tools-director'),
                   color: c.bg,
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _TopBar(),
-                      Expanded(
-                        child: Row(
+                  // 手机端：左工具条 + 舞台，右栏改为页面内浮层（选项/运行/结果）。
+                  // 桌面端保持原三栏结构不变。
+                  child: usesMobileLayout
+                      ? _MobileDirectorLayout(
+                          sideOpen: _mobileSideOpen,
+                          onOpenSide: () =>
+                              setState(() => _mobileSideOpen = true),
+                          onCloseSide: () =>
+                              setState(() => _mobileSideOpen = false),
+                        )
+                      : const Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _ToolList(),
-                            Expanded(child: _Stage()),
-                            ToolsDirectorSide(),
+                            _TopBar(),
+                            Expanded(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _ToolList(),
+                                  Expanded(child: _Stage()),
+                                  ToolsDirectorSide(),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// 手机端导演工具布局：左工具条 + 舞台；右栏（选项 / 运行 / 结果）改为页面内浮层，
+/// 通过右上角圆形按钮打开。桌面端三栏布局保持不变。
+class _MobileDirectorLayout extends StatelessWidget {
+  const _MobileDirectorLayout({
+    required this.sideOpen,
+    required this.onOpenSide,
+    required this.onCloseSide,
+  });
+
+  final bool sideOpen;
+  final VoidCallback onOpenSide;
+  final VoidCallback onCloseSide;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    final width = MediaQuery.sizeOf(context).width;
+    return PopScope(
+      // 浮层打开时系统返回键先关浮层。
+      canPop: !sideOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) onCloseSide();
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _MobileTopBar(onOpenSide: onOpenSide),
+              const Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ToolList(),
+                    Expanded(child: _MobileStage()),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (sideOpen)
+            Positioned.fill(
+              child: Material(
+                key: const Key('tools-director-mobile-side-panel'),
+                color: c.bg,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      height: 48,
+                      padding: const EdgeInsets.only(left: 4),
+                      decoration: BoxDecoration(
+                        color: c.bg,
+                        border: Border(bottom: BorderSide(color: c.line)),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            key: const Key('tools-director-mobile-side-close'),
+                            onPressed: onCloseSide,
+                            icon: const Icon(Icons.close_rounded, size: 22),
+                            tooltip: MaterialLocalizations.of(
+                              context,
+                            ).closeButtonTooltip,
+                          ),
+                          Expanded(
+                            child: Text(
+                              l.tools_director,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: UiText.sans(
+                                14.5,
+                                weight: FontWeight.w600,
+                                color: c.ink,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                      ),
+                    ),
+                    Expanded(child: ToolsDirectorSide(width: width)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端顶栏：不经过 WindowHeader（否则会为窗口按钮预留 138px），内容精简。
+/// 右栏（选项 / 运行 / 结果）通过顶栏的「面板」按钮打开，避免画布上出现
+/// 无说明的浮动圆钮。
+class _MobileTopBar extends StatelessWidget {
+  const _MobileTopBar({required this.onOpenSide});
+
+  final VoidCallback onOpenSide;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final scope = ToolsDirectorScope.of(context);
+    final d = scope.data;
+    final l = context.l10n;
+    return Container(
+      key: const Key('tools-director-top'),
+      height: ToolsDirectorPage.topHeight - 1,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        spacing: 8,
+        children: [
+          ToolsButton(
+            key: const Key('tools-director-back'),
+            tone: ToolsButtonTone.ghost,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            onTap: scope.actions.onBack,
+            children: [
+              UiGlyph(ToolsGlyphs.back, size: 16, color: c.muted),
+              Text(l.tools_backGen),
+            ],
+          ),
+          Expanded(
+            child: Text(
+              l.tools_director,
+              key: const Key('tools-director-title'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: UiText.sans(15, weight: FontWeight.w600, color: c.ink),
+            ),
+          ),
+          ToolsButton(
+            key: const Key('tools-director-mobile-side'),
+            tone: ToolsButtonTone.ghost,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            onTap: onOpenSide,
+            children: [
+              Icon(Icons.tune_rounded, size: 16, color: c.muted),
+              Text(l.tools_panel),
+            ],
+          ),
+          if (d.anlas != null)
+            ToolsChip(
+              key: const Key('tools-director-anlas'),
+              height: 30,
+              mono: true,
+              children: [
+                GenNaiIcon('anlas', size: 13, color: c.ink),
+                Text(ToolsFormat.number(d.anlas!)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端舞台：内部仍按桌面密度排布，给最小宽度后横向滚动，
+/// 避免输入队列 / 对比控件在 360dp 下被压到溢出。
+class _MobileStage extends StatelessWidget {
+  const _MobileStage();
+
+  static const double minWidth = 520;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: width < minWidth ? minWidth : width,
+        child: const _Stage(),
+      ),
     );
   }
 }

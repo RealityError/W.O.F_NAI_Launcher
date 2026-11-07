@@ -8369,6 +8369,7 @@
   "gen_autoSaveOff": "自动保存到图库：关",
   "gen_scrollLock": "锁定滚动（新图来了不跳到顶部）",
   "gen_scrollUnlock": "解除锁定滚动",
+  "gen_unlockCamera": "解除画布相机锁定",
   "gen_saveAll": "全部保存到图库",
   "gen_clearHistory": "清空历史",
   "gen_clearHistoryTitle": "清空这次的历史？",

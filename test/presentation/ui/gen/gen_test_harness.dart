@@ -1,5 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nai_launcher/presentation/providers/canvas_settings_provider.dart';
 import 'package:nai_launcher/presentation/widgets/common/text_editing_shortcuts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
@@ -11,6 +13,21 @@ import 'package:nai_launcher/presentation/widgets/navigation/window_chrome_layou
 
 /// 主导航宽度：页面可用宽度 = 窗口宽 − 48。
 const genRail = 48.0;
+
+/// 测试用锁相机替身：真实实现会读取 Hive 设置，界面测试只需要一个可控的 bool。
+class _FakeCanvasLockCameraNotifier extends CanvasLockCameraNotifier {
+  _FakeCanvasLockCameraNotifier(this.initialLocked);
+
+  final bool initialLocked;
+
+  @override
+  bool build() => initialLocked;
+
+  @override
+  Future<void> setLocked(bool locked) async {
+    state = locked;
+  }
+}
 
 /// 把回调记成字符串，测试里断言调用了什么。
 class GenRecorder {
@@ -31,6 +48,7 @@ Future<void> pumpGen(
   double height = 1120,
   String locale = 'zh',
   bool dark = false,
+  bool cameraLocked = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(window - genRail, height);
@@ -45,6 +63,7 @@ Future<void> pumpGen(
       ),
       locale: locale,
       dark: dark,
+      cameraLocked: cameraLocked,
     ),
   );
   await precacheGen(tester, _images(data));
@@ -61,24 +80,35 @@ Iterable<ImageProvider> _images(GenViewData d) => [
   for (final p in d.refs.precise?.list ?? const <GenPrecise>[]) p.thumb,
 ];
 
-Widget genApp(Widget child, {String locale = 'zh', bool dark = false}) =>
-    RepaintBoundary(
-      key: const Key('gen-capture'),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: dark ? GeistTheme.dark : GeistTheme.light,
-        locale: locale.contains('_')
-            ? Locale(locale.split('_')[0], locale.split('_')[1])
-            : Locale(locale),
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(disableAnimations: true),
-          child: TextEditingShortcuts(child: child!),
-        ),
-        home: Scaffold(body: WindowChromeScope(child: child)),
+Widget genApp(
+  Widget child, {
+  String locale = 'zh',
+  bool dark = false,
+  bool cameraLocked = false,
+}) => RepaintBoundary(
+  key: const Key('gen-capture'),
+  child: ProviderScope(
+    overrides: [
+      canvasLockCameraNotifierProvider.overrideWith(
+        () => _FakeCanvasLockCameraNotifier(cameraLocked),
       ),
-    );
+    ],
+    child: MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: dark ? GeistTheme.dark : GeistTheme.light,
+      locale: locale.contains('_')
+          ? Locale(locale.split('_')[0], locale.split('_')[1])
+          : Locale(locale),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: true),
+        child: TextEditingShortcuts(child: child!),
+      ),
+      home: Scaffold(body: WindowChromeScope(child: child)),
+    ),
+  ),
+);
 
 Future<void> precacheGen(
   WidgetTester tester,

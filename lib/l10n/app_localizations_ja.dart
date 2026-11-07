@@ -15044,6 +15044,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gen_scrollUnlock => 'スクロール固定を解除';
 
   @override
+  String get gen_unlockCamera => 'キャンバスカメラのロックを解除';
+
+  @override
   String get gen_saveAll => 'すべてギャラリーに保存';
 
   @override

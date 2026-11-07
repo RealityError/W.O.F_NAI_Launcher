@@ -26915,6 +26915,12 @@ abstract class AppLocalizations {
   /// **'Unlock scroll'**
   String get gen_scrollUnlock;
 
+  /// No description provided for @gen_unlockCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock canvas camera'**
+  String get gen_unlockCamera;
+
   /// No description provided for @gen_saveAll.
   ///
   /// In en, this message translates to:

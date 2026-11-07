@@ -14,7 +14,10 @@ void main() {
   setUp(() => debugForceMobileLayout = true);
   tearDown(() => debugForceMobileLayout = null);
 
-  Future<void> pumpMobile(WidgetTester tester) async {
+  Future<void> pumpMobile(
+    WidgetTester tester, {
+    bool cameraLocked = false,
+  }) async {
     // pumpGen 内部按“窗口宽 − genRail”计算页面宽度；手机端没有左侧主导航，
     // 加上 genRail 让页面实际宽度等于 360dp。
     await pumpGen(
@@ -22,6 +25,7 @@ void main() {
       data: GenFixture.view(),
       window: 360 + genRail,
       height: 780,
+      cameraLocked: cameraLocked,
     );
     await tester.pumpAndSettle();
   }
@@ -69,5 +73,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('gen-mobile-history-panel')), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locked canvas camera offers an unlock action', (tester) async {
+    await pumpMobile(tester, cameraLocked: true);
+    expect(find.byKey(const Key('gen-mobile-unlock-camera')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('gen-mobile-unlock-camera')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('gen-mobile-unlock-camera')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('unlocked camera shows no unlock action', (tester) async {
+    await pumpMobile(tester);
+    expect(find.byKey(const Key('gen-mobile-unlock-camera')), findsNothing);
   });
 }

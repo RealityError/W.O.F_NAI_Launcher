@@ -8369,6 +8369,7 @@
   "gen_autoSaveOff": "갤러리 자동 저장: 꺼짐",
   "gen_scrollLock": "스크롤 고정 (새 이미지가 와도 그대로)",
   "gen_scrollUnlock": "스크롤 고정 해제",
+  "gen_unlockCamera": "캔버스 카메라 잠금 해제",
   "gen_saveAll": "모두 갤러리에 저장",
   "gen_clearHistory": "기록 지우기",
   "gen_clearHistoryTitle": "이번 기록을 지울까요?",

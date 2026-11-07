@@ -121,11 +121,11 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 现状：左栏（提示词/参数/生成条）+ 画布 + 历史栏三栏。手机目标：
 
 - **画布优先**：
-  - 顶部紧凑 `GenHeader`（模型/配额）；
+  - 顶部紧凑 `GenHeader`（模型/配额）+ 追加操作胶囊：编辑提示词、历史记录、解除相机锁定（仅锁定状态出现）；
   - 主体 = 画布（`GenCanvas`，含空白欢迎态）；
   - 底部固定：`GenParamStrip`（参数摘要，点开参数抽屉）+ `GenGenerateBar`（生成按钮）；
-  - 画布左下浮动「提示词」按钮 → 打开 **全屏 bottom sheet**，内容是 `GenEditorColumn(collapsible: false)`（提示词/角色/参考图/尺寸 + 它自己的生成条）；
-  - 右上「历史」按钮 → 打开右侧抽屉（`GenHistoryPanel`），点击历史项复用现有回填逻辑。
+  - 编辑提示词 / 历史记录都在 **页面内全屏浮层**：内容是 `GenEditorColumn(collapsible: false)` / `GenHistoryPanel`；不用 Navigator overlay，避免丢失 `GenScope`；
+  - 画布手势：单指拖拽平移、双指缩放；「锁定画布相机」开启时所有手动相机输入被禁用（桌面同一设置），此时顶栏会出现解锁按钮。
 - 复用 `GenHost` / `GenScope` / `GenActions` / 所有模块 widget，不改状态逻辑；
 - 桌面 `_GenLayoutRow` 三栏与拖拽改宽保持原样。
 
@@ -172,7 +172,8 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 | 模块 | 文件 | 说明 |
 | --- | --- | --- |
 | 移动端地基 | `lib/presentation/mobile/` | `mobile_breakpoints`（usesMobileLayout）、`MobilePageScaffold`、`showMobileSheet`、`MobileContextMenuRegion`/`showMobileContextMenu`、`MobileSectionHeader`/`MobileListTile`、`MobileTapCard`、`mobileAdaptiveTheme`（Tooltip 长按） |
-| 生成页 | `lib/presentation/ui/gen/gen_page.dart` | `usesMobileLayout` → `_GenMobileLayout`：画布优先 + 编辑/历史页面内浮层 + 参数条 + 生成条；桌面三栏 `_GenLayoutRow` 原样保留 |
+| 生成页 | `lib/presentation/ui/gen/gen_page.dart` | `usesMobileLayout` → `_GenMobileLayout`：画布优先 + 编辑/历史页面内浮层 + 参数条 + 生成条；顶栏追加编辑/历史/解锁相机操作；桌面三栏 `_GenLayoutRow` 原样保留 |
+| 导演工具 | `lib/presentation/ui/tools/tools_director.dart` | `_MobileDirectorLayout`：不经过 `WindowHeader` 的紧凑顶栏（返回/标题/面板/Anlas）+ 横向滚动的舞台 + 右栏浮层；桌面三栏原样保留 |
 | 设置页 | `lib/presentation/ui/settings/settings_mobile.dart` + 内容页窄屏分支 | 分组列表 → 详情页（复用桌面 `_pageOf` 内容）、搜索/深链/锚点、撤销浮条、详情页操作位；桌面双栏原样保留 |
 | 画廊 | `lib/presentation/screens/local_gallery/mobile_local_gallery.dart` + 画廊组件移动分支 | 移动工具栏/范围浏览/筛选/排序弹层、卡片长按动作菜单（bottom sheet）、inspector bottom sheet、多选批量条、回收站操作；桌面三栏与右键菜单原样保留 |
 | 主题 | `lib/app.dart`、`splash/app_bootstrap.dart` | 移动端套用 `mobileAdaptiveTheme`（Tooltip 长按、触摸目标）；桌面主题不变 |
@@ -184,11 +185,20 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 - `dart analyze lib`：No issues；
 - 新增移动测试：
   - `test/presentation/mobile/mobile_components_test.dart` 4 例（360dp 骨架/弹层/长按菜单/断点常量）；
-  - `test/presentation/ui/gen/gen_mobile_layout_test.dart` 3 例（画布优先、编辑浮层开关、历史浮层开关）；
+  - `test/presentation/ui/gen/gen_mobile_layout_test.dart` 5 例（画布优先、编辑浮层开关、历史浮层开关、锁相机时顶栏出现解锁入口、未锁定不显示）；
+  - `test/presentation/ui/tools/tools_director_mobile_test.dart` 2 例（360dp 不溢出且右栏不内联、右栏浮层开关）；
   - `test/presentation/ui/settings/mobile/` 16 例（列表/详情/返回/搜索锚点/深链/撤销/13 页滚动无 overflow）；
   - `test/presentation/widgets/gallery/mobile/` 9 例（长按菜单/多选/详情面板/筛选排序弹层/时间线语义）；
+- 生成页 UI 回归：`test/presentation/ui/gen` 376 例全部通过（测试宿主统一注入锁相机替身，不依赖 Hive）；导演工具 `test/presentation/ui/tools` 159 例（含 golden）通过；
 - 桌面回归：设置页 380 例、画廊 224 例全部通过；桌面布局代码路径未改动；
-- MuMu x86_64（Android 15，360dp 宽）实机验证：登录 → 生成页手机布局（画布/浮动编辑/历史/参数条/生成条）→ 长按画廊卡片弹出动作菜单 → 设置列表 → 概览详情页返回，全程无 overflow / 崩溃；Android 系统代理生效后网络检查与登录成功。
+- MuMu x86_64（Android 15，360dp 宽）实机验证：登录 → 生成页手机布局（画布/顶栏编辑与历史入口/参数条/生成条）→ 长按画廊卡片弹出动作菜单 → 设置列表 → 概览详情页返回，全程无 overflow / 崩溃；Android 系统代理生效后网络检查与登录成功。
+
+### 8.4 首轮反馈修复
+
+1. **画布被遮挡**：编辑提示词 / 历史记录原本是悬浮在画布上的圆形按钮，会压住画布工具条与图片；改为 `GenHeader` 的追加操作（`GenHeader.actions`），随头部 `Wrap` 换行，桌面端不传 `actions` 时行为不变。
+2. **导演工具 24px overflow**：右栏固定 320dp 宽度在 360dp 手机上把舞台挤到负宽；新增 `_MobileDirectorLayout`，右栏改为浮层，舞台独立横向滚动（内容最小 520dp），顶栏不再预留桌面窗口按钮的 138dp。
+3. **「多余的东西」= 导演工具右栏的解锁浮钮**：无说明的浮动圆钮已删除，改成顶栏带文字的「面板」按钮（`tools-director-mobile-side`），打开/关闭同一右栏浮层，返回键可先关浮层。
+4. **画布图片流「不能滑动」**：`canvas_lock_camera`（锁定画布相机）开启时会禁用拖拽平移与双指缩放——这是桌面原有设置，触屏上没有替代手势，表现就是画布冻结。移动端保持该设置语义不变，但锁定时在生成页顶栏显示「解除画布相机锁定」按钮（`gen-mobile-unlock-camera`），点一下即恢复手势浏览；同时在 `test/presentation/ui/gen/gen_test_harness.dart` 注入可控替身，避免测试依赖真实 Hive 设置。
 
 ### 8.3 本阶段遗留（后续处理）
 

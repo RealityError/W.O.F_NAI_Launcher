@@ -14837,6 +14837,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gen_scrollUnlock => '解除锁定滚动';
 
   @override
+  String get gen_unlockCamera => '解除画布相机锁定';
+
+  @override
   String get gen_saveAll => '全部保存到图库';
 
   @override
@@ -36499,6 +36502,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get gen_scrollUnlock => '解除鎖定滾動';
+
+  @override
+  String get gen_unlockCamera => '解除畫布相機鎖定';
 
   @override
   String get gen_saveAll => '全部儲存到圖庫';

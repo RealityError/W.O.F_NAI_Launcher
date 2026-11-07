@@ -21,9 +21,14 @@ class GenHeader extends StatelessWidget {
     super.key,
     this.collapsible = true,
     this.onOpenResourceWindow,
+    this.actions = const <Widget>[],
   });
   final bool collapsible;
   final ValueChanged<FloatingResourceKind>? onOpenResourceWindow;
+
+  /// 手机端追加的胶囊操作（编辑提示词 / 历史记录）。
+  /// 放进 Wrap 里随宽度换行，避免像浮动按钮那样遮挡画布工具条。
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -42,13 +47,17 @@ class GenHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             spacing: 6,
             children: [
-              const Expanded(
+              Expanded(
                 child: Wrap(
                   alignment: WrapAlignment.spaceBetween,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   runSpacing: 4,
                   spacing: 6,
-                  children: [_ModelCapsule(), _QuotaCapsule()],
+                  children: [
+                    const _ModelCapsule(),
+                    const _QuotaCapsule(),
+                    ...actions,
+                  ],
                 ),
               ),
               if (collapsible)
