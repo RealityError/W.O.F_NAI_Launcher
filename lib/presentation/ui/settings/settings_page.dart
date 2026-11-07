@@ -19,6 +19,7 @@ import 'settings_create.dart';
 import 'settings_format.dart';
 import 'settings_intel.dart';
 import 'settings_kit.dart';
+import 'settings_mobile.dart';
 import 'settings_models.dart';
 import 'settings_overview.dart';
 import 'settings_personal.dart';
@@ -219,6 +220,93 @@ class _SettingsPageState extends State<SettingsPage> {
     final searching = _query.trim().isNotEmpty;
     final pageId = settingsAvailablePage(data.page);
     final page = KeyedSubtree(key: ValueKey(pageId), child: _pageOf(pageId));
+    // 手机端走独立布局（列表 → 详情）；桌面端仍用下面的双栏结构，逐字节保持原样。
+    final Widget content = settingsUsesMobileLayout
+        ? MobileSettingsView(
+            data: data,
+            pageBuilder: _pageOf,
+            guard: _guard,
+            initialQuery: widget.initialQuery,
+            initialAnchor: widget.initialAnchor,
+            toast: _toast,
+            onDismissToast: () => setState(() => _toast = null),
+          )
+        : Focus(
+            focusNode: _rootFocus,
+            autofocus: true,
+            onKeyEvent: _onKey,
+            child: ColoredBox(
+              color: c.page,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final sidebar = constraints.maxWidth < 1000 ? 208.0 : 248.0;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: sidebar,
+                        child: _Sidebar(
+                          query: _query,
+                          focus: _searchFocus,
+                          onQuery: (q) => setState(() {
+                            _query = q;
+                            _sel = 0;
+                          }),
+                          onOpen: _open,
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _Header(searching: searching),
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Visibility(
+                                      visible: !searching,
+                                      maintainState: true,
+                                      child: page,
+                                    ),
+                                  ),
+                                  if (searching)
+                                    Positioned.fill(
+                                      child: SettingsSearchResults(
+                                        query: _query.trim(),
+                                        selected: _sel,
+                                        onHits: (h) => _hits = h,
+                                        onJump: (p, anchor) =>
+                                            _open(p, anchor: anchor),
+                                      ),
+                                    ),
+                                  if (_toast != null && !searching)
+                                    Positioned(
+                                      left: 0,
+                                      right: 0,
+                                      bottom: 22,
+                                      child: Center(
+                                        child: _ToastDock(
+                                          change: _toast!,
+                                          onUndo: () {
+                                            widget.actions.onUndo(_toast!.id);
+                                            setState(() => _toast = null);
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          );
     return SettingsScope(
       data: data,
       actions: widget.actions,
@@ -234,82 +322,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onClose: () => setState(() => _confirm = null),
               ),
         onDismiss: () => setState(() => _confirm = null),
-        child: Focus(
-          focusNode: _rootFocus,
-          autofocus: true,
-          onKeyEvent: _onKey,
-          child: ColoredBox(
-            color: c.page,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final sidebar = constraints.maxWidth < 1000 ? 208.0 : 248.0;
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: sidebar,
-                      child: _Sidebar(
-                        query: _query,
-                        focus: _searchFocus,
-                        onQuery: (q) => setState(() {
-                          _query = q;
-                          _sel = 0;
-                        }),
-                        onOpen: _open,
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _Header(searching: searching),
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: Visibility(
-                                    visible: !searching,
-                                    maintainState: true,
-                                    child: page,
-                                  ),
-                                ),
-                                if (searching)
-                                  Positioned.fill(
-                                    child: SettingsSearchResults(
-                                      query: _query.trim(),
-                                      selected: _sel,
-                                      onHits: (h) => _hits = h,
-                                      onJump: (p, anchor) =>
-                                          _open(p, anchor: anchor),
-                                    ),
-                                  ),
-                                if (_toast != null && !searching)
-                                  Positioned(
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 22,
-                                    child: Center(
-                                      child: _ToastDock(
-                                        change: _toast!,
-                                        onUndo: () {
-                                          widget.actions.onUndo(_toast!.id);
-                                          setState(() => _toast = null);
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
+        child: content,
       ),
     );
   }

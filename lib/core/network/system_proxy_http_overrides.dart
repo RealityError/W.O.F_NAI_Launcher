@@ -24,9 +24,17 @@ class SystemProxyHttpOverrides extends HttpOverrides {
     // 设置代理配置
     // findProxy 回调接收请求 URI，返回代理字符串
     client.findProxy = (uri) {
-      if (Platform.isMacOS &&
-          (uri.host.toLowerCase() == 'localhost' ||
-              InternetAddress.tryParse(uri.host)?.isLoopback == true)) {
+      // 本机回环（3D 编辑器本地资源服务、Krita 桥接等）必须直连。
+      final isLoopbackHost =
+          uri.host.toLowerCase() == 'localhost' ||
+          InternetAddress.tryParse(uri.host)?.isLoopback == true;
+      if (Platform.isMacOS && isLoopbackHost) {
+        return 'DIRECT';
+      }
+      // Android 手机常配系统代理访问外网：局域网内部服务（ComfyUI 等）直连，
+      // 否则会被代理服务器当成远程地址而失败。
+      if (Platform.isAndroid &&
+          (isLoopbackHost || _isPrivateNetworkHost(uri.host))) {
         return 'DIRECT';
       }
       AppLogger.d(
@@ -42,5 +50,27 @@ class SystemProxyHttpOverrides extends HttpOverrides {
     // client.badCertificateCallback = (cert, host, port) => true;
 
     return client;
+  }
+
+  /// 局域网 / 链路本地地址：代理服务器通常无法访问，交给直连。
+  static bool _isPrivateNetworkHost(String host) {
+    final lower = host.toLowerCase();
+    if (lower.endsWith('.local')) return true;
+    final address = InternetAddress.tryParse(host);
+    if (address == null) return false;
+    if (address.type == InternetAddressType.IPv4) {
+      final bytes = address.rawAddress;
+      return bytes[0] == 10 ||
+          (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
+          (bytes[0] == 192 && bytes[1] == 168) ||
+          (bytes[0] == 169 && bytes[1] == 254);
+    }
+    if (address.type == InternetAddressType.IPv6) {
+      final bytes = address.rawAddress;
+      // fc00::/7（unique-local）与 fe80::/10（link-local）。
+      return (bytes[0] & 0xfe) == 0xfc ||
+          (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80);
+    }
+    return false;
   }
 }

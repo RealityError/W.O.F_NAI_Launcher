@@ -4,6 +4,7 @@ import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:nai_launcher/presentation/widgets/common/studio_icons.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_context_menu.dart';
 import '../common/image_action_menu.dart';
 
 enum LocalImageContextAction {
@@ -23,6 +24,14 @@ enum LocalImageContextAction {
   moveTo,
   copyTo,
   showInFolder,
+
+  /// 手机端：保存到系统相册（Android MediaStore）。
+  ///
+  /// 桌面右键菜单不展示该动作，避免改变桌面入口。
+  saveToAlbum,
+
+  /// 手机端：心形收藏开关（桌面是卡片悬停按钮，触屏无 hover）。
+  toggleFavorite,
   delete,
 }
 
@@ -163,5 +172,138 @@ class LocalImageContextMenu {
         ),
       ],
     );
+  }
+
+  /// 手机端长按菜单：把与桌面右键相同的动作拍平成 bottom sheet。
+  ///
+  /// 桌面右键菜单 [show] 保持原样；这里只组装 [MobileMenuItem]，动作仍交回
+  /// 宿主按 [LocalImageContextAction] 统一分派，避免两套行为漂移。
+  static Future<LocalImageContextAction?> showMobile(
+    BuildContext context, {
+    String? title,
+    required bool hasImportableMetadata,
+    required bool hasPrompt,
+    required bool hasSeed,
+    required bool isKritaConnected,
+    required bool isFavorite,
+    bool canPlaceOnCanvas = true,
+  }) async {
+    final l = context.l10n;
+    LocalImageContextAction? selected;
+    MobileMenuItem item(
+      LocalImageContextAction value,
+      String label,
+      IconData icon, {
+      bool enabled = true,
+      bool destructive = false,
+    }) => MobileMenuItem(
+      label: label,
+      icon: icon,
+      enabled: enabled,
+      destructive: destructive,
+      onTap: () => selected = value,
+    );
+
+    await showMobileContextMenu(
+      context,
+      title: title,
+      items: [
+        item(
+          LocalImageContextAction.details,
+          l.imageMenu_details,
+          Icons.info_outline,
+        ),
+        item(
+          LocalImageContextAction.toggleFavorite,
+          isFavorite ? l.online_unfavorite : l.online_favorited,
+          isFavorite
+              ? StudioIcons.galleryHeartFilled
+              : StudioIcons.galleryHeart,
+        ),
+        item(
+          LocalImageContextAction.copyImage,
+          l.imageViewer_copyImage,
+          StudioIcons.galleryCopy,
+        ),
+        item(
+          LocalImageContextAction.copyPrompt,
+          l.localGallery_copyPrompt,
+          StudioIcons.galleryCopy,
+          enabled: hasPrompt,
+        ),
+        item(
+          LocalImageContextAction.copySeed,
+          l.imageViewer_copySeed,
+          Icons.tag,
+          enabled: hasSeed,
+        ),
+        if (hasImportableMetadata)
+          item(
+            LocalImageContextAction.importMetadata,
+            l.localGallery_importImageMetadata,
+            StudioIcons.galleryImport,
+          ),
+        item(
+          LocalImageContextAction.sendToImg2Img,
+          l.drop_img2img,
+          StudioIcons.imageToImage,
+        ),
+        item(
+          LocalImageContextAction.sendToStyleTransfer,
+          l.drop_vibeTransfer,
+          StudioIcons.styleTransfer,
+        ),
+        item(
+          LocalImageContextAction.sendToPreciseReference,
+          l.drop_characterReference,
+          StudioIcons.referenceFocus,
+        ),
+        item(
+          LocalImageContextAction.saveToPreciseRefLibrary,
+          l.drop_saveToPreciseRefLibrary,
+          StudioIcons.galleryBookmarkAdd,
+        ),
+        item(
+          LocalImageContextAction.placeOnCanvas,
+          l.img2img_placeOnCanvas,
+          Icons.crop_free,
+          enabled: canPlaceOnCanvas,
+        ),
+        if (isKritaConnected)
+          item(
+            LocalImageContextAction.sendToKrita,
+            l.localGallery_sendToKrita,
+            StudioIcons.galleryBrush,
+          ),
+        item(
+          LocalImageContextAction.moveTo,
+          l.localGallery_moveTo,
+          StudioIcons.galleryMove,
+        ),
+        item(
+          LocalImageContextAction.copyTo,
+          l.localGallery_copyTo,
+          StudioIcons.galleryCopy,
+        ),
+        item(
+          LocalImageContextAction.showInFolder,
+          l.localGallery_showInFolder,
+          StudioIcons.galleryReveal,
+        ),
+        if (Platform.isAndroid)
+          item(
+            LocalImageContextAction.saveToAlbum,
+            l.common_export,
+            Icons.save_alt_rounded,
+          ),
+        item(
+          LocalImageContextAction.delete,
+          l.common_delete,
+          StudioIcons.galleryTrash,
+          destructive: true,
+        ),
+      ],
+    );
+    return selected;
   }
 }

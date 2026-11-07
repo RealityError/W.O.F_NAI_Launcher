@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../channel/channel_contract.dart';
 import '../channel/channel_format.dart';
 import '../channel/channel_geometry.dart';
@@ -1776,6 +1777,7 @@ class _ShortcutTable extends StatelessWidget {
       Color? bg,
       Key? key,
       EdgeInsets? pad,
+      bool header = false,
     }) => Container(
       key: key,
       color: bg,
@@ -1783,6 +1785,47 @@ class _ShortcutTable extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final w = constraints.maxWidth;
+          // 手机竖屏：四列表格（动作 / 快捷键 / 默认 / 重置）在 430dp 以内放不下，
+          // 改成「动作 + 重置」一行、快捷键组合（当前 + 默认）一行且可横向滚动。
+          // 桌面内容区最窄也有 ~500，不会进入这个分支。
+          if (usesMobileLayout || debugForceMobileSettingsLayout || w < 320) {
+            if (header) {
+              return Row(
+                children: [
+                  Expanded(flex: 3, child: children[0]),
+                  Expanded(flex: 3, child: children[1]),
+                  Expanded(flex: 2, child: children[2]),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 6,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: children[0]),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 44,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: children[3],
+                      ),
+                    ),
+                  ],
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 12,
+                    children: [children[1], children[2]],
+                  ),
+                ),
+              ],
+            );
+          }
           return Row(
             children: [
               SizedBox(width: w * .46 - 18, child: children[0]),
@@ -1803,12 +1846,16 @@ class _ShortcutTable extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        cells([
-          Text(l.set_scAction, style: head),
-          Text(l.set_scKeys, style: head),
-          Text(l.set_scDefault, style: head),
-          const SizedBox(),
-        ], pad: const EdgeInsets.fromLTRB(18, 12, 18, 8)),
+        cells(
+          [
+            Text(l.set_scAction, style: head),
+            Text(l.set_scKeys, style: head),
+            Text(l.set_scDefault, style: head),
+            const SizedBox(),
+          ],
+          pad: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+          header: true,
+        ),
         for (final x in shortcuts) ...[
           Container(height: 1, color: c.rowLine),
           SettingsAnchor(

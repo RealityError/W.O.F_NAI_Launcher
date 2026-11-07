@@ -8,6 +8,8 @@ import '../../../app.dart';
 import '../../../core/services/update_check_service.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/first_launch_detector.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/update_provider.dart';
@@ -85,8 +87,12 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ref.watch(studioLightThemeProvider),
-      darkTheme: ref.watch(studioDarkThemeProvider),
+      theme: usesMobileLayout
+          ? mobileAdaptiveTheme(ref.watch(studioLightThemeProvider))
+          : ref.watch(studioLightThemeProvider),
+      darkTheme: usesMobileLayout
+          ? mobileAdaptiveTheme(ref.watch(studioDarkThemeProvider))
+          : ref.watch(studioDarkThemeProvider),
       themeMode: ref.watch(themeNotifierProvider) == Brightness.dark
           ? ThemeMode.dark
           : ThemeMode.light,

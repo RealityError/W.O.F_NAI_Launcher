@@ -7,6 +7,8 @@ import 'core/services/desktop_app_shutdown_service.dart';
 import 'core/utils/desktop_platform.dart';
 import 'core/utils/studio_sandbox.dart';
 import 'core/utils/macos_app_channel.dart';
+import 'presentation/mobile/mobile_breakpoints.dart';
+import 'presentation/mobile/mobile_theme.dart';
 import 'presentation/widgets/navigation/integrated_title_bar.dart';
 import 'presentation/widgets/branding/entry_language_button.dart';
 import 'package:nai_launcher/core/constants/brand.dart';
@@ -214,8 +216,12 @@ class NAILauncherApp extends ConsumerWidget {
           title: studioWindowTitle(Brand.name),
           debugShowCheckedModeBanner: false,
 
-          theme: ref.watch(studioLightThemeProvider),
-          darkTheme: ref.watch(studioDarkThemeProvider),
+          theme: usesMobileLayout
+              ? mobileAdaptiveTheme(ref.watch(studioLightThemeProvider))
+              : ref.watch(studioLightThemeProvider),
+          darkTheme: usesMobileLayout
+              ? mobileAdaptiveTheme(ref.watch(studioDarkThemeProvider))
+              : ref.watch(studioDarkThemeProvider),
           themeMode: brightness == Brightness.dark
               ? ThemeMode.dark
               : ThemeMode.light,

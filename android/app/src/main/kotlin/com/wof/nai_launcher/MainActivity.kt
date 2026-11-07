@@ -48,6 +48,7 @@ class MainActivity : FlutterActivity() {
                     "shareFile" -> shareFile(call, result)
                     "saveImageToMediaStore" -> saveImageToMediaStore(call, result)
                     "openDirectory" -> openDirectory(call, result)
+                    "getSystemProxy" -> getSystemProxy(result)
                     else -> result.notImplemented()
                 }
             }
@@ -160,6 +161,36 @@ class MainActivity : FlutterActivity() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         result.success(startSafely(filesIntent))
+    }
+
+    /**
+     * Returns the Android global HTTP proxy as "host:port", or null when unset.
+     *
+     * Flutter's dart:io never consults the Android system proxy, so the Dart
+     * side reads it once at startup and installs HttpOverrides itself.
+     */
+    private fun getSystemProxy(result: MethodChannel.Result) {
+        val raw = try {
+            android.provider.Settings.Global.getString(
+                contentResolver,
+                android.provider.Settings.Global.HTTP_PROXY
+            )
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to read global http_proxy", error)
+            null
+        }
+        val normalized = raw?.trim().orEmpty()
+        result.success(
+            if (
+                normalized.isEmpty() ||
+                normalized == ":0" ||
+                normalized.equals("null", ignoreCase = true)
+            ) {
+                null
+            } else {
+                normalized
+            }
+        )
     }
 
     private fun resolveContentUri(path: String): Uri? {

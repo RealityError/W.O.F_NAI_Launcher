@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_lib_controls.dart';
@@ -537,26 +538,26 @@ class SettingsStoragePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      spacing: 8,
-                      children: [
-                        Text(
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final big = Text(
                           st.slices.isEmpty ? '—' : SettingsFormat.gb(total),
                           style: settingsBig(context, size: 28),
-                        ),
-                        Text('GB', style: UiText.sans(12, color: c.muted)),
-                        const Spacer(),
-                        if (st.diskFree != null)
-                          Text(
-                            l.set_stFree(
-                              st.diskLabel,
-                              SettingsFormat.bytes(st.diskFree!),
-                            ),
-                            style: UiText.sans(12, color: c.faint),
-                          ),
-                        SettingsBtn(
+                        );
+                        final unit = Text(
+                          'GB',
+                          style: UiText.sans(12, color: c.muted),
+                        );
+                        final free = st.diskFree == null
+                            ? null
+                            : Text(
+                                l.set_stFree(
+                                  st.diskLabel,
+                                  SettingsFormat.bytes(st.diskFree!),
+                                ),
+                                style: UiText.sans(12, color: c.faint),
+                              );
+                        final recount = SettingsBtn(
                           label: st.computing
                               ? l.set_stCounting
                               : l.set_stRecount,
@@ -566,8 +567,43 @@ class SettingsStoragePage extends StatelessWidget {
                           onTap: st.computing
                               ? null
                               : s.actions.onRecomputeStorage,
-                        ),
-                      ],
+                        );
+                        // 手机竖屏：读数 + 盘剩余 + 重新统计一行放不下，改成两行。
+                        if (usesMobileLayout ||
+                            debugForceMobileSettingsLayout) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            spacing: 8,
+                            children: [
+                              Row(
+                                children: [big, const SizedBox(width: 8), unit],
+                              ),
+                              Row(
+                                children: [
+                                  if (free != null)
+                                    Expanded(child: free)
+                                  else
+                                    const Spacer(),
+                                  const SizedBox(width: 8),
+                                  recount,
+                                ],
+                              ),
+                            ],
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          spacing: 8,
+                          children: [
+                            big,
+                            unit,
+                            const Spacer(),
+                            if (free != null) free,
+                            recount,
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     SizedBox(

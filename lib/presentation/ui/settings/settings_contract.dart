@@ -61,12 +61,17 @@ extension SettingsPageIdGroup on SettingsPageId {
   };
 }
 
+/// 仅供 widget 测试：桌面宿主上 [isMobilePlatform] 恒为 false，无法验证手机
+/// 布局与移动端隐藏页面。测试里置 true 后，[settingsPageAvailable] 与设置页
+/// 的移动布局分支都按 Android 口径工作；生产环境默认 false，不要在业务代码里改。
+bool debugForceMobileSettingsLayout = false;
+
 /// 移动端隐藏依赖桌面插件/运行时的设置页；桌面端保持全部页面可见。
 ///
 /// 页面主体仍可渲染（深链/搜索命中），但 Android 上这些功能没有对应实现，
 /// 统一退回概览页，避免误触后出现失败提示。
 bool settingsPageAvailable(SettingsPageId page) {
-  if (!isMobilePlatform) return true;
+  if (!isMobilePlatform && !debugForceMobileSettingsLayout) return true;
   return switch (page) {
     SettingsPageId.agent ||
     SettingsPageId.rag ||

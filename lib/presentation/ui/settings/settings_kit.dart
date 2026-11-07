@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -1361,6 +1362,17 @@ class SettingsBlock extends StatelessWidget {
   );
 }
 
+/// 手机端竖屏下设置行右侧控件（分段按钮、步进、文本框等）可能比可用宽度宽：
+/// 包一层横向滚动避免 RenderFlex 溢出；桌面端（包括 800 最小宽度的窄窗口）
+/// 保持原样，不改变桌面布局与视觉。
+Widget _mobileFittedControl(Widget control) {
+  if (!usesMobileLayout && !debugForceMobileSettingsLayout) return control;
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: control,
+  );
+}
+
 /// 设置行（原型 `.rw`）：左标题 + 说明，右控件；最低 58。
 /// [sub] 是挂在上一行下面的子项（左缩进 46、细线连到父项）。[anchor] 用于搜索跳转高亮。
 class SettingsRow extends StatefulWidget {
@@ -1426,6 +1438,7 @@ class _SettingsRowState extends State<SettingsRow> {
     final c = context.ui;
     final l = context.l10n;
     final scope = SettingsScope.maybeOf(context);
+    final mobile = usesMobileLayout || debugForceMobileSettingsLayout;
     final lit = widget.anchor != null && scope?.highlight == widget.anchor;
     if (lit && !_jumped) {
       _jumped = true;
@@ -1487,7 +1500,8 @@ class _SettingsRowState extends State<SettingsRow> {
     );
     final reset = widget.modified && widget.onReset != null
         ? AnimatedOpacity(
-            opacity: _hover ? 1 : 0,
+            // 桌面端悬停才显示；手机端没有 hover，常显给触摸入口。
+            opacity: _hover || mobile ? 1 : 0,
             duration: const Duration(milliseconds: 120),
             child: SettingsIconBtn(
               glyph: SettingsGlyphs.undo,
@@ -1527,7 +1541,11 @@ class _SettingsRowState extends State<SettingsRow> {
                   Expanded(child: dimLabel),
                 ],
               ),
-              Align(alignment: Alignment.centerRight, child: control),
+              if (control != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _mobileFittedControl(control),
+                ),
             ],
           );
         }

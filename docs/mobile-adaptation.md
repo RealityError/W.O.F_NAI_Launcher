@@ -1,0 +1,200 @@
+# 手机端适配方案（第一阶段：地基 + P0 三页）
+
+本文档是 Android 手机端适配的执行方案。目标平台：**Android 手机竖屏（360–430dp）**，桌面端（Windows / macOS）行为保持不变。
+
+## 1. 为什么这样做
+
+现状：
+
+- 应用本身是桌面优先：生成页三栏、设置页双栏、大量 hover / 右键 / 快捷键 / 拖拽交互；
+- 已有的移动基础：`MobileShell` 底部导航、窗口 chrome 抽象（`WindowChromeScope`）、`design_tokens.dart` 里的 600/900/1200 断点（但未被统一使用）、Android 平台能力 getter（`isMobilePlatform` / `supports*`）、Android 文件/图库/分享通道；
+- 直接改桌面布局风险大：桌面有 900+ 测试文件与 Windows 打包 CI，视觉回归成本高。
+
+因此采用 **"桌面路径不动 + 移动端独立布局分支 + 内容/状态复用"** 的策略。
+
+## 2. 三条硬约束
+
+1. **桌面代码路径不动**：移动端布局通过 `if (usesMobileLayout) → MobileXxxLayout` 分支进入；现有桌面布局与视觉不改。桌面窗口最小宽度 800，`usesMobileLayout` 仅由平台判定（Android=true），不按窗口宽度改变桌面行为。
+2. **复用业务层**：Provider / Service / 状态 / 数据模型 / 大部分内容 widget 不改；只新增布局外壳与触屏交互。
+3. **交互双入口**：桌面右键 ↔ 手机长按；桌面 hover ↔ 手机 pressed；桌面拖拽 ↔ 手机"选择后操作/系统选择器"；快捷键入口在移动端隐藏，操作改为可见按钮。
+
+## 3. 移动端地基（`lib/presentation/mobile/`）
+
+### 3.1 断点与平台
+
+`mobile_breakpoints.dart`
+
+```dart
+const double kMobileBreakpoint = 600;   // 与 design_tokens.breakpointMobile 对齐
+const double kTabletBreakpoint = 900;   // 与 design_tokens.breakpointTablet 对齐
+bool get usesMobileLayout => isMobilePlatform; // Android = true，桌面恒 false
+FormFactor formFactorOf(BuildContext context); // phone / tablet / desktop（按宽度）
+```
+
+### 3.2 页面骨架
+
+`mobile_scaffold.dart`
+
+```dart
+class MobilePageScaffold extends StatelessWidget {
+  const MobilePageScaffold({
+    required this.title,
+    required this.child,
+    this.actions,        // 右上操作按钮
+    this.bottomBar,      // 底部固定操作区（自动处理安全区）
+    this.onBack,         // 默认 Navigator.maybePop
+    this.showBack = true,
+    this.padding,
+  });
+}
+```
+
+- 顶部 56dp 标题栏 + 状态栏 SafeArea，返回按钮，标题与操作位；
+- `bottomBar` 自动包 SafeArea + 键盘 inset（`viewInsets.bottom`）；
+- 统一 `PopScope`（Android 返回键 = 页面返回）。
+
+### 3.3 底部弹层
+
+`mobile_sheet.dart`
+
+```dart
+Future<T?> showMobileSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  String? title,
+  double heightFactor = 0.9,   // 占屏高比例
+  bool dismissible = true,
+});
+```
+
+- 圆角顶部 + 拖拽手柄 + 安全区；`isScrollControlled = true`；
+- 用于：设置项编辑、生成页参数/提示词编辑器、图库筛选、上下文菜单。
+
+### 3.4 上下文菜单（右键/长按统一）
+
+`mobile_context_menu.dart`
+
+```dart
+class MobileMenuItem {
+  const MobileMenuItem({required this.label, this.icon, this.onTap, this.destructive = false});
+}
+
+Future<void> showMobileContextMenu(BuildContext context, {String? title, required List<MobileMenuItem> items});
+
+class MobileContextMenuRegion extends StatelessWidget {
+  const MobileContextMenuRegion({required this.child, required this.items, this.title});
+}
+```
+
+- 移动端：长按弹出 bottom sheet 菜单；
+- 桌面端：不改变现有右键菜单（`MobileContextMenuRegion` 只在移动分支使用）。
+
+### 3.5 触屏提示与反馈
+
+- `Tooltip`：移动端统一改为长按触发（在 `app.dart` 的移动主题里设置 `TooltipThemeData(triggerMode: TooltipTriggerMode.longPress)`），覆盖现有 293 处 Tooltip，不改调用点；
+- `mobile_touch.dart`：`TouchTapCard`（点击态反馈）、`minimumTouchTarget` 常量（≥48dp）、`hapticTap()`。
+
+### 3.6 列表/设置行
+
+`mobile_list.dart`
+
+```dart
+class MobileSectionHeader;         // 分组标题（个人/创作/智能…）
+class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头/值
+```
+
+## 4. P0 三页方案
+
+### 4.1 设置页（`lib/presentation/ui/settings/`）
+
+现状：双栏（230dp 侧边栏 + 内容区）。手机目标：
+
+- 拆为 **导航页 → 详情页**：
+  - 导航页：按分组（个人 / 创作 / 智能 / 关于）列出 `SettingsPageId` 各项（图标+标题+副标题+当前值），顶部提供搜索入口；
+  - 点击 → `Navigator.push` 详情页：`MobilePageScaffold(title: 页面标题)` + 原有内容区（复用 `SettingsViewData.page` 与 `SettingsActions`）；
+  - 搜索命中 → 直接进入对应详情页并高亮/滚动到目标项（复用现有 search hits 数据）。
+- 手机隐藏项继续沿用 capability 判断（Agent/RAG/本地放大/网络等），不重复实现。
+- 桌面 `SettingsPage` 双栏保持原样。
+
+### 4.2 生成页（`lib/presentation/ui/gen/`）
+
+现状：左栏（提示词/参数/生成条）+ 画布 + 历史栏三栏。手机目标：
+
+- **画布优先**：
+  - 顶部紧凑 `GenHeader`（模型/配额）；
+  - 主体 = 画布（`GenCanvas`，含空白欢迎态）；
+  - 底部固定：`GenParamStrip`（参数摘要，点开参数抽屉）+ `GenGenerateBar`（生成按钮）；
+  - 画布左下浮动「提示词」按钮 → 打开 **全屏 bottom sheet**，内容是 `GenEditorColumn(collapsible: false)`（提示词/角色/参考图/尺寸 + 它自己的生成条）；
+  - 右上「历史」按钮 → 打开右侧抽屉（`GenHistoryPanel`），点击历史项复用现有回填逻辑。
+- 复用 `GenHost` / `GenScope` / `GenActions` / 所有模块 widget，不改状态逻辑；
+- 桌面 `_GenLayoutRow` 三栏与拖拽改宽保持原样。
+
+### 4.3 画廊（`lib/presentation/screens/local_gallery/` + `lib/presentation/widgets/gallery/`）
+
+现状：工具栏已做窄屏修复，但卡片交互是桌面右键、inspector 是固定侧栏。手机目标：
+
+- 网格/列表切换保留；筛选栏折叠为可横向滚动的 chips；
+- 卡片：点击=查看（现有 viewer），**长按=上下文菜单**（详情信息、复制 prompt/seed、分享、保存到相册、删除、上移/下移等，复用现有 action），多选模式保留（工具栏按钮进入，选择态底部操作条）；
+- inspector（详情面板）→ 右侧抽屉或底部弹层，内容复用现有 inspector；
+- 导入图片 / 打开文件夹 / 分享使用已有 Android 通道；空态与错误态沿用现有文案。
+
+## 5. 验收标准（每页）
+
+1. 360dp 竖屏 debug 模式 **0 个 RenderFlex overflow**；
+2. 可返回（返回键 + 左上返回），无死路；
+3. 滚动正常，键盘弹出不遮挡输入；
+4. 所有可点击元素 ≥ 44dp，无 hover-only 操作、无必须右键才能触发的功能；
+5. 桌面端 `flutter analyze` 无新增问题，现有测试通过（桌面布局代码零改动或仅新增分支）；
+6. CI：新增 360dp widget smoke test；PR 的 Windows 全量测试保持通过。
+
+## 6. 后续阶段（本阶段之后）
+
+- **Phase 1（本阶段）**：地基 + 设置 / 生成 / 画廊；
+- **Phase 2 浏览类页面**：在线画廊、标签 Wiki、提示词块库、Vibe 库、精准参考库、统计、模型与接口、风格探索、标签库——统一"列表→详情"模式；
+- **Phase 3 编辑器类**（可行性已评估，全部可移植）：
+  - 图像编辑器（1.56 万行，自绘画布已支持 `onScale` 手势，难度中，3–5 天）；
+  - 画布/Director（0.68 万行，侧栏改抽屉 + pinch 缩放，难度中，2–4 天）；
+  - 3D 编辑器（WebView + three.js OrbitControls，触摸原生可用，难度易，1–2 天）；
+  - Agent 面板（全屏页/抽屉，难度中，2–3 天）；
+  - 图片查看器/对比/幻灯片（手势缩放 + 滑动翻页，难度易，1–2 天）；
+- **Phase 4 收尾**：全量走查、性能/内存、横竖屏、返回栈、文档与 CI 固化。
+
+## 7. 风险与取舍
+
+- 移动端接受交互简化（右键→长按、拖拽→选择后操作、多栏→单列/抽屉），功能入口与数据保持一致；
+- 平板/横屏不在本阶段验收范围，不锁死方向（避免折叠屏/平板异常）；
+- 设置页/生成页属于高耦合页面，改造时以"新增移动布局 + 复用内容组件"为准，禁止重写业务状态。
+
+## 8. 第一阶段实现状态（已完成）
+
+### 8.1 已落地
+
+| 模块 | 文件 | 说明 |
+| --- | --- | --- |
+| 移动端地基 | `lib/presentation/mobile/` | `mobile_breakpoints`（usesMobileLayout）、`MobilePageScaffold`、`showMobileSheet`、`MobileContextMenuRegion`/`showMobileContextMenu`、`MobileSectionHeader`/`MobileListTile`、`MobileTapCard`、`mobileAdaptiveTheme`（Tooltip 长按） |
+| 生成页 | `lib/presentation/ui/gen/gen_page.dart` | `usesMobileLayout` → `_GenMobileLayout`：画布优先 + 编辑/历史页面内浮层 + 参数条 + 生成条；桌面三栏 `_GenLayoutRow` 原样保留 |
+| 设置页 | `lib/presentation/ui/settings/settings_mobile.dart` + 内容页窄屏分支 | 分组列表 → 详情页（复用桌面 `_pageOf` 内容）、搜索/深链/锚点、撤销浮条、详情页操作位；桌面双栏原样保留 |
+| 画廊 | `lib/presentation/screens/local_gallery/mobile_local_gallery.dart` + 画廊组件移动分支 | 移动工具栏/范围浏览/筛选/排序弹层、卡片长按动作菜单（bottom sheet）、inspector bottom sheet、多选批量条、回收站操作；桌面三栏与右键菜单原样保留 |
+| 主题 | `lib/app.dart`、`splash/app_bootstrap.dart` | 移动端套用 `mobileAdaptiveTheme`（Tooltip 长按、触摸目标）；桌面主题不变 |
+| Android 系统代理 | `lib/core/network/android_system_proxy.dart`、`proxy_service.dart`、`main.dart` + `MainActivity.kt#getSystemProxy` | 启动时读取 Android 全局 `http_proxy` 并注入 `HttpOverrides`；回环/局域网地址直连。解决模拟器/真机在需要代理的网络下登录、生图超时 |
+| 文档 | 本文 | 方案、组件 API、验收标准、后续阶段 |
+
+### 8.2 验证结果
+
+- `dart analyze lib`：No issues；
+- 新增移动测试：
+  - `test/presentation/mobile/mobile_components_test.dart` 4 例（360dp 骨架/弹层/长按菜单/断点常量）；
+  - `test/presentation/ui/gen/gen_mobile_layout_test.dart` 3 例（画布优先、编辑浮层开关、历史浮层开关）；
+  - `test/presentation/ui/settings/mobile/` 16 例（列表/详情/返回/搜索锚点/深链/撤销/13 页滚动无 overflow）；
+  - `test/presentation/widgets/gallery/mobile/` 9 例（长按菜单/多选/详情面板/筛选排序弹层/时间线语义）；
+- 桌面回归：设置页 380 例、画廊 224 例全部通过；桌面布局代码路径未改动；
+- MuMu x86_64（Android 15，360dp 宽）实机验证：登录 → 生成页手机布局（画布/浮动编辑/历史/参数条/生成条）→ 长按画廊卡片弹出动作菜单 → 设置列表 → 概览详情页返回，全程无 overflow / 崩溃；Android 系统代理生效后网络检查与登录成功。
+
+### 8.3 本阶段遗留（后续处理）
+
+1. 复用桌面内容页后，个别行内小按钮（24–32dp）未达 44dp 触摸目标，需真机走查后统一包触摸区；
+2. "保存到相册"沿用现有 l10n `common_export`（"导出"）文案，精确文案需补 ARB key；
+3. 分类选择/批量元数据等次要桌面对话框未做手机重排；日期选择沿用现有日历（日期格 36dp）；
+4. 生成请求在代理链路上偶发 `HandshakeException`（代理节点对 image.novelai.net 不稳定），属环境网络问题，非 App 逻辑；首次冷启动自动登录失败时点"一键登录"可重试成功；
+5. 平板/横屏、Phase 2（浏览类页面）与 Phase 3（编辑器）尚未开始。
+
