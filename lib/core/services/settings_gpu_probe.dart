@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../utils/desktop_platform.dart';
+
 class SettingsGpuInfo {
   const SettingsGpuInfo(this.name, this.vramMb, this.compute, this.cuda);
   final String name, cuda;
@@ -43,7 +45,10 @@ class SettingsGpuProbe {
       if (fields.length != 3 || fields[0].isEmpty) continue;
       final memory = int.tryParse(fields[1]);
       final compute = double.tryParse(fields[2]);
-      if (memory == null || memory < 0 || compute == null || !compute.isFinite) {
+      if (memory == null ||
+          memory < 0 ||
+          compute == null ||
+          !compute.isFinite) {
         continue;
       }
       candidates.add(SettingsGpuInfo(fields[0], memory, compute, cuda));
@@ -53,6 +58,8 @@ class SettingsGpuProbe {
   }
 
   Future<SettingsGpuInfo?> inspect() async {
+    // 移动端没有 nvidia-smi；直接返回“无 GPU 信息”，不启动进程。
+    if (!supportsGpuProbe) return null;
     try {
       final csv = await _run([
         '--query-gpu=name,memory.total,compute_cap',

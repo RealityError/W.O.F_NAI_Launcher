@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_version.dart';
 import '../../../core/services/desktop_app_shutdown_service.dart';
 import '../../../core/services/update_check_service.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../providers/image_generation_provider.dart';
 import '../../providers/rag_provider.dart';
@@ -79,7 +80,7 @@ String settingsDiagnostics({
 typedef SettingsRestart = Future<void> Function();
 final settingsRestartProvider = Provider<SettingsRestart>(
   (ref) => () async {
-    if (!Platform.isWindows) {
+    if (!supportsExternalProcesses || !Platform.isWindows) {
       throw UnsupportedError('Desktop restart requires Windows');
     }
     // Launch the current registered executable after a clean shutdown. The

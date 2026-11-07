@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -84,8 +85,10 @@ class _SizeRow extends StatelessWidget {
         // 窄栏（左栏 < 400）下拉缩到 80，宽高框缩到 52。
         final tight = box.maxWidth < 350;
         final compact = box.maxWidth < 330;
+        // 手机左栏被压到约 320dp 时再收紧一档，避免这一行横向溢出。
+        final mobileNarrow = isMobilePlatform && box.maxWidth < 340;
         return Row(
-          spacing: compact ? 4 : 8,
+          spacing: mobileNarrow ? 3 : (compact ? 4 : 8),
           children: [
             Builder(
               builder: (ctx) => UiPressable(
@@ -111,7 +114,7 @@ class _SizeRow extends StatelessWidget {
                   width: 220,
                 ),
                 builder: (context, hover) => Container(
-                  width: tight ? 80 : 96,
+                  width: mobileNarrow ? 68 : (tight ? 80 : 96),
                   height: 32,
                   padding: const EdgeInsets.only(left: 10, right: 8),
                   decoration: BoxDecoration(
@@ -145,7 +148,7 @@ class _SizeRow extends StatelessWidget {
                 GenOrientation.square,
               ],
               selected: o,
-              itemWidth: compact ? 24 : 34,
+              itemWidth: mobileNarrow ? 20 : (compact ? 24 : 34),
               keyOf: (v) => Key('gen-orientation-${v.name}'),
               tooltipOf: (v) => GenFormat.orientationLabel(context, v),
               onChanged: setOrientation,
@@ -166,7 +169,7 @@ class _SizeRow extends StatelessWidget {
                 _DimField(
                   key: const Key('gen-width'),
                   value: img.width,
-                  width: tight ? 52 : 58,
+                  width: mobileNarrow ? 44 : (tight ? 52 : 58),
                   tooltip: l.gen_width,
                   onSubmit: (v) => scope.actions.onSizeChanged(v, img.height),
                 ),
@@ -185,7 +188,7 @@ class _SizeRow extends StatelessWidget {
                 _DimField(
                   key: const Key('gen-height'),
                   value: img.height,
-                  width: tight ? 52 : 58,
+                  width: mobileNarrow ? 44 : (tight ? 52 : 58),
                   tooltip: l.gen_height,
                   onSubmit: (v) => scope.actions.onSizeChanged(img.width, v),
                 ),

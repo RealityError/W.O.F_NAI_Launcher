@@ -30,6 +30,7 @@ import 'settings_system.dart';
 ///
 /// 左目录 248（搜索、6 组 17 页、版本）+ 右主区（顶栏面包屑与本页操作、页面、底部“已保存 · 撤销”）。
 /// 界面自己管：搜索词与结果选择、搜索跳转后的高亮、确认框、Agent 指令的未保存保护、底部提示的显示时长。
+/// 移动端隐藏的页面由 `settings_contract.dart` 的 [settingsPageAvailable] 统一判定。
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
     super.key,
@@ -135,19 +136,22 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _open(SettingsPageId page, {String? anchor}) => _guard(() {
-    _highlightTimer?.cancel();
-    setState(() {
-      _query = '';
-      _highlight = anchor;
-    });
-    if (anchor != null) {
-      _highlightTimer = Timer(const Duration(milliseconds: 2600), () {
-        if (mounted) setState(() => _highlight = null);
+  void _open(SettingsPageId page, {String? anchor}) {
+    final available = settingsAvailablePage(page);
+    return _guard(() {
+      _highlightTimer?.cancel();
+      setState(() {
+        _query = '';
+        _highlight = anchor;
       });
-    }
-    if (page != widget.data.page) widget.actions.onOpenPage(page);
-  });
+      if (anchor != null) {
+        _highlightTimer = Timer(const Duration(milliseconds: 2600), () {
+          if (mounted) setState(() => _highlight = null);
+        });
+      }
+      if (available != widget.data.page) widget.actions.onOpenPage(available);
+    });
+  }
 
   void _ask({
     required String title,
@@ -213,10 +217,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final c = context.ui;
     final data = widget.data;
     final searching = _query.trim().isNotEmpty;
-    final page = KeyedSubtree(
-      key: ValueKey(data.page),
-      child: _pageOf(data.page),
-    );
+    final pageId = settingsAvailablePage(data.page);
+    final page = KeyedSubtree(key: ValueKey(pageId), child: _pageOf(pageId));
     return SettingsScope(
       data: data,
       actions: widget.actions,
@@ -357,7 +359,7 @@ class _Sidebar extends StatelessWidget {
     final searching = query.trim().isNotEmpty;
     final items = <Widget>[];
     SettingsGroup? last;
-    for (final p in SettingsPageId.values) {
+    for (final p in SettingsPageId.values.where(settingsPageAvailable)) {
       if (p.group != last && p.group != SettingsGroup.none) {
         items.add(
           Padding(

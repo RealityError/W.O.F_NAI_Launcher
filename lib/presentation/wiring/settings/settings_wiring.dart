@@ -50,7 +50,7 @@ import 'settings_upscale.dart';
 import 'settings_values.dart';
 
 SettingsPageId settingsPageForLegacy(int section, {bool bridge = false}) =>
-    switch (section) {
+    settingsAvailablePage(switch (section) {
       0 => SettingsPageId.account,
       1 => SettingsPageId.appearance,
       2 => SettingsPageId.generation,
@@ -65,29 +65,30 @@ SettingsPageId settingsPageForLegacy(int section, {bool bridge = false}) =>
       11 => SettingsPageId.agent,
       12 => SettingsPageId.rag,
       _ => SettingsPageId.overview,
-    };
+    });
 
-SettingsPageId settingsPageFromUri(Uri uri) =>
-    uri.queryParameters['bridge'] == '1'
-    ? SettingsPageId.bridges
-    : switch (uri.queryParameters['section']) {
-        'local-upscale' || 'localUpscale' => SettingsPageId.upscale,
-        'storage' => SettingsPageId.storage,
-        'agent' => SettingsPageId.agent,
-        'rag' => SettingsPageId.rag,
-        'models' || 'promptAssistant' => SettingsPageId.models,
-        'integrations' => SettingsPageId.bridges,
-        'account' => SettingsPageId.account,
-        'appearance' => SettingsPageId.appearance,
-        'generation' => SettingsPageId.generation,
-        'canvas' => SettingsPageId.canvas,
-        'dictionaries' => SettingsPageId.dictionaries,
-        'about' => SettingsPageId.about,
-        'shortcuts' => SettingsPageId.shortcuts,
-        'privacy' => SettingsPageId.privacy,
-        'network' => SettingsPageId.network,
-        _ => SettingsPageId.overview,
-      };
+SettingsPageId settingsPageFromUri(Uri uri) => settingsAvailablePage(
+  uri.queryParameters['bridge'] == '1'
+      ? SettingsPageId.bridges
+      : switch (uri.queryParameters['section']) {
+          'local-upscale' || 'localUpscale' => SettingsPageId.upscale,
+          'storage' => SettingsPageId.storage,
+          'agent' => SettingsPageId.agent,
+          'rag' => SettingsPageId.rag,
+          'models' || 'promptAssistant' => SettingsPageId.models,
+          'integrations' => SettingsPageId.bridges,
+          'account' => SettingsPageId.account,
+          'appearance' => SettingsPageId.appearance,
+          'generation' => SettingsPageId.generation,
+          'canvas' => SettingsPageId.canvas,
+          'dictionaries' => SettingsPageId.dictionaries,
+          'about' => SettingsPageId.about,
+          'shortcuts' => SettingsPageId.shortcuts,
+          'privacy' => SettingsPageId.privacy,
+          'network' => SettingsPageId.network,
+          _ => SettingsPageId.overview,
+        },
+);
 
 /// Reusable dialogs remain owned by their existing providers.
 class SettingsWiring extends ConsumerStatefulWidget {
@@ -237,7 +238,7 @@ class _SettingsWiringState extends ConsumerState<SettingsWiring> {
     final system = SettingsSystemActions(context, ref);
     return SettingsActions(
       onOpenPage: (page) => setState(() {
-        _page = page;
+        _page = settingsAvailablePage(page);
       }),
       onChanged: (key, value) => _run(
         () => edits.change(

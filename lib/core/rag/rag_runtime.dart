@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import '../utils/desktop_platform.dart';
 import 'rag_client.dart';
 import 'rag_platform.dart';
 import 'rag_process.dart';
@@ -135,6 +136,10 @@ class RagRuntimeInstaller {
     String preferredPython = '',
     void Function(int elapsedSeconds, String detail)? onProgress,
   }) async {
+    // 托管 Python 运行时只在桌面端安装。
+    if (!supportsLocalRagRuntime) {
+      throw const RagException('unsupported_platform');
+    }
     // Macs have no CUDA build; the worker picks the GPU (MPS) at run time.
     final useCuda = cuda && platform.supportsCuda;
     await root.create(recursive: true);

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/krita/bridge_session.dart';
 import '../../../core/network/nai_api_endpoint_service.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../prompt_assistant/providers/prompt_assistant_config_provider.dart';
 import '../../providers/comfyui/comfyui_provider.dart';
@@ -150,8 +151,20 @@ final settingsComfyTestProvider =
     );
 
 SettingsBridgesData settingsBridgesData(BuildContext context, WidgetRef ref) {
-  final bridge = ref.watch(kritaBridgeNotifierProvider);
   final test = ref.watch(settingsComfyTestProvider);
+  // Krita 桥接只存在于桌面端；移动端不要因为打开设置就启动桥接服务。
+  if (!supportsKritaBridge) {
+    return SettingsBridgesData(
+      comfyTone: test.ok == null
+          ? SettingsTone.idle
+          : test.ok!
+          ? SettingsTone.ok
+          : SettingsTone.error,
+      comfyCheckedAt: test.at,
+      comfyTesting: test.testing,
+    );
+  }
+  final bridge = ref.watch(kritaBridgeNotifierProvider);
   return SettingsBridgesData(
     kritaConnected: bridge.status == KritaBridgeStatus.connected,
     kritaClient: bridge.connectedClientLabel ?? '',

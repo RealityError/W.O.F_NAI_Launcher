@@ -491,7 +491,9 @@ List<SettingsHit> settingsIndex(BuildContext context) {
 List<SettingsHit> settingsSearch(BuildContext context, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return const [];
-  final hits = settingsIndex(context).where((h) => h.matches(q)).toList();
+  final hits = settingsIndex(
+    context,
+  ).where((h) => settingsPageAvailable(h.page) && h.matches(q)).toList();
   // 按目录顺序分组，组内保持索引顺序。
   hits.sort((a, b) => a.page.index.compareTo(b.page.index));
   return hits;

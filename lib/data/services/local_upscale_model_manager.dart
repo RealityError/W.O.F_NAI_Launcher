@@ -8,6 +8,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:nai_launcher/core/utils/app_support_directory.dart';
+import 'package:nai_launcher/core/utils/desktop_platform.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/upscale/local_upscale_models.dart';
@@ -97,6 +98,8 @@ class LocalUpscaleModelManager {
     _manifest = jsonDecode(utf8.decode(manifest)) as Map<String, dynamic>;
     directory = await _rootDirectory();
     await directory.create(recursive: true);
+    // 移动端没有本地引擎；不把随包的 Windows 可执行文件写到设备上。
+    if (!supportsLocalUpscale) return;
     if (bundledExecutable == null) {
       for (final item in _windowsEngineFiles) {
         final relative = item['path'] as String;
@@ -298,6 +301,9 @@ class LocalUpscaleModelManager {
     void Function(int, int)? onProgress,
     CancelToken? cancelToken,
   }) async {
+    if (!supportsLocalUpscale) {
+      throw const LocalUpscaleException(LocalUpscaleError.unsupportedPlatform);
+    }
     await initialize();
     final model = localUpscaleCatalog
         .where((model) => model.id == id && !model.bundled)
@@ -362,6 +368,9 @@ class LocalUpscaleModelManager {
   }
 
   Future<String> importPair(File param, File weights) async {
+    if (!supportsLocalUpscale) {
+      throw const LocalUpscaleException(LocalUpscaleError.unsupportedPlatform);
+    }
     await initialize();
     _claimMutation();
     final id = 'custom-${const Uuid().v4()}';

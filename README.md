@@ -37,6 +37,8 @@ W.O.F NAI Studio 是一个 Windows 桌面上的 NovelAI 第三方客户端。它
 | `WOF_NAI_Studio_Windows_<版本>_Portable.zip` | 想放在自己指定的文件夹、U 盘或多台电脑之间带着走。解压后运行 `nai_launcher.exe`。 |
 | `WOF_NAI_Studio_macOS_<版本>_Portable_Test.zip` | macOS 13.5 及以上的 Apple 芯片和 Intel Mac 通用。[下载 2.3.0 通用测试包](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/download/v2.3.0/WOF_NAI_Studio_macOS_2.3.0_Portable_Test.zip)。 |
 
+Android 版本仍在移植中，暂不提供安装包；自行构建见文末「Android」小节。
+
 Windows 两个版本都支持应用内更新，设置、图库数据库和 Agent 数据放在程序旁边的 `user-data/` 和 `agent-data/`。Mac 数据在用户的 Application Support 目录，更新下载并校验后用 Finder 替换应用。
 
 > **2.2.3 及更早 Portable 首次升级**：请完全退出应用，解压新版覆盖原程序目录，保留 `user-data/` 与 `agent-data/`。2.2.4 及之后可正常使用应用内更新；Setup 不受此旧脚本问题影响。
@@ -215,6 +217,20 @@ flutter build windows --release --no-tree-shake-icons
 ```
 
 打包安装版与便携版用 `scripts/package_windows_release.ps1`。开发约定见 [DEVELOPMENT.md](DEVELOPMENT.md)，版本记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+### Android（移植分支）
+
+Android 版本仍在移植中，暂不提供安装包。构建需要 Flutter 3.47.7（见 `tool/flutter-sdk.json`）、JDK 17、Android SDK（API 36、NDK 28.2.13676358），并先拉取 Git LFS 资源、生成被忽略的 Dart 源码：
+
+```bash
+git lfs install && git lfs pull
+flutter pub get
+dart run tool/generate.dart
+flutter gen-l10n
+flutter build apk --release --split-per-abi
+```
+
+x86_64 模拟器（如 MuMu）用 `flutter build apk --debug --target-platform android-x64`，arm64 真机用 `android-arm64`；产物在 `build/app/outputs/flutter-apk/`。仓库根目录的 `scripts/build_android.ps1` 会做 SDK/JDK/NDK、LFS 与生成源码预检，并把 APK 放到 `dist/android/`。当前 release 仍使用 debug 签名，不能对外发布。平台差异、已知限制和排障见 [Android 移植说明](docs/android-port.md)。
 
 </details>
 

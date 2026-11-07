@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import '../utils/app_logger.dart';
+import '../utils/desktop_platform.dart';
 import 'rag_process.dart';
 
 class RagException implements Exception {
@@ -99,6 +100,10 @@ class RagClient {
     Future<String> Function(String)? loadAsset,
     Duration shutdownTimeout = const Duration(seconds: 60),
   }) async {
+    // 移动端没有本地 Python 运行时，避免把 ProcessException 抛给 UI。
+    if (!supportsLocalRagRuntime) {
+      throw const RagException('unsupported_platform');
+    }
     final loader = loadAsset ?? rootBundle.loadString;
     final files = <String, String>{};
     for (final name in [

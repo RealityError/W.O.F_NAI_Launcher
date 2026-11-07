@@ -370,6 +370,11 @@ Future<void> _bootstrapApplication() async {
 
 Future<void> _bootstrapMainWindow() async {
   AppVisibility.instance.attach();
+  if (Platform.isAndroid) {
+    // Android 15 forces edge-to-edge; opt in explicitly on older releases so the
+    // status bar stays transparent and MediaQuery insets match the drawn surface.
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
   if (Platform.isWindows) {
     final resources = ResourceWindowService.instance;
     await resources.initialize();
@@ -424,7 +429,9 @@ Future<void> _prepareDataAndStart() => startWithPreparedAppData(
         },
         onClose: () => Platform.isMacOS
             ? DesktopAppShutdownService.shutdownAndExit(0)
-            : windowManager.close(),
+            : isSupportedDesktop
+            ? windowManager.close()
+            : DesktopAppShutdownService.shutdownAndExit(0),
       ),
     );
     if (isSupportedDesktop) {

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:nai_launcher/core/utils/app_support_directory.dart';
+import 'package:nai_launcher/core/utils/desktop_platform.dart';
 import 'package:window_manager/window_manager.dart';
 
 final styleExplorePlatformProvider = Provider<StyleExplorePlatform>(
@@ -43,6 +44,7 @@ class StyleExplorePlatform {
   }
 
   Future<bool> isFullscreen() async {
+    if (isMobilePlatform) return false;
     try {
       return await windowManager.isFullScreen();
     } on MissingPluginException {
@@ -51,6 +53,7 @@ class StyleExplorePlatform {
   }
 
   Future<bool> isMaximized() async {
+    if (isMobilePlatform) return false;
     try {
       return await windowManager.isMaximized();
     } on MissingPluginException {
@@ -59,6 +62,7 @@ class StyleExplorePlatform {
   }
 
   Future<void> setFullscreen(bool value) async {
+    if (isMobilePlatform) return;
     try {
       await windowManager.setFullScreen(value);
     } on MissingPluginException {
@@ -67,6 +71,7 @@ class StyleExplorePlatform {
   }
 
   Future<void> maximize() async {
+    if (isMobilePlatform) return;
     try {
       await windowManager.maximize();
     } on MissingPluginException {

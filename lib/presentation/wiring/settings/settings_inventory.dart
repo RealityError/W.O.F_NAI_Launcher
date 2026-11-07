@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:nai_launcher/core/utils/app_support_directory.dart';
+import 'package:nai_launcher/core/utils/desktop_platform.dart';
 
 import '../../../core/autocomplete/autocomplete_providers.dart';
 import '../../../core/cache/gallery_cache_manager.dart';
@@ -229,7 +230,7 @@ SettingsDirectoryMeasurement settingsMeasureDirectory(
 typedef SettingsDiskFree = Future<int?> Function(String path);
 final settingsDiskFreeProvider = Provider<SettingsDiskFree>(
   (ref) => (path) async {
-    if (!Platform.isWindows) return null;
+    if (!supportsExternalProcesses || !Platform.isWindows) return null;
     try {
       final quoted = path.replaceAll("'", "''");
       final result = await Process.run('powershell.exe', [

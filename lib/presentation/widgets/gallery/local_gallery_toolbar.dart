@@ -284,6 +284,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                 state,
                 selectionActive,
                 compact: constraints.maxWidth < 900,
+                // 手机宽度下标题会挤掉右侧检查器/更多按钮，窄屏只保留工具。
+                narrow: constraints.maxWidth < 600,
               ),
             ),
           ),
@@ -297,18 +299,21 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
     LocalGalleryState state,
     bool selectionActive, {
     required bool compact,
+    bool narrow = false,
   }) {
     final l10n = context.l10n;
     return Row(
       children: [
-        Flexible(
-          flex: 0,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: compact ? 200 : 340),
-            child: IgnorePointer(child: _buildBreadcrumb(theme, state)),
+        if (!narrow) ...[
+          Flexible(
+            flex: 0,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: compact ? 200 : 340),
+              child: IgnorePointer(child: _buildBreadcrumb(theme, state)),
+            ),
           ),
-        ),
-        const SizedBox(width: 16),
+          const SizedBox(width: 16),
+        ],
         // 搜索框随窗口宽度伸缩，占满标题与工具之间的空间（上限
         // [_searchMaxWidth]）；超出的部分和右侧留缝都是拖动区。
         Expanded(

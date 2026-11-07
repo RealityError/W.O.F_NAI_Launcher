@@ -11,6 +11,7 @@ import '../../core/services/resource_window_host.dart';
 import '../../core/constants/model_spec.dart';
 import '../../core/services/resource_window_service.dart';
 import '../../core/storage/local_storage_service.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../../data/services/gallery/unified_gallery_service.dart';
 import 'blocks_preferences.dart';
 import '../providers/collection_provider.dart';
@@ -233,6 +234,7 @@ class _ResourceWindowBridgeState extends ConsumerState<ResourceWindowBridge> {
     String action,
   ) async {
     if (!mounted) resourceError('not_ready');
+    if (!supportsMultiWindow) resourceError('unsupported_platform');
     final backend = ref.read(resourceWindowBackendProvider);
     final actionContext = ref
         .read(appRouterProvider)

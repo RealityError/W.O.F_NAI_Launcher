@@ -476,6 +476,14 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
     );
     final (:left, :history, :dock, :leftOpen, :historyOpen, :canvasVisible) =
         geometry;
+    // 固定宽度面板（左栏 + Agent dock + 历史栏）之和不能超过视口宽度。
+    // 桌面最小窗口 800 时不会触发；360dp 手机上左栏必须让步，否则外层
+    // Row 会溢出（左栏 minLeft 352 + 历史竖条 40 > 360）。画布区域由
+    // Expanded 吸收剩余宽度（可能为 0），用户可收起左栏后查看画布。
+    final fixedWidth = left + dock + history;
+    final effectiveLeft = fixedWidth > w
+        ? math.min(left, math.max(0.0, w - dock - history))
+        : left;
     double previewPosition(GenLayout next, {required bool isLeft}) {
       final g = _geometry(next, w, keepHistory, scope.slots.dock != null);
       return isLeft ? g.left : w - g.history;
@@ -504,7 +512,7 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
           children: [
             if (layout.leftOpen)
               SizedBox(
-                width: left,
+                width: effectiveLeft,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -514,10 +522,10 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
                         excluding: !leftOpen,
                         child: OverflowBox(
                           alignment: Alignment.topLeft,
-                          minWidth: leftOpen ? left : layout.leftWidth,
-                          maxWidth: leftOpen ? left : layout.leftWidth,
+                          minWidth: leftOpen ? effectiveLeft : layout.leftWidth,
+                          maxWidth: leftOpen ? effectiveLeft : layout.leftWidth,
                           child: GenLeftPanel(
-                            width: leftOpen ? left : layout.leftWidth,
+                            width: leftOpen ? effectiveLeft : layout.leftWidth,
                           ),
                         ),
                       ),
@@ -596,7 +604,7 @@ class _GenLayoutRowState extends State<_GenLayoutRow> {
         ),
         if (leftOpen)
           Positioned(
-            left: left - 4,
+            left: effectiveLeft - 4,
             top: 0,
             bottom: 0,
             width: 8,

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/utils/desktop_platform.dart';
 import '../channel/channel_contract.dart';
 import '../model_providers/model_providers_contract.dart';
 
@@ -59,6 +60,24 @@ extension SettingsPageIdGroup on SettingsPageId {
     SettingsPageId.about => SettingsGroup.system,
   };
 }
+
+/// 移动端隐藏依赖桌面插件/运行时的设置页；桌面端保持全部页面可见。
+///
+/// 页面主体仍可渲染（深链/搜索命中），但 Android 上这些功能没有对应实现，
+/// 统一退回概览页，避免误触后出现失败提示。
+bool settingsPageAvailable(SettingsPageId page) {
+  if (!isMobilePlatform) return true;
+  return switch (page) {
+    SettingsPageId.agent ||
+    SettingsPageId.rag ||
+    SettingsPageId.upscale ||
+    SettingsPageId.network => false,
+    _ => true,
+  };
+}
+
+SettingsPageId settingsAvailablePage(SettingsPageId page) =>
+    settingsPageAvailable(page) ? page : SettingsPageId.overview;
 
 // ───────────────────────────── 标量设置 ─────────────────────────────
 

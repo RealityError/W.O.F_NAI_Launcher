@@ -533,6 +533,11 @@ class _ImageViewerWiringState extends ConsumerState<ImageViewerWiring> {
         ViewerAction.showInFolder,
       });
     }
+    if (Platform.isAndroid) {
+      // Local / advanced upscale relies on bundled desktop executables and has
+      // no Android implementation, so the action entry is hidden entirely.
+      actions.remove(ViewerAction.upscale);
+    }
     final data = ViewerViewData(
       mode: widget.session.mode,
       items: items,

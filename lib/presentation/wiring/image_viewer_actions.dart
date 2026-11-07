@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -74,6 +75,18 @@ class ImageViewerActionHost {
       await Clipboard.setData(ClipboardData(text: metadata.fullPrompt));
     } else if (action == ViewerAction.showInFolder) {
       if (path == null) {
+        return false;
+      }
+      if (Platform.isAndroid) {
+        // Desktop "reveal in explorer" does not exist on Android and the
+        // app-private gallery is invisible to file managers, so offer the
+        // system share sheet (falling back to an external viewer) instead.
+        final handled =
+            await PlatformFileChannel.shareFile(path) ||
+            await PlatformFileChannel.openFile(path);
+        if (!handled && alive() && context.mounted) {
+          AppToast.error(context, l10n.localGallery_cannotOpenFolder(path));
+        }
         return false;
       }
       await FileExplorerUtils.revealFile(path);
@@ -208,6 +221,11 @@ class ImageViewerActionHost {
         await commit(() => ImageWorkflowLauncher.openImageToImage(ref, bytes));
         _success(l10n.gallery_sentToImg2Img);
       } else if (action == ViewerAction.upscale) {
+        if (Platform.isAndroid) {
+          // Local / advanced upscale depends on bundled desktop executables
+          // and has no Android implementation; keep the action inert.
+          return false;
+        }
         await commit(() => ImageWorkflowLauncher.openUpscale(ref, bytes));
         if (alive() && context.mounted) {
           AppToast.info(context, l10n.gallery_upscalePanelLoaded);

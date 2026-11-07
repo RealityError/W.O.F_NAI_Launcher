@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/storage_keys.dart';
 import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/app_support_directory.dart';
 import '../../../core/utils/file_explorer_utils.dart';
 import '../../../core/utils/gallery_path_utils.dart';
 import '../../../core/utils/zip_utils.dart';
@@ -735,6 +736,13 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
   }
 
   Future<void> _importFolder() async {
+    if (Platform.isAndroid) {
+      // Android has no desktop folder browser and its gallery root is an
+      // app-private directory, so "导入" means picking images and copying
+      // them into the writable gallery root instead of registering a root.
+      await _importImagesToGallery();
+      return;
+    }
     final addedPath = await GalleryExtraRootAddFlow.pickAndAdd(
       context: context,
       ref: ref,
@@ -758,6 +766,78 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
     await ref
         .read(localGalleryNotifierProvider.notifier)
         .showImportedCategory(importedRoot.id, importedRoot.folderPath);
+  }
+
+  /// Android 导入图片：多选文件后复制进画廊根目录（应用私有 documents 目录）。
+  ///
+  /// file_picker 会把 SAF content:// 选中项缓存成真实文件路径，所以这里可以
+  /// 复用桌面文件系统路径的复制流程，而不是走不可写的 scoped storage 根。
+  Future<void> _importImagesToGallery() async {
+    final l10n = context.l10n;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+      allowMultiple: true,
+      withData: false,
+      lockParentWindow: true,
+    );
+    if (result == null || !mounted) return;
+
+    final rootPath = await GalleryFolderRepository.instance.getRootPath();
+    if (!mounted) return;
+    if (rootPath == null || rootPath.isEmpty) {
+      AppToast.info(context, l10n.localGallery_saveDirectoryNotSet);
+      return;
+    }
+
+    final repository = GalleryFolderRepository.instance;
+    final importedPaths = <String>[];
+    var failed = 0;
+    for (final file in result.files) {
+      final sourcePath = file.path;
+      if (sourcePath == null || sourcePath.isEmpty) {
+        failed++;
+        continue;
+      }
+      try {
+        final copied = await repository.transferImageToFolder(
+          sourcePath,
+          rootPath,
+          copy: true,
+          updateIndex: false,
+        );
+        if (copied != null) {
+          importedPaths.add(copied);
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        failed++;
+        AppLogger.w('Android 导入图片失败: $sourcePath ($error)', 'LocalGallery');
+      }
+    }
+    if (!mounted) return;
+    if (failed > 0) {
+      AppLogger.w('Android 导入图片失败 $failed 张', 'LocalGallery');
+    }
+    if (importedPaths.isEmpty) {
+      AppToast.error(context, l10n.localGallery_copyFailed);
+      return;
+    }
+
+    // 即时插入（未初始化时返回 0），再整表刷新一次保证分类/计数一致。
+    await ref
+        .read(localGalleryNotifierProvider.notifier)
+        .addNewlySavedImages(importedPaths);
+    if (!mounted) return;
+    await ref.read(localGalleryNotifierProvider.notifier).refresh();
+    if (!mounted) return;
+    await ref.read(galleryCategoryNotifierProvider.notifier).refresh();
+    if (!mounted) return;
+    AppToast.success(
+      context,
+      l10n.localGallery_copySuccess(importedPaths.length),
+    );
   }
 
   /// 新建收藏集/收藏文件夹（parentId=null 为收藏根级）
@@ -1082,6 +1162,15 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
         return;
       }
 
+      if (Platform.isAndroid) {
+        // No explorer.exe on Android; best-effort file manager intent.
+        final opened = await PlatformFileChannel.openDirectory(rootPath);
+        if (!opened && mounted) {
+          AppLogger.w('Android 无法打开画廊目录: $rootPath', 'LocalGallery');
+        }
+        return;
+      }
+
       await Process.start('explorer', [rootPath]);
     } catch (e) {
       if (mounted) {
@@ -1212,12 +1301,22 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
     if (selectedImages.isEmpty || !mounted) return;
 
     final defaultName = 'images_${DateTime.now().millisecondsSinceEpoch}';
-    final outputPath = await FilePicker.platform.saveFile(
-      dialogTitle: context.l10n.localGallery_saveZipArchive,
-      fileName: '$defaultName.zip',
-      type: FileType.custom,
-      allowedExtensions: ['zip'],
-    );
+    String? outputPath;
+    if (Platform.isAndroid) {
+      // file_picker's Android save dialog needs the bytes up front and returns
+      // a guessed public path, so export into app cache and share instead.
+      final tempDir = await getTemporaryDirectory();
+      final exportDir = Directory(path.join(tempDir.path, 'gallery_exports'));
+      await exportDir.create(recursive: true);
+      outputPath = path.join(exportDir.path, '$defaultName.zip');
+    } else {
+      outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: context.l10n.localGallery_saveZipArchive,
+        fileName: '$defaultName.zip',
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+      );
+    }
 
     if (outputPath == null || !mounted) return;
 
@@ -1244,6 +1343,14 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
           context.l10n.localGallery_packedImages(selectedImages.length),
         );
         ref.read(localGallerySelectionNotifierProvider.notifier).exit();
+        if (Platform.isAndroid) {
+          // The archive lives in app cache; hand it to the share sheet so the
+          // user can actually reach it from scoped storage.
+          await PlatformFileChannel.shareFile(
+            finalPath,
+            mimeType: 'application/zip',
+          );
+        }
       } else {
         AppToast.error(context, context.l10n.localGallery_packFailed);
       }
@@ -1629,6 +1736,11 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
   }
 
   Future<void> _sendToUpscale(LocalImageRecord record) async {
+    if (Platform.isAndroid) {
+      // 本地 / 高级超分依赖随包的桌面可执行文件，Android 没有实现。
+      AppLogger.w('Android 不支持本地超分，忽略请求', 'LocalGallery');
+      return;
+    }
     try {
       final file = File(record.path);
       if (!await file.exists()) {

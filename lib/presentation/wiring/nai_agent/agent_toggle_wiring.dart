@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../providers/nai_agent/nai_agent_window_controller.dart';
 import '../../providers/nai_agent/nai_agent_workspace_provider.dart';
@@ -14,6 +15,8 @@ class AgentToggleWiring extends ConsumerWidget {
   const AgentToggleWiring({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 移动端没有随包 Node 宿主：不渲染入口，避免展开后必然失败。
+    if (!supportsNaiAgentRuntime) return const SizedBox.shrink();
     final window = ref.watch(naiAgentWindowControllerProvider);
     final expanded =
         window.presentationExpanded ??

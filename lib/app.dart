@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
 import 'core/services/desktop_app_shutdown_service.dart';
+import 'core/utils/desktop_platform.dart';
 import 'core/utils/studio_sandbox.dart';
 import 'core/utils/macos_app_channel.dart';
 import 'presentation/widgets/navigation/integrated_title_bar.dart';
@@ -230,7 +233,7 @@ class NAILauncherApp extends ConsumerWidget {
             // 让 Navigator 的菜单、提示与对话框位于按钮上方。
             // child 作为普通子组件直传，保证 element 在 MaterialApp
             // rebuild 时原地更新、不拆树重建。
-            return WorkspaceTextScaleHost(
+            final content = WorkspaceTextScaleHost(
               child: NaiAgentIntegrationScope(
                 child: WorkspaceTypographyScope(
                   child: _RouteAwareTitleBar(
@@ -257,6 +260,22 @@ class NAILauncherApp extends ConsumerWidget {
                     ),
                   ),
                 ),
+              ),
+            );
+            // 移动端（Android）目标是 edge-to-edge 绘制：这里一次性预留状态栏
+            // 高度并设定状态栏图标明暗，页面内部不再各自处理顶部 inset。
+            // 桌面端保持原有窗口标题栏布局不动。
+            if (isSupportedDesktop) return content;
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: brightness == Brightness.dark
+                  ? SystemUiOverlayStyle.light
+                  : SystemUiOverlayStyle.dark,
+              child: SafeArea(
+                top: true,
+                bottom: false,
+                left: false,
+                right: false,
+                child: content,
               ),
             );
           },

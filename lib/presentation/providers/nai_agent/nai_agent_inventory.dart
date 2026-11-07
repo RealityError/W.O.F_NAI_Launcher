@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../core/nai_agent/node_runtime_environment.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../data/services/nai_agent/agent_workspace_store.dart';
 import 'nai_agent_workspace_provider.dart';
 
@@ -73,6 +74,9 @@ Future<Map<String, dynamic>> readNaiAgentInventory({
   required Map<String, dynamic> config,
   required Duration timeout,
 }) async {
+  if (!supportsNaiAgentRuntime) {
+    throw StateError('NAI Agent runtime is not available on this platform');
+  }
   final process = await Process.start(
     node,
     [script],

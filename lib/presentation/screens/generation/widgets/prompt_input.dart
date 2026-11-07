@@ -9,6 +9,7 @@ import 'package:nai_launcher/presentation/widgets/common/studio_icons.dart';
 import '../../../../core/autocomplete/autocomplete_settings.dart'
     as completion_settings;
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/utils/desktop_platform.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../../../../core/utils/comfyui_prompt_parser/pipe_parser.dart';
 import '../../../../core/utils/nai_prompt_formatter.dart';
@@ -1111,7 +1112,9 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
             ),
           ),
         ),
-        const AgentBridgeIndicator(),
+        // Krita 桥接指示器只在有桌面桥接能力时出现；Android 上该指示器会
+        // 让 kritaBridgeNotifierProvider 实例化并启动本地 WebSocket 服务。
+        if (supportsKritaBridge) const AgentBridgeIndicator(),
       ],
     );
   }

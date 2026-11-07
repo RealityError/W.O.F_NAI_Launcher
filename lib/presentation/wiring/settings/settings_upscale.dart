@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/desktop_app_shutdown_service.dart';
 import '../../../core/services/settings_gpu_probe.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../data/models/upscale/local_upscale_models.dart';
 import '../../providers/generation/image_workflow_controller.dart';
 import '../../providers/generation/local_upscale_provider.dart';
@@ -25,9 +26,10 @@ const settingsUpscaleIds = <String, String>{
 };
 String settingsUpscaleId(String id) => settingsUpscaleIds[id] ?? id;
 final settingsGpuProbeProvider = Provider((ref) => SettingsGpuProbe());
-final settingsGpuProvider = FutureProvider(
-  (ref) => ref.read(settingsGpuProbeProvider).inspect(),
-);
+final settingsGpuProvider = FutureProvider<SettingsGpuInfo?>((ref) {
+  if (!supportsGpuProbe) return null;
+  return ref.read(settingsGpuProbeProvider).inspect();
+});
 
 class SettingsUpscaleOperation {
   const SettingsUpscaleOperation({
@@ -79,6 +81,9 @@ class SettingsUpscaleOperations extends Notifier<SettingsUpscaleOperation> {
   Future<void> install(String id) => _run(settingsUpscaleId(id), false);
   Future<void> remove(String id) => _run(settingsUpscaleId(id), true);
   Future<void> _run(String id, bool remove) {
+    if (!supportsLocalUpscale) {
+      throw const LocalUpscaleException(LocalUpscaleError.unsupportedPlatform);
+    }
     if (_pending != null || ref.read(advancedUpscaleInstallProvider).running) {
       throw const LocalUpscaleException(LocalUpscaleError.busy);
     }
@@ -142,6 +147,9 @@ class SettingsUpscaleOperations extends Notifier<SettingsUpscaleOperation> {
   }
 
   Future<void> importModel() async {
+    if (!supportsLocalUpscale) {
+      throw const LocalUpscaleException(LocalUpscaleError.unsupportedPlatform);
+    }
     if (_pending != null || ref.read(advancedUpscaleInstallProvider).running) {
       throw const LocalUpscaleException(LocalUpscaleError.busy);
     }

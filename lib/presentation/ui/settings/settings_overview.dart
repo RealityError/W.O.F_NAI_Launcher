@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../channel/channel_contract.dart';
@@ -146,16 +147,18 @@ class SettingsOverviewPage extends StatelessWidget {
       title: l.set_tileConnect,
       value: _value(context, l.set_tileOnline('$online')),
       lines: [
-        _line(
-          context,
-          br.kritaConnected ? SettingsTone.ok : SettingsTone.idle,
-          br.kritaConnected ? l.set_tileKrita : l.set_tileKritaOff,
-        ),
-        _line(
-          context,
-          br.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
-          l.set_tileAgents('${br.agentClients}'),
-        ),
+        if (supportsKritaBridge)
+          _line(
+            context,
+            br.kritaConnected ? SettingsTone.ok : SettingsTone.idle,
+            br.kritaConnected ? l.set_tileKrita : l.set_tileKritaOff,
+          ),
+        if (supportsKritaBridge)
+          _line(
+            context,
+            br.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
+            l.set_tileAgents('${br.agentClients}'),
+          ),
         _line(
           context,
           !comfyOn
@@ -375,7 +378,14 @@ class SettingsOverviewPage extends StatelessWidget {
         ),
       ],
     );
-    return [storage, connect, models, rag, upscale, protect];
+    return [
+      storage,
+      connect,
+      models,
+      if (settingsPageAvailable(SettingsPageId.rag)) rag,
+      if (settingsPageAvailable(SettingsPageId.upscale)) upscale,
+      protect,
+    ];
   }
 
   static Widget _value(BuildContext context, String text) => Text(

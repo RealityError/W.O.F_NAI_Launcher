@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../core/utils/localization_extension.dart';
+import '../../core/utils/file_explorer_utils.dart';
 import '../../core/utils/vibe_library_path_helper.dart';
 import '../../core/utils/novelai_vibe_codec.dart';
 import 'refs_drop_reader.dart';
@@ -52,10 +53,17 @@ class RefsPlatform {
     }
     final images =
         kind == RefsKind.precise || source == RefsImportSource.images;
+    // file_picker's FileType.image maps to single-selection ACTION_PICK on
+    // Android; a custom MIME filter keeps multi-select working there.
+    final pickerType = images && !Platform.isAndroid
+        ? FileType.image
+        : FileType.custom;
     final result = await FilePicker.platform.pickFiles(
-      type: images ? FileType.image : FileType.custom,
+      type: pickerType,
       allowedExtensions: images
-          ? null
+          ? (Platform.isAndroid
+                ? const ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif']
+                : null)
           : [
               'png',
               'jpg',
@@ -126,6 +134,11 @@ class RefsPlatform {
     final directory = await FileSystemEntity.isDirectory(path)
         ? path
         : p.dirname(path);
+    if (Platform.isAndroid) {
+      // Never spawn explorer.exe on Android; best-effort file manager intent.
+      await FileExplorerUtils.openDirectory(directory);
+      return;
+    }
     await Process.start('explorer.exe', [
       directory,
     ], mode: ProcessStartMode.detached);

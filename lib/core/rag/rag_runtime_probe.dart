@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import '../utils/desktop_platform.dart';
 import 'rag_platform.dart';
 import 'rag_process.dart';
 
@@ -56,6 +57,13 @@ print(json.dumps({'ready':ok,'cuda':torch.version.cuda is not None}),flush=True)
 ''';
   Future<RagRuntimeInfo> inspect(Directory root, String preferred) async {
     final managed = platform.managedPython(root.path);
+    // 没有外部进程能力的平台不可能有兼容的本地运行时。
+    if (!supportsExternalProcesses) {
+      return RagRuntimeInfo(
+        python: preferred.isEmpty ? managed : preferred,
+        ready: false,
+      );
+    }
     for (final python in {if (preferred.isNotEmpty) preferred, managed}) {
       if (_cancelled || !await File(python).exists()) continue;
       Process? process;

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Roots that MainActivity may expose as content:// URIs for ACTION_VIEW /
+    ACTION_SEND. App-private files live under:
+      files-path       - Context.getFilesDir() (path_provider support dir)
+      cache-path       - Context.getCacheDir() (temporary share copies)
+    Gallery/generated images use the path_provider documents dir
+    (app_flutter), which is outside these roots, so MainActivity copies them
+    into cache before sharing and keeps this provider scoped to app data.
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <files-path name="app_files" path="." />
+    <cache-path name="app_cache" path="." />
+    <external-files-path name="app_external_files" path="." />
+    <external-cache-path name="app_external_cache" path="." />
+</paths>

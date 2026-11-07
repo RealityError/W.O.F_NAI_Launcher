@@ -6,6 +6,8 @@ library;
 
 import 'dart:io';
 
+import '../utils/desktop_platform.dart';
+
 class WindowsUpdateScript {
   WindowsUpdateScript._();
 
@@ -13,6 +15,13 @@ class WindowsUpdateScript {
   /// Dart's detached modes. A short-lived, normally started PowerShell launches
   /// the hidden updater, which remains alive after Studio exits.
   static Future<void> launch(String scriptPath) async {
+    if (!supportsExternalProcesses) {
+      throw const ProcessException(
+        'powershell.exe',
+        [],
+        'Update scripts require a desktop platform',
+      );
+    }
     final result = await Process.run(
       'powershell.exe',
       [

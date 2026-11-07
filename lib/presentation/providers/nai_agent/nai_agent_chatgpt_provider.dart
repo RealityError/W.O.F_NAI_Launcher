@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/nai_agent/agent_tool.dart';
 import '../../../core/nai_agent/node_runtime_environment.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import 'nai_agent_workspace_provider.dart';
 
@@ -178,6 +179,9 @@ class NaiAgentChatGpt extends ChangeNotifier {
     NaiAgentCancellation? cancel,
   }) async {
     cancel?.check();
+    if (!supportsNaiAgentRuntime) {
+      throw StateError('ChatGPT sign-in is not available on this platform');
+    }
     final script = p.join(p.dirname(_paths.host), 'manage-resources.mjs');
     final process = await Process.start(
       _paths.node,

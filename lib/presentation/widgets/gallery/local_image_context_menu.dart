@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:nai_launcher/presentation/widgets/common/studio_icons.dart';
 
@@ -120,11 +122,14 @@ class LocalImageContextMenu {
               l.drop_saveToPreciseRefLibrary,
               StudioIcons.galleryBookmarkAdd,
             ),
-            item(
-              LocalImageContextAction.upscale,
-              l.gallery_upscale,
-              StudioIcons.galleryUpscale,
-            ),
+            if (!Platform.isAndroid)
+              // Local / advanced upscale depends on bundled desktop
+              // executables and has no Android implementation.
+              item(
+                LocalImageContextAction.upscale,
+                l.gallery_upscale,
+                StudioIcons.galleryUpscale,
+              ),
             item(
               LocalImageContextAction.sendToKrita,
               l.localGallery_sendToKrita,
