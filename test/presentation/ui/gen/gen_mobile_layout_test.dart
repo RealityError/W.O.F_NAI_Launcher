@@ -37,10 +37,26 @@ void main() {
 
       expect(find.byType(GenerationPage), findsOneWidget);
       expect(find.byKey(const Key('gen-canvas-host')), findsNothing);
-      expect(find.byKey(const Key('gen-mobile-editor')), findsOneWidget);
-      expect(find.byKey(const Key('gen-mobile-history')), findsOneWidget);
       expect(find.byKey(const Key('gen-params')), findsOneWidget);
       expect(find.byKey(const Key('gen-generate-bar')), findsOneWidget);
+      // 编辑 / 最近生成入口在底部生成条两侧，不占顶栏，顶栏保持单行。
+      for (final key in ['gen-mobile-editor', 'gen-mobile-history']) {
+        expect(find.byKey(Key(key)), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('gen-header')),
+            matching: find.byKey(Key(key)),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('gen-generate-bar')),
+            matching: find.byKey(Key(key)),
+          ),
+          findsOneWidget,
+        );
+      }
       // 手机布局不渲染桌面左栏三栏结构。
       expect(find.byKey(const Key('gen-left')), findsNothing);
       expect(tester.takeException(), isNull);
@@ -67,6 +83,19 @@ void main() {
     await tester.tap(find.byKey(const Key('gen-mobile-history')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('gen-mobile-history-panel')), findsOneWidget);
+    // 手机端改称「最近生成」，并说明与图库的分工。
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('gen-mobile-overlay-title')))
+          .data,
+      '最近生成',
+    );
+    expect(
+      find.byKey(const Key('gen-mobile-overlay-subtitle')),
+      findsOneWidget,
+    );
+    // 浮层自带标题，栏内不再重复渲染桌面用的收起按钮。
+    expect(find.byKey(const Key('gen-collapse-history')), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byKey(const Key('gen-mobile-overlay-close')));

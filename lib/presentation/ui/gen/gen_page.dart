@@ -417,31 +417,37 @@ class _GenMobileLayoutState extends State<_GenMobileLayout> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              GenHeader(
+              const GenHeader(
                 collapsible: false,
-                // 手机端把「编辑提示词 / 历史记录」放进头部 Wrap，
-                // 不再悬浮在画布上，避免遮挡画布自带的图片工具条。
-                actions: [
-                  const _MobileCameraLockAction(),
-                  GenIb(
-                    key: const Key('gen-mobile-editor'),
-                    glyph: GenGlyphs.editNote,
-                    glyphSize: 16,
-                    tooltip: context.l10n.gen_edit,
-                    onTap: () => setState(() => _editorOpen = true),
-                  ),
-                  GenIb(
-                    key: const Key('gen-mobile-history'),
-                    glyph: GenGlyphs.history,
-                    glyphSize: 16,
-                    tooltip: context.l10n.gen_history,
-                    onTap: () => setState(() => _historyOpen = true),
-                  ),
-                ],
+                // 顶栏只留模型 / 配额，保持单行；编辑提示词与最近生成移到
+                // 底部生成条两侧（手机竖屏下顶栏换行会吃掉画布高度）。
+                // 锁相机时临时出现解锁按钮，未锁定时不占位。
+                actions: [_MobileCameraLockAction()],
               ),
               const Expanded(child: GenParamDrawerHost(child: GenCanvas())),
               const GenParamStrip(),
-              const GenGenerateBar(),
+              GenGenerateBar(
+                leading: GenIb(
+                  key: const Key('gen-mobile-editor'),
+                  glyph: GenGlyphs.editNote,
+                  glyphSize: 18,
+                  size: 40,
+                  width: 44,
+                  bordered: true,
+                  tooltip: context.l10n.gen_edit,
+                  onTap: () => setState(() => _editorOpen = true),
+                ),
+                trailing: GenIb(
+                  key: const Key('gen-mobile-history'),
+                  glyph: GenGlyphs.history,
+                  glyphSize: 18,
+                  size: 40,
+                  width: 44,
+                  bordered: true,
+                  tooltip: context.l10n.gen_recent,
+                  onTap: () => setState(() => _historyOpen = true),
+                ),
+              ),
             ],
           ),
           if (_editorOpen)
@@ -454,9 +460,10 @@ class _GenMobileLayoutState extends State<_GenMobileLayout> {
           if (_historyOpen)
             _MobileOverlayPanel(
               key: const Key('gen-mobile-history-panel'),
-              title: context.l10n.gen_history,
+              title: context.l10n.gen_recent,
+              subtitle: context.l10n.gen_recentHint,
               onClose: _closeOverlays,
-              child: GenHistoryPanel(width: width),
+              child: GenHistoryPanel(width: width, compactHeader: true),
             ),
         ],
       ),
@@ -490,11 +497,13 @@ class _MobileOverlayPanel extends StatelessWidget {
   const _MobileOverlayPanel({
     super.key,
     required this.title,
+    this.subtitle,
     required this.child,
     required this.onClose,
   });
 
   final String title;
+  final String? subtitle;
   final Widget child;
   final VoidCallback onClose;
 
@@ -522,15 +531,30 @@ class _MobileOverlayPanel extends StatelessWidget {
                   tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                 ),
                 Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: UiText.sans(
-                      14.5,
-                      weight: FontWeight.w600,
-                      color: c.ink,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        key: const Key('gen-mobile-overlay-title'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: UiText.sans(
+                          14.5,
+                          weight: FontWeight.w600,
+                          color: c.ink,
+                        ),
+                      ),
+                      if (subtitle case final hint?)
+                        Text(
+                          hint,
+                          key: const Key('gen-mobile-overlay-subtitle'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: UiText.sans(11, color: c.faint),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),

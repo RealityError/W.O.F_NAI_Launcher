@@ -14792,6 +14792,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gen_historyEmptySub => '生成的图会按批次排在这里';
 
   @override
+  String get gen_recent => '最近生成';
+
+  @override
+  String get gen_recentHint => '本次运行的结果；长期保存的图片在图库';
+
+  @override
   String gen_batchCount(Object count) {
     return '$count 张';
   }
@@ -36457,6 +36463,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get gen_historyEmptySub => '生成的圖會按批次排在這裡';
+
+  @override
+  String get gen_recent => '最近生成';
+
+  @override
+  String get gen_recentHint => '本次執行的結果；長期儲存的圖片在圖庫';
 
   @override
   String gen_batchCount(Object count) {

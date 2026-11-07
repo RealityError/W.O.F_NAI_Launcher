@@ -8341,6 +8341,8 @@
   "gen_history": "기록",
   "gen_historyEmpty": "아직 생성한 이미지가 없습니다",
   "gen_historyEmptySub": "생성한 이미지가 묶음별로 표시됩니다",
+  "gen_recent": "최근 생성",
+  "gen_recentHint": "이번 실행의 결과입니다. 저장된 이미지는 갤러리에 있습니다",
   "gen_batchCount": "{count}장",
   "@gen_batchCount": {
     "placeholders": {

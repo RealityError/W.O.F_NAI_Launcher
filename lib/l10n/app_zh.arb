@@ -8341,6 +8341,8 @@
   "gen_history": "历史记录",
   "gen_historyEmpty": "这次还没有生成",
   "gen_historyEmptySub": "生成的图会按批次排在这里",
+  "gen_recent": "最近生成",
+  "gen_recentHint": "本次运行的结果；长期保存的图片在图库",
   "gen_batchCount": "{count} 张",
   "@gen_batchCount": {
     "placeholders": {

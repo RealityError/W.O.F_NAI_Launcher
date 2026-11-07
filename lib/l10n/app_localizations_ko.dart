@@ -15031,6 +15031,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get gen_historyEmptySub => '생성한 이미지가 묶음별로 표시됩니다';
 
   @override
+  String get gen_recent => '최근 생성';
+
+  @override
+  String get gen_recentHint => '이번 실행의 결과입니다. 저장된 이미지는 갤러리에 있습니다';
+
+  @override
   String gen_batchCount(Object count) {
     return '$count장';
   }

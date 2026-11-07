@@ -8341,6 +8341,8 @@
   "gen_history": "履歴",
   "gen_historyEmpty": "まだ生成していません",
   "gen_historyEmptySub": "生成した画像がバッチごとに並びます",
+  "gen_recent": "最近の生成",
+  "gen_recentHint": "今回の実行分の結果。保存済み画像はギャラリーにあります",
   "gen_batchCount": "{count} 枚",
   "@gen_batchCount": {
     "placeholders": {

@@ -12,7 +12,12 @@ import 'gen_parts.dart';
 
 /// 生成条（原型 `.gbar`）：内边距 6 10、上边线、窗口底 50%；里面一颗 40 高的生成按钮。
 class GenGenerateBar extends StatelessWidget {
-  const GenGenerateBar({super.key});
+  const GenGenerateBar({super.key, this.leading, this.trailing});
+
+  /// 手机端追加：生成按钮两侧的快捷入口（提示词编辑 / 最近生成）。
+  /// 桌面端不传，布局与原先完全一致。
+  final Widget? leading;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +31,13 @@ class GenGenerateBar extends StatelessWidget {
             : c.bg.withValues(alpha: .5),
         border: Border(top: BorderSide(color: c.line)),
       ),
-      child: const GenGenerateButton(),
+      child: Row(
+        children: [
+          if (leading != null) ...[leading!, const SizedBox(width: 8)],
+          const Expanded(child: GenGenerateButton()),
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        ],
+      ),
     );
   }
 }

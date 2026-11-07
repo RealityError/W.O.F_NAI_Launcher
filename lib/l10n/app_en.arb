@@ -8341,6 +8341,8 @@
   "gen_history": "History",
   "gen_historyEmpty": "Nothing generated yet",
   "gen_historyEmptySub": "Your images will appear here batch by batch",
+  "gen_recent": "Recent",
+  "gen_recentHint": "Results from this session; saved images live in the gallery",
   "gen_batchCount": "{count} images",
   "@gen_batchCount": {
     "placeholders": {
