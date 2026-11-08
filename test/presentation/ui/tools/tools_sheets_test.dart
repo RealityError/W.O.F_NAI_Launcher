@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_contract.dart';
 
 import '../../../helpers/studio_capture_fonts.dart';
@@ -149,6 +150,52 @@ void main() {
       await tapKey(t, 'tools-upscale-advanced');
       expect(find.byKey(const Key('tools-upscale-fields')), findsOneWidget);
       expect(find.text('显存分块'), findsOneWidget);
+    });
+  });
+
+  group('手机端 360dp', () {
+    setUp(() => debugForceMobileLayout = true);
+    tearDown(() => debugForceMobileLayout = null);
+
+    testWidgets('增强面板铺满画布宽度、内容可滚、无溢出', (t) async {
+      final r = ToolsRecorder();
+      await pumpToolsGen(t, r: r, sheet: GenToolSheet.enhance, mobile: true);
+      final sheet = t.getRect(find.byKey(const Key('tools-enhance-sheet')));
+      expect(sheet.left, greaterThanOrEqualTo(0));
+      expect(sheet.right, lessThanOrEqualTo(360));
+      expect(find.byKey(const Key('tools-sheet-body-scroll')), findsOneWidget);
+      // 手机端不再跟工具条按钮对齐画尖角。
+      expect(find.byKey(const Key('gen-sheet-caret')), findsNothing);
+      expect(t.takeException(), isNull);
+      await tapKey(t, 'tools-enhance-run');
+      expect(r.calls, ['onRun']);
+    });
+
+    testWidgets('放大面板后端卡竖排、行标签折行、无溢出', (t) async {
+      final r = ToolsRecorder();
+      await pumpToolsGen(t, r: r, sheet: GenToolSheet.upscale, mobile: true);
+      final sheet = t.getRect(find.byKey(const Key('tools-upscale-sheet')));
+      expect(sheet.left, greaterThanOrEqualTo(0));
+      expect(sheet.right, lessThanOrEqualTo(360));
+      expect(find.byKey(const Key('tools-sheet-body-scroll')), findsOneWidget);
+      expect(t.takeException(), isNull);
+      await tapKey(t, 'tools-upscale-advanced');
+      expect(find.byKey(const Key('tools-upscale-fields')), findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('增强面板自定义强度：滑杆区不溢出', (t) async {
+      final r = ToolsRecorder();
+      await pumpToolsGen(
+        t,
+        r: r,
+        sheet: GenToolSheet.enhance,
+        custom: true,
+        mobile: true,
+      );
+      expect(find.byKey(const Key('tools-enhance-custom')), findsOneWidget);
+      expect(find.byKey(const Key('tools-enhance-strength')), findsOneWidget);
+      expect(t.takeException(), isNull);
     });
   });
 }

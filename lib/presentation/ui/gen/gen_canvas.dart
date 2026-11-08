@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../../../core/services/anlas_calculator.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../core/utils/inpaint_mask_utils.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../channel/channel_settings.dart';
 import '../kit/ui_colors.dart';
@@ -139,32 +140,46 @@ class _GenCanvasState extends State<GenCanvas> {
                   child: Center(child: _UpscaleStrip()),
                 ),
               if (sheet != null && scope.slots.toolSheet != null) ...[
-                Positioned(
-                  top: GenCanvas.sheetTop,
-                  left: 16,
-                  right: 16,
-                  bottom: 16,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: scope.slots.toolSheet,
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: CompositedTransformFollower(
-                    link: sheet == GenToolSheet.enhance
-                        ? _enhanceLink
-                        : _upscaleLink,
-                    showWhenUnlinked: false,
-                    targetAnchor: Alignment.bottomCenter,
-                    followerAnchor: Alignment.topCenter,
-                    offset: const Offset(0, 9),
-                    child: const IgnorePointer(
-                      child: GenSheetCaret(key: Key('gen-sheet-caret')),
+                // 手机：面板贴画布底部铺满整宽，不再跟工具条按钮对齐（358dp 放不下桌子尺寸）。
+                if (usesMobileLayout)
+                  Positioned(
+                    left: 8,
+                    right: 8,
+                    top: GenCanvas.sheetTop,
+                    bottom: 8,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: scope.slots.toolSheet,
+                    ),
+                  )
+                else ...[
+                  Positioned(
+                    top: GenCanvas.sheetTop,
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: scope.slots.toolSheet,
                     ),
                   ),
-                ),
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: CompositedTransformFollower(
+                      link: sheet == GenToolSheet.enhance
+                          ? _enhanceLink
+                          : _upscaleLink,
+                      showWhenUnlinked: false,
+                      targetAnchor: Alignment.bottomCenter,
+                      followerAnchor: Alignment.topCenter,
+                      offset: const Offset(0, 9),
+                      child: const IgnorePointer(
+                        child: GenSheetCaret(key: Key('gen-sheet-caret')),
+                      ),
+                    ),
+                  ),
+                ],
               ],
               if (cv.error case final e?)
                 Positioned(

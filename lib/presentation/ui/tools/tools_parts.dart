@@ -394,30 +394,66 @@ class ToolsFieldRow extends StatelessWidget {
     required this.label,
     required this.children,
     this.labelWidth = 56,
+    this.stack = false,
   });
   final String label;
   final List<Widget> children;
   final double labelWidth;
 
+  /// 手机窄屏：标签单独一行，内容换到下一行并用 [Wrap] 折行，避免定宽行溢出。
+  final bool stack;
+
   @override
-  Widget build(BuildContext context) => ConstrainedBox(
-    constraints: const BoxConstraints(minHeight: 34),
-    child: Row(
-      spacing: 12,
-      children: [
-        SizedBox(
-          width: labelWidth,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: UiText.sans(12.5, color: context.ui.muted),
-          ),
+  Widget build(BuildContext context) {
+    if (!stack) {
+      return ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 34),
+        child: Row(
+          spacing: 12,
+          children: [
+            SizedBox(
+              width: labelWidth,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: UiText.sans(12.5, color: context.ui.muted),
+              ),
+            ),
+            ...children,
+          ],
         ),
-        ...children,
+      );
+    }
+    final flat = <Widget>[];
+    for (final child in children) {
+      if (child is Spacer) continue;
+      // 展开/收起的子组件在 Wrap 里没有 Flex 父级，直接取内容。
+      if (child is Flexible) {
+        flat.add(child.child);
+        continue;
+      }
+      flat.add(child);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: UiText.sans(12.5, color: context.ui.muted),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: flat,
+        ),
       ],
-    ),
-  );
+    );
+  }
 }
 
 /// 滑杆 + 数字框（选项条、右栏）：拖动时界面实时显示，松手才回调 [onChanged]（[live] 时拖动中也回调）。

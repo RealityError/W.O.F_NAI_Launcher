@@ -191,14 +191,14 @@ Future<void> pumpToolsGen(
   bool custom = false,
   bool local = false,
   bool dark = false,
+  bool mobile = false,
   ImageProvider? Function(String key)? images,
 }) async {
   final data = toolsGenData(sheet: sheet, progress: progress, images: images);
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = Size(
-    toolsWindow.width - genRail,
-    toolsWindow.height,
-  );
+  tester.view.physicalSize = mobile
+      ? const Size(360, 640)
+      : Size(toolsWindow.width - genRail, toolsWindow.height);
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
