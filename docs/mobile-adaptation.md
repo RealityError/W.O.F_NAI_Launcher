@@ -208,6 +208,14 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 3. **历史改称「最近生成」**：入口 tooltip、浮层标题改为 `gen_recent`，浮层副标题 `gen_recentHint` 说明「本次运行的结果；长期保存的图片在图库」。`GenHistoryPanel` 新增 `compactHeader`（默认 false，桌面不变）：手机浮层内不再重复渲染桌面收起按钮与「历史记录」标题，只保留计数 / 钉图 / 多选。功能不变：批次回填画布、双击开大图、批次菜单、钉图 Pins、保存全部、清空、锁定滚动。
 4. **与画廊的分工**：历史 = 本次运行内的生成结果与批次（内存态，重启清空，可回填/重抽）；画廊 = 落盘后的长期图库（自动保存默认开启，支持搜索/筛选/元数据/回收站）。手机端不合并两者，只在文案上区分，避免入口重复感。
 
+### 8.6 三轮反馈：调试模式 / 移动浮层 / 查看器
+
+1. **调试模式（无订阅也能讨论 UI）**：新增 `lib/presentation/dev/demo_fixtures.dart`，`--dart-define=NAI_DEMO=1`（或 `true`）构建时，启动后在延迟启动步骤里读本地 `assets/images/demo-sample.jpg`，用 `GeneratedImage.create` 造一张图并调用 `ImageGenerationNotifier.adoptDemoImages`——走的是和真实生成结果相同的状态结构（`currentImages` / `history` / `displayImages` / `generationRunId` / 批次宽高），画布、最近生成、查看器、导演工具都能照常打开，不请求接口也不扣费。默认关闭，桌面端与发布构建行为不变；构建命令：
+   `flutter build apk --debug --target-platform android-x64 --dart-define=NAI_DEMO=1`
+2. **弹层统一改成底部面板**：`UiPopover` 新增手机分支（`_MobilePopoverSheet`）——不再贴锚点定位，而是全宽（左右 8dp）+ 底部安全边距浮起的面板，带半透明遮罩（点遮罩收起）、180ms 上滑淡入、内部滚动、键盘弹起时贴键盘上沿；高度按弹层宿主 Overlay 的实际可用区域计算（内嵌 Navigator 的 Overlay 可能比整屏矮，按 `MediaQuery` 算会让顶边跑出屏幕）。桌面端仍按锚点定位，代码路径不变。`UiMenuItem` 在手机上把行高从 34 提到 46、字号 13→14、图标与内边距同步放大；提示词工具栏的「模块与开关」菜单（`_ToolsMenu`）行高 46、分节标题更大，且「资源小窗」二级菜单在手机上改成点开同一位置的新面板（桌面仍是悬停二级菜单）。
+3. **查看器手机适配**：桌面顶栏 61dp 里塞了返回文字 + Esc 帽 + 缩放 −/+/1:1/全屏/信息，360dp 下溢出 97–107px——调试构建里表现为右上角黄黑斜纹 + 竖排「RIGHT OVERFLOWED BY …」条。手机端顶栏改为 52dp：返回只留箭头（文字进 tooltip）、生成模式只显示保存状态、画廊模式只显示位置、缩放收成「适应 · 78% ▾」胶囊（点开同一套比例菜单，放大用双指）、右侧全屏/信息两个 40dp 图标。信息栏（`ViewerInfoPanel`）在手机上是整屏抽屉（全宽、顶部圆角、位于手机顶栏之下），不再固定 340dp。
+4. **验证**：新增 `test/presentation/providers/generation/demo_fixtures_test.dart`（示例图注入后画布/历史/目录/运行号/批次尺寸一致）、`test/presentation/ui/kit/ui_popover_mobile_test.dart`（手机弹层贴底且撑满宽度、点遮罩收起）；`test/presentation/ui/viewer` 105 例、`test/presentation/ui/gen` + `tools` + `kit` 回归全部通过；MuMu x86_64（360dp）实机确认生成页出现示例图、工具菜单为底部面板、查看器顶栏无溢出、信息抽屉整屏可读。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 复用桌面内容页后，个别行内小按钮（24–32dp）未达 44dp 触摸目标，需真机走查后统一包触摸区；

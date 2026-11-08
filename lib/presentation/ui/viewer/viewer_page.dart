@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../kit/ui_dialog.dart';
 import '../kit/ui_popover.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import 'viewer_contract.dart';
 import 'viewer_info.dart';
 import 'viewer_menus.dart';
@@ -392,35 +393,44 @@ class _ImageViewerPageState extends State<ImageViewerPage>
     ..._data.keys,
   };
 
-  Widget _drawerPanel({required double top}) => Positioned(
-    right: 0,
-    top: top,
-    bottom: 0,
-    child: Container(
-      key: const Key('viewer-drawer'),
-      clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(10)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x8C000000),
-            blurRadius: 50,
-            offset: Offset(-24, 0),
-          ),
-        ],
+  Widget _drawerPanel({required double top}) {
+    final mobile = usesMobileLayout;
+    return Positioned(
+      left: mobile ? 0 : null,
+      right: 0,
+      top: top,
+      bottom: 0,
+      child: Container(
+        key: const Key('viewer-drawer'),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: mobile
+              ? const BorderRadius.vertical(top: Radius.circular(12))
+              : const BorderRadius.only(topLeft: Radius.circular(10)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x8C000000),
+              blurRadius: 50,
+              offset: Offset(-24, 0),
+            ),
+          ],
+        ),
+        child: Builder(
+          builder: (context) =>
+              widget.infoBuilder?.call(context, true) ??
+              const ViewerInfoPanel(drawer: true),
+        ),
       ),
-      child: Builder(
-        builder: (context) =>
-            widget.infoBuilder?.call(context, true) ??
-            const ViewerInfoPanel(drawer: true),
-      ),
-    ),
-  );
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final data = _data;
     final full = data.fullscreen;
+    final drawerTop = usesMobileLayout
+        ? ViewerStage.mobileTopHeight
+        : ViewerStage.topHeight;
     final body = LayoutBuilder(
       builder: (context, box) {
         _narrow = box.maxWidth < ImageViewerPage.narrowWidth;
@@ -446,7 +456,7 @@ class _ImageViewerPageState extends State<ImageViewerPage>
           return Stack(
             children: [
               const Positioned.fill(child: ViewerStage()),
-              if (_drawer) _drawerPanel(top: ViewerStage.topHeight),
+              if (_drawer) _drawerPanel(top: drawerTop),
             ],
           );
         }

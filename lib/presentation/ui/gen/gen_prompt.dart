@@ -19,6 +19,7 @@ import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
 import '../kit/ui_resource_kind.dart';
 import '../kit/ui_text.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import 'gen_contract.dart';
 import 'gen_format.dart';
 import 'gen_page.dart';
@@ -635,6 +636,12 @@ class _ToolsMenu extends StatelessWidget {
     final scope = GenScope.of(context, GenAspect.prompt);
     final t = scope.data.prompt.tools;
     final l = context.l10n;
+    // 手机端弹层是底部面板，行高按触摸目标放大到 46，字号也上一档。
+    final mobile = usesMobileLayout;
+    final rowHeight = mobile ? 46.0 : 34.0;
+    final rowPad = mobile ? 14.0 : 10.0;
+    final glyphSize = mobile ? 17.0 : 15.0;
+    final labelSize = mobile ? 14.0 : 13.0;
     Widget pinRow(
       Key key,
       Widget icon,
@@ -645,8 +652,8 @@ class _ToolsMenu extends StatelessWidget {
       key: key,
       onTap: () => scope.actions.onPromptTool(tool, !pinned),
       builder: (context, hover) => Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: rowHeight,
+        padding: EdgeInsets.symmetric(horizontal: rowPad),
         decoration: BoxDecoration(
           color: hover ? c.control : null,
           borderRadius: BorderRadius.circular(7),
@@ -656,13 +663,13 @@ class _ToolsMenu extends StatelessWidget {
           children: [
             SizedBox(width: 16, child: Center(child: icon)),
             Expanded(
-              child: Text(label, style: UiText.sans(13, color: c.ink)),
+              child: Text(label, style: UiText.sans(labelSize, color: c.ink)),
             ),
             Tooltip(
               message: pinned ? l.gen_unpin : l.gen_pin,
               child: UiGlyph(
                 UiGlyphs.pin,
-                size: 14,
+                size: mobile ? 16 : 14,
                 filled: pinned,
                 color: pinned ? c.accent : c.faint,
               ),
@@ -681,7 +688,12 @@ class _ToolsMenu extends StatelessWidget {
       key: key,
       onTap: () => scope.actions.onPromptTool(tool, !on),
       builder: (context, hover) => Container(
-        padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
+        padding: EdgeInsets.fromLTRB(
+          rowPad,
+          mobile ? 11 : 7,
+          rowPad,
+          mobile ? 11 : 7,
+        ),
         decoration: BoxDecoration(
           color: hover ? c.control : null,
           borderRadius: BorderRadius.circular(7),
@@ -693,10 +705,14 @@ class _ToolsMenu extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: UiText.sans(13, color: c.ink)),
+                  Text(label, style: UiText.sans(labelSize, color: c.ink)),
                   Text(
                     sub,
-                    style: UiText.sans(11.5, color: c.muted, height: 1.35),
+                    style: UiText.sans(
+                      mobile ? 12 : 11.5,
+                      color: c.muted,
+                      height: 1.35,
+                    ),
                   ),
                 ],
               ),
@@ -725,8 +741,8 @@ class _ToolsMenu extends StatelessWidget {
               );
             },
             builder: (context, hover) => Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              height: rowHeight,
+              padding: EdgeInsets.symmetric(horizontal: rowPad),
               decoration: BoxDecoration(
                 color: hover ? c.control : null,
                 borderRadius: BorderRadius.circular(7),
@@ -736,9 +752,16 @@ class _ToolsMenu extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: 16,
-                    child: UiGlyph(UiGlyphs.expand, size: 15, color: c.muted),
+                    child: UiGlyph(
+                      UiGlyphs.expand,
+                      size: glyphSize,
+                      color: c.muted,
+                    ),
                   ),
-                  Text(l.gen_fullscreen, style: UiText.sans(13, color: c.ink)),
+                  Text(
+                    l.gen_fullscreen,
+                    style: UiText.sans(labelSize, color: c.ink),
+                  ),
                 ],
               ),
             ),
@@ -825,15 +848,25 @@ class _MenuSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
+    final mobile = usesMobileLayout;
     return Container(
       margin: const EdgeInsets.only(top: 4),
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+      padding: EdgeInsets.fromLTRB(
+        mobile ? 14 : 10,
+        mobile ? 10 : 8,
+        mobile ? 14 : 10,
+        mobile ? 6 : 4,
+      ),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: c.line)),
       ),
       child: Text(
         text,
-        style: UiText.sans(11, weight: FontWeight.w600, color: c.faint),
+        style: UiText.sans(
+          mobile ? 12 : 11,
+          weight: FontWeight.w600,
+          color: c.faint,
+        ),
       ),
     );
   }
@@ -1183,6 +1216,27 @@ class _ResourceWindowsRowState extends State<_ResourceWindowsRow> {
     final c = context.ui;
     final l = context.l10n;
     final scope = GenScope.of(context, GenAspect.prompt);
+    final mobile = usesMobileLayout;
+    // 手机端没有悬停二级菜单：点一下换成资源小窗类型面板（同一个底部弹层位置）。
+    List<UiMenuItem> resourceItems() => [
+      for (final (kind, glyph, label) in _resourceKinds(context))
+        UiMenuItem(
+          key: Key('gen-resource-${kind.name}'),
+          label: label,
+          glyph: glyph,
+          onTap: () => widget.onOpen(kind),
+        ),
+    ];
+    void openAsPopover() => scope.controller.openPopover(
+      const UiPopoverAnchor(Offset.zero),
+      (_) => UiMenu(
+        key: const Key('gen-resource-menu'),
+        width: 240,
+        onClose: scope.controller.closePopover,
+        items: resourceItems(),
+      ),
+      tag: #resourceWindows,
+    );
     return OverlayPortal(
       controller: _portal,
       overlayChildBuilder: (overlayContext) {
@@ -1241,11 +1295,11 @@ class _ResourceWindowsRowState extends State<_ResourceWindowsRow> {
         },
         child: UiPressable(
           key: const Key('gen-resource-windows'),
-          onTap: _open,
+          onTap: mobile ? openAsPopover : _open,
           builder: (context, hover) => Container(
             key: _row,
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            height: mobile ? 46 : 34,
+            padding: EdgeInsets.symmetric(horizontal: mobile ? 14 : 10),
             decoration: BoxDecoration(
               color: hover || _portal.isShowing ? c.control : null,
               borderRadius: BorderRadius.circular(7),
@@ -1257,20 +1311,24 @@ class _ResourceWindowsRowState extends State<_ResourceWindowsRow> {
                   width: 16,
                   child: UiGlyph(
                     GenGlyphs.resourceWindows,
-                    size: 15,
+                    size: mobile ? 17 : 15,
                     color: c.muted,
                   ),
                 ),
                 Expanded(
                   child: Text(
                     l.floating_open,
-                    style: UiText.sans(13, color: c.ink),
+                    style: UiText.sans(mobile ? 14 : 13, color: c.ink),
                   ),
                 ),
                 if (uiNewBadge(context, 'tools.resourceWindows', l.gen_menuNew)
                     case final b?)
                   UiMini(b, tone: UiMiniTone.accent),
-                UiGlyph(UiGlyphs.chevronRight, size: 13, color: c.faint),
+                UiGlyph(
+                  UiGlyphs.chevronRight,
+                  size: mobile ? 15 : 13,
+                  color: c.faint,
+                ),
               ],
             ),
           ),

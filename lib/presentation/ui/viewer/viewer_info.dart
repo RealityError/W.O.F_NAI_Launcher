@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../../widgets/common/translation_icon.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
@@ -42,7 +43,10 @@ class ViewerInfoPanel extends StatelessWidget {
     final data = ViewerPageScope.of(context).data;
     return Container(
       key: const Key('viewer-info'),
-      width: ImageViewerPage.infoWidth,
+      // 手机端信息栏是整屏底部抽屉，不再固定 340。
+      width: usesMobileLayout
+          ? MediaQuery.sizeOf(context).width
+          : ImageViewerPage.infoWidth,
       decoration: BoxDecoration(
         color: c.panel,
         border: drawer ? null : Border(left: BorderSide(color: c.line)),

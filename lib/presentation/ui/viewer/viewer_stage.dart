@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -25,6 +26,9 @@ class ViewerStage extends StatelessWidget {
   final bool fullscreen;
 
   static const topHeight = 61.0;
+
+  /// 手机端顶栏更矮、只留图标，不再塞返回文字和快捷键帽。
+  static const mobileTopHeight = 52.0;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +88,36 @@ class ViewerTopBar extends StatelessWidget {
     final item = data.current;
 
     final Widget where;
-    if (gen) {
+    if (usesMobileLayout) {
+      // 手机端标题只占 70dp 左右：生成模式只留保存状态，画廊模式只留位置，
+      // 张数和范围名在信息栏里还能看到，不再塞成「生…」。
+      if (gen) {
+        final saved = item?.saved ?? false;
+        where = UiMini(
+          saved ? l10n.imageViewer_saved : l10n.imageViewer_unsaved,
+          background: saved ? const Color(0xFF10301F) : ViewerInk.amberBg,
+          foreground: saved ? const Color(0xFF3DD68C) : ViewerInk.amber,
+        );
+      } else {
+        where = Text.rich(
+          key: const Key('viewer-position'),
+          TextSpan(
+            children: [
+              TextSpan(
+                text: viewerNumber(context, data.position + 1),
+                style: const TextStyle(color: ViewerInk.strong),
+              ),
+              TextSpan(text: ' / ${viewerNumber(context, data.total)}'),
+            ],
+          ),
+          style: UiText.mono(
+            12.5,
+            weight: FontWeight.w500,
+            color: const Color(0xFFBDBDBD),
+          ),
+        );
+      }
+    } else if (gen) {
       final saved = item?.saved ?? false;
       where = Row(
         spacing: 8,
@@ -139,6 +172,54 @@ class ViewerTopBar extends StatelessWidget {
             ),
           ),
         ],
+      );
+    }
+
+    // 手机端：返回只留箭头，缩放收成一个胶囊，右侧固定两个图标；
+    // 360dp 宽下也放得下，不再让整行溢出。
+    if (usesMobileLayout) {
+      final backLabel =
+          data.backLabel ??
+          (gen
+              ? l10n.imageViewer_backGeneration
+              : l10n.imageViewer_backGallery);
+      return Container(
+        key: const Key('viewer-topbar'),
+        height: ViewerStage.mobileTopHeight,
+        decoration: const BoxDecoration(color: ViewerInk.stage),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          spacing: 6,
+          children: [
+            ViewerDarkIcon(
+              key: const Key('viewer-back'),
+              tooltip: backLabel,
+              glyph: UiGlyphs.arrowLeft,
+              size: 20,
+              extent: 40,
+              onTap: () => scope.actions.onClose(keyboard: false),
+            ),
+            Expanded(child: where),
+            const _ZoomControl(compact: true),
+            ViewerDarkIcon(
+              key: const Key('viewer-fullscreen'),
+              tooltip: l10n.imageViewer_fullscreen,
+              glyph: _G.full,
+              size: 18,
+              extent: 40,
+              onTap: () => ctrl.run(ViewerCommand.fullscreen),
+            ),
+            ViewerDarkIcon(
+              key: const Key('viewer-info-toggle'),
+              tooltip: l10n.imageViewer_infoPanel,
+              glyph: UiGlyphs.panel,
+              size: 18,
+              extent: 40,
+              on: ctrl.infoVisible,
+              onTap: ctrl.toggleInfo,
+            ),
+          ],
+        ),
       );
     }
 
@@ -211,8 +292,10 @@ class ViewerTopBar extends StatelessWidget {
 }
 
 /// 缩放：− │ 适应 · 68% ▾ │ +（点中间选比例）。
+/// 手机端收成一个「适应 · 78% ▾」胶囊，点开同一套比例菜单，放大靠双指。
 class _ZoomControl extends StatelessWidget {
-  const _ZoomControl();
+  const _ZoomControl({this.compact = false});
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +314,58 @@ class _ZoomControl extends StatelessWidget {
             : z.fitted
             ? l10n.imageViewer_zoomFit(pct)
             : '$pct%';
+        if (compact) {
+          return Builder(
+            builder: (bctx) => UiPressable(
+              key: const Key('viewer-zoom-menu'),
+              onTap: ready
+                  ? () {
+                      final box = bctx.findRenderObject()! as RenderBox;
+                      ctrl.openZoomMenu(
+                        UiPopoverAnchor(
+                          box.localToGlobal(
+                            box.size.bottomCenter(const Offset(-60, 6)),
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
+              builder: (context, hover) => Container(
+                height: 38,
+                constraints: const BoxConstraints(minWidth: 92),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: hover ? ViewerInk.fill : const Color(0x12FFFFFF),
+                  border: Border.all(color: ViewerInk.border),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 6,
+                  children: [
+                    Text(
+                      label,
+                      style: UiText.mono(
+                        12.5,
+                        weight: FontWeight.w500,
+                        color: ViewerInk.strong,
+                      ),
+                    ),
+                    const Opacity(
+                      opacity: .6,
+                      child: UiGlyph(
+                        UiGlyphs.chevronDown,
+                        size: 13,
+                        color: ViewerInk.strong,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
         Widget side(String glyph, String tip, ViewerCommand cmd, Key key) =>
             Tooltip(
               message: tip,

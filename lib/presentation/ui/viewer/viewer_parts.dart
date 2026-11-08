@@ -130,6 +130,7 @@ class ViewerDarkButton extends StatelessWidget {
 }
 
 /// 舞台上的 30 × 30 图标按钮；[on] 时浅白底（信息栏开着、1:1）。
+/// [extent] 是按钮点击区边长，手机端放大到 40。
 class ViewerDarkIcon extends StatelessWidget {
   const ViewerDarkIcon({
     super.key,
@@ -139,6 +140,7 @@ class ViewerDarkIcon extends StatelessWidget {
     this.onTap,
     this.on = false,
     this.size = 16,
+    this.extent = 30,
   });
   final String tooltip;
   final String? glyph;
@@ -148,6 +150,7 @@ class ViewerDarkIcon extends StatelessWidget {
   final VoidCallback? onTap;
   final bool on;
   final double size;
+  final double extent;
 
   @override
   Widget build(BuildContext context) => Tooltip(
@@ -157,8 +160,8 @@ class ViewerDarkIcon extends StatelessWidget {
       builder: (context, hover) {
         final ink = on || hover ? ViewerInk.strong : ViewerInk.icon;
         return Container(
-          height: 30,
-          constraints: const BoxConstraints(minWidth: 30),
+          height: extent,
+          constraints: BoxConstraints(minWidth: extent),
           padding: label == null
               ? null
               : const EdgeInsets.symmetric(horizontal: 6),

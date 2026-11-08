@@ -2208,6 +2208,35 @@ class ImageGenerationNotifier extends _$ImageGenerationNotifier {
     state = state.copyWith(displayImages: images);
   }
 
+  /// 调试模式注入本地示例图（`--dart-define=NAI_DEMO=1` 的构建才会调用）。
+  ///
+  /// 不再走接口与计费，但状态结构与真实生成完全一致：画布、最近生成、查看器、
+  /// 导演工具都把它当普通结果使用。发布构建不会调用。
+  void adoptDemoImages(List<GeneratedImage> images) {
+    if (images.isEmpty) return;
+    final runId = _startGenerationRun();
+    final adopted = [
+      for (final (index, image) in images.indexed)
+        image.copyWith(generationRunId: runId, batchIndex: index),
+    ];
+    state = state.copyWith(
+      generationRunId: runId,
+      status: GenerationStatus.idle,
+      progress: 0,
+      errorMessage: null,
+      currentImages: adopted,
+      history: adopted,
+      displayImages: adopted,
+      batchWidth: adopted.first.width,
+      batchHeight: adopted.first.height,
+      displayWidth: adopted.first.width,
+      displayHeight: adopted.first.height,
+      currentImage: adopted.length,
+      totalImages: adopted.length,
+    );
+    _retainSharePreparationCacheForCurrentHistory();
+  }
+
   /// 更新指定生成图像的本地文件路径。
   void updateImageFilePath(String imageId, String filePath) {
     GeneratedImage? image;

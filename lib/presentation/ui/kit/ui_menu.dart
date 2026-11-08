@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../mobile/mobile_breakpoints.dart';
 import 'ui_colors.dart';
 import 'ui_controls.dart';
 import 'ui_glyph.dart';
@@ -76,6 +77,13 @@ class UiMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
+    // 手机端弹层是底部面板：行高按触摸目标放大到 46，字号、内边距同步上一档。
+    final mobile = usesMobileLayout;
+    final rowHeight = mobile ? 46.0 : 34.0;
+    final subRowHeight = mobile ? 60.0 : 48.0;
+    final labelSize = mobile ? 14.0 : 13.0;
+    final glyphSize = mobile ? 16.0 : 15.0;
+    final padH = mobile ? 14.0 : 10.0;
     return UiPopoverSurface(
       width: width,
       padding: const EdgeInsets.all(4),
@@ -110,10 +118,10 @@ class UiMenu extends StatelessWidget {
                           ? c.error
                           : c.ink;
                       return Container(
-                        height: it.subtitle == null ? 34 : 48,
+                        height: it.subtitle == null ? rowHeight : subRowHeight,
                         padding: EdgeInsets.only(
-                          left: 10 + it.indent,
-                          right: 10,
+                          left: padH + it.indent,
+                          right: padH,
                         ),
                         decoration: BoxDecoration(
                           color: hover ? c.control : null,
@@ -125,7 +133,7 @@ class UiMenu extends StatelessWidget {
                             if (it.glyph != null)
                               UiGlyph(
                                 it.glyph!,
-                                size: 15,
+                                size: glyphSize,
                                 color: it.danger ? c.error : c.muted,
                               )
                             else
@@ -144,7 +152,7 @@ class UiMenu extends StatelessWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: UiText.sans(
-                                            13,
+                                            labelSize,
                                             color: fg,
                                             weight: it.checked
                                                 ? FontWeight.w600
@@ -185,7 +193,10 @@ class UiMenu extends StatelessWidget {
                                         it.subtitle!,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: UiText.sans(11, color: c.faint),
+                                        style: UiText.sans(
+                                          mobile ? 12 : 11,
+                                          color: c.faint,
+                                        ),
                                       ),
                                     ),
                                 ],

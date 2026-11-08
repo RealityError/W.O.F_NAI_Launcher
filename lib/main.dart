@@ -67,6 +67,7 @@ import 'data/services/temp_image_service.dart';
 import 'data/services/thumbnail_service.dart';
 import 'presentation/providers/online_gallery_blacklist_provider.dart';
 import 'presentation/screens/splash/app_bootstrap.dart';
+import 'presentation/dev/demo_fixtures.dart';
 import 'presentation/providers/warmup_provider.dart';
 import 'presentation/screens/splash/startup_data_recovery.dart';
 
@@ -821,6 +822,16 @@ Future<void> _bootstrapPreparedApplication() async {
   final container = ProviderContainer(
     overrides: [appStartupReadyProvider.overrideWithValue(servicesReady)],
   );
+
+  // 调试模式（`--dart-define=NAI_DEMO=1`）：注入一张本地示例图，
+  // 方便没有订阅/额度时讨论生成页与导演工具 UI。
+  if (kDemoFixtures) {
+    _runDeferredStartupStep(
+      'Demo fixtures',
+      servicesReady,
+      () => seedDemoFixtures(container),
+    );
+  }
 
   // 后台执行 L2 Hive 缓存清理（不阻塞启动）
   _runDeferredStartupStep('Metadata cache cleanup', servicesReady, () async {
