@@ -96,17 +96,18 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
   WidgetBuilder? _popover;
   Object? _tag;
 
-  /// 手机端：参数（选项 / 运行 / 结果）与输入队列改为页面内底部弹层。
+  /// 手机端：参数（选项 / 结果）与输入队列是页面内底部弹层；
+  /// 运行按钮常驻页面底部，不用进弹层才能跑。
   var _mobileSideOpen = false;
   var _mobileQueueOpen = false;
   var _mobileResultsOpen = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // 手机端进来就直接展开当前工具的参数，和桌面右栏常驻一致，
-    // 不用先点一下工具才“进得去”；底部工具条仍露出一截，可原地换工具。
-    _mobileSideOpen = usesMobileLayout;
+  /// 手机端底部工具条选工具：只换选中的工具（面板开着就顺手关掉），运行按钮跟着变。
+  void _mobileSelectTool(ToolsDirectorTool tool) {
+    final d = widget.data;
+    if (d.running || d.tool == tool) return;
+    widget.actions.onTool(tool);
+    if (_mobileSideOpen) setState(() => _mobileSideOpen = false);
   }
 
   @override
@@ -180,13 +181,14 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
                 child: ColoredBox(
                   key: const Key('tools-director'),
                   color: c.bg,
-                  // 手机端：画布优先 + 底部工具条，参数与输入队列为底部弹层。
+                  // 手机端：画布优先 + 常驻运行条 + 底部工具条，参数与输入队列为底部弹层。
                   // 桌面端保持原三栏结构不变。
                   child: usesMobileLayout
                       ? _MobileDirectorLayout(
                           sideOpen: _mobileSideOpen,
                           queueOpen: _mobileQueueOpen,
                           resultsOpen: _mobileResultsOpen,
+                          onSelectTool: _mobileSelectTool,
                           onOpenSide: () =>
                               setState(() => _mobileSideOpen = true),
                           onCloseSide: () =>
@@ -229,13 +231,15 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
 }
 
 /// 手机端导演工具布局（方案 A）：顶栏（返回 / 标题 / Anlas）│
-/// 画布（对比方式浮在右上角）│ 底部工具条（点工具选中并弹出参数面板）│
-/// 参数与输入队列都是页面内底部弹层。桌面端三栏布局保持不变。
+/// 画布（对比方式浮在右上角）│ 常驻运行条（工具简介 + 大号「运行…」按钮）│
+/// 底部工具条（点工具直接切换，不用先进弹层）。参数与输入队列仍是底部弹层。
+/// 桌面端三栏布局保持不变。
 class _MobileDirectorLayout extends StatelessWidget {
   const _MobileDirectorLayout({
     required this.sideOpen,
     required this.queueOpen,
     required this.resultsOpen,
+    required this.onSelectTool,
     required this.onOpenSide,
     required this.onCloseSide,
     required this.onOpenQueue,
@@ -247,6 +251,7 @@ class _MobileDirectorLayout extends StatelessWidget {
   final bool sideOpen;
   final bool queueOpen;
   final bool resultsOpen;
+  final ValueChanged<ToolsDirectorTool> onSelectTool;
   final VoidCallback onOpenSide;
   final VoidCallback onCloseSide;
   final VoidCallback onOpenQueue;
@@ -281,11 +286,11 @@ class _MobileDirectorLayout extends StatelessWidget {
               children: [
                 const _MobileTopBar(),
                 Expanded(child: _MobileStage(onOpenQueue: onOpenQueue)),
-                _MobileToolBar(
-                  sideOpen: sideOpen,
-                  onOpenSide: onOpenSide,
-                  onCloseSide: onCloseSide,
+                _MobileRunBar(
+                  onOpenOptions: onOpenSide,
+                  onOpenResults: onOpenResults,
                 ),
+                _MobileToolBar(onSelect: onSelectTool),
               ],
             ),
             if (sheet) ...[
@@ -522,6 +527,149 @@ class _MobileStage extends StatelessWidget {
   }
 }
 
+/// 手机端常驻运行条：上面一行是当前工具的一句话介绍（功能介绍和画布同页），
+/// 有可调选项时给「选项」入口、有结果时给「结果 n」；
+/// 下面一行是 44 高的大号「运行…」按钮，和主页面「生成」按钮同一主按钮样式。
+/// 没有可调选项的工具（背景移除 / 杂线清理 / 线稿提取 / 草图化）直接点运行，
+/// 不用再进弹层。
+class _MobileRunBar extends StatelessWidget {
+  const _MobileRunBar({
+    required this.onOpenOptions,
+    required this.onOpenResults,
+  });
+
+  final VoidCallback onOpenOptions;
+  final VoidCallback onOpenResults;
+
+  /// 8 + 1（顶部分隔线）+ 22（简介 / 入口）+ 6 + 44（按钮）+ 8。
+  static const height = 89.0;
+
+  /// 有可调选项的工具；其余工具点运行就能跑。
+  static bool hasOptions(ToolsDirectorTool tool) =>
+      tool == ToolsDirectorTool.emotion ||
+      tool == ToolsDirectorTool.colorize ||
+      tool == ToolsDirectorTool.pixelSnap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final scope = ToolsDirectorScope.of(context);
+    final d = scope.data;
+    final l = context.l10n;
+    final name = ToolsFormat.toolName(l, d.tool);
+    final local = d.tool == ToolsDirectorTool.pixelSnap;
+    final button = UiPressable(
+      key: const Key('tools-mobile-run'),
+      onTap: d.canRun ? scope.actions.onRun : null,
+      builder: (context, hover) => Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: hover ? Color.lerp(c.brand, Colors.black, .08) : c.brand,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: 10,
+          children: [
+            if (d.running) ...[
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  // 减少动态效果时停在一段弧上。
+                  value: MediaQuery.disableAnimationsOf(context) ? .3 : null,
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                l.tools_running(name),
+                style: UiText.sans(
+                  14,
+                  weight: FontWeight.w600,
+                  color: c.onBrand,
+                ),
+              ),
+            ] else ...[
+              Text(
+                l.tools_runTool(name),
+                style: UiText.sans(
+                  14,
+                  weight: FontWeight.w600,
+                  color: c.onBrand,
+                ),
+              ),
+              Opacity(
+                opacity: .9,
+                child: local
+                    ? Text(
+                        l.tools_localFree,
+                        style: UiText.sans(
+                          13,
+                          weight: FontWeight.w600,
+                          color: c.onBrand,
+                        ),
+                      )
+                    : ToolsButtonCost(d.cost),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    return Container(
+      key: const Key('tools-director-runbar'),
+      height: height,
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(top: BorderSide(color: c.line)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 6,
+        children: [
+          SizedBox(
+            height: 22,
+            child: Row(
+              spacing: 6,
+              children: [
+                Expanded(
+                  child: Text(
+                    '$name · ${ToolsFormat.toolDesc(l, d.tool)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: UiText.sans(11.5, color: c.muted),
+                  ),
+                ),
+                if (hasOptions(d.tool))
+                  ToolsChip(
+                    key: const Key('tools-mobile-options'),
+                    height: 22,
+                    onTap: onOpenOptions,
+                    children: [Text(l.tools_dtOptions)],
+                  ),
+                if (d.runs.isNotEmpty)
+                  ToolsChip(
+                    key: const Key('tools-mobile-results'),
+                    height: 22,
+                    mono: true,
+                    onTap: onOpenResults,
+                    children: [Text(l.tools_results), Text('${d.runs.length}')],
+                  ),
+              ],
+            ),
+          ),
+          if (d.canRun || d.running)
+            button
+          else
+            Opacity(opacity: .45, child: button),
+        ],
+      ),
+    );
+  }
+}
+
 /// 手机端上条：左边是「输入 1/2 ▾」（点开输入队列弹层），右边是适应/原始大小。
 class _MobileStageBar extends StatelessWidget {
   const _MobileStageBar({required this.onOpenQueue});
@@ -672,15 +820,9 @@ class _FitChip extends StatelessWidget {
 
 /// 手机端底部工具条：7 个工具图标（清理 / 线条 / 上色 / 像素），点一下选中并弹出参数面板。
 class _MobileToolBar extends StatelessWidget {
-  const _MobileToolBar({
-    required this.sideOpen,
-    required this.onOpenSide,
-    required this.onCloseSide,
-  });
+  const _MobileToolBar({required this.onSelect});
 
-  final bool sideOpen;
-  final VoidCallback onOpenSide;
-  final VoidCallback onCloseSide;
+  final ValueChanged<ToolsDirectorTool> onSelect;
 
   /// 工具条总高（6+48+6），参数弹层贴在它上面，保证工具按钮始终可点。
   static const height = 60.0;
@@ -717,14 +859,8 @@ class _MobileToolBar extends StatelessWidget {
               selected: d.tool == tool,
               enabled: !d.running,
               onTap: () {
-                final same = d.tool == tool;
-                if (!same && !d.running) scope.actions.onTool(tool);
-                // 点别的工具原地切换；再点当前工具收起面板。
-                if (same && sideOpen) {
-                  onCloseSide();
-                } else {
-                  onOpenSide();
-                }
+                // 只切换选中的工具，运行按钮和介绍跟着变；不再弹参数面板。
+                if (!d.running) onSelect(tool);
               },
             ),
         ],
@@ -1599,6 +1735,8 @@ class _ResultActions extends StatelessWidget {
     final a = scope.actions;
     final l = context.l10n;
     final run = d.currentRun;
+    // 手机上还没结果时整块不占高度，把空间让给画布；有了结果再出现操作行。
+    if (run == null && usesMobileLayout) return const SizedBox.shrink();
     final ok = run != null && !d.running;
     final now = d.now ?? DateTime.now();
     Widget btn(String key, Widget icon, String label, VoidCallback onTap) =>

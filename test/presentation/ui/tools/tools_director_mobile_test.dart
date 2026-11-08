@@ -8,8 +8,8 @@ import 'tools_test_harness.dart';
 /// 导演工具手机端布局（方案 A，360dp 竖屏）回归测试。
 ///
 /// 桌面三栏布局由既有 tools_director_test.dart 覆盖；这里只验证手机分支：
-/// 左栏工具清单与右栏都不内联，改画布优先 + 底部工具条；
-/// 进入页面直接展开当前工具参数，底部工具条常驻，面板开着也能原地换工具。
+/// 左栏工具清单与右栏都不内联，画布优先 + 常驻运行条 + 底部工具条；
+/// 选工具只切换、不弹层，运行按钮就在页面上；弹层只留给「选项」和队列 / 结果。
 void main() {
   setUp(() => debugForceMobileLayout = true);
   tearDown(() => debugForceMobileLayout = null);
@@ -21,73 +21,72 @@ void main() {
     height: 780,
   );
 
-  Future<void> closeSide(WidgetTester tester) async {
-    await tester.tap(find.byKey(const Key('tools-director-mobile-side-close')));
-    await tester.pumpAndSettle();
-  }
-
-  testWidgets('进入即展开当前工具参数，再点当前工具收起', (tester) async {
+  testWidgets('进入即有运行按钮和工具介绍，选工具不用先进弹层', (tester) async {
     await pumpPhone(tester);
 
     expect(find.byKey(const Key('tools-director')), findsOneWidget);
     // 桌面的左栏清单与右栏都不内联。
     expect(find.byKey(const Key('tools-director-tools')), findsNothing);
-    // 进来就能看到参数面板（不用先点工具）。
-    expect(
-      find.byKey(const Key('tools-director-mobile-side-panel')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key('tools-director-side')), findsOneWidget);
+    // 画布 + 常驻运行条 + 底部工具条同页：不用点工具才能“进去”。
     expect(
       find.byKey(const Key('tools-director-mobile-toolbar')),
       findsOneWidget,
     );
-    expect(tester.takeException(), isNull);
-
-    // 再点当前工具 = 收起面板，露出画布。
-    await tester.tap(
-      find.byKey(const Key('tools-mobile-removeBackground')),
-      warnIfMissed: false,
-    );
-    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tools-director-runbar')), findsOneWidget);
+    expect(find.byKey(const Key('tools-mobile-run')), findsOneWidget);
+    expect(find.text('运行背景移除'), findsOneWidget);
+    expect(find.textContaining('抠出人物'), findsOneWidget);
+    // 背景移除没有可调选项：不给「选项」入口。
+    expect(find.byKey(const Key('tools-mobile-options')), findsNothing);
     expect(
       find.byKey(const Key('tools-director-mobile-side-panel')),
       findsNothing,
     );
     expect(find.byKey(const Key('tools-compare-mobile')), findsOneWidget);
-    expect(find.byKey(const Key('tools-input-chip')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
 
-    // 再点一下同一个工具又展开。
-    await tester.tap(
-      find.byKey(const Key('tools-mobile-removeBackground')),
-      warnIfMissed: false,
+  testWidgets('点工具只切换：不弹层；有选项的工具才给「选项」入口', (tester) async {
+    final r = ToolsRecorder();
+    await pumpToolsDirector(
+      tester,
+      data: ToolsFixture.emotion(),
+      r: r,
+      width: 360,
+      height: 780,
     );
+
+    // 表情修复有可调选项 → 运行条上给「选项」入口，按钮写「运行表情修复」。
+    expect(find.text('运行表情修复'), findsOneWidget);
+    expect(find.byKey(const Key('tools-mobile-options')), findsOneWidget);
+    expect(
+      find.byKey(const Key('tools-director-mobile-side-panel')),
+      findsNothing,
+    );
+
+    // 「选项」才打开参数弹层，用来调表情 / 强度 / 提示词。
+    await tester.tap(find.byKey(const Key('tools-mobile-options')));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('tools-director-mobile-side-panel')),
       findsOneWidget,
     );
-    expect(tester.takeException(), isNull);
-  });
+    expect(find.byKey(const Key('tools-director-side')), findsOneWidget);
 
-  testWidgets('面板开着点别的工具，原地切换参数', (tester) async {
-    await pumpPhone(tester);
+    await tester.tap(find.byKey(const Key('tools-director-mobile-side-close')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('tools-director-mobile-side-panel')),
+      findsNothing,
+    );
 
+    // 底部工具条只上报切换，不打开面板。
     await tester.tap(
       find.byKey(const Key('tools-mobile-colorize')),
       warnIfMissed: false,
     );
     await tester.pumpAndSettle();
-    expect(
-      find.byKey(const Key('tools-director-mobile-side-panel')),
-      findsOneWidget,
-    );
-    // 面板没关，内容切到「上色」。
-    expect(find.text('上色'), findsWidgets);
-    expect(tester.takeException(), isNull);
-
-    await closeSide(tester);
+    expect(r.called('onTool(colorize)'), isTrue);
     expect(
       find.byKey(const Key('tools-director-mobile-side-panel')),
       findsNothing,
@@ -97,7 +96,6 @@ void main() {
 
   testWidgets('输入胶囊打开输入队列弹层，可关闭', (tester) async {
     await pumpPhone(tester);
-    await closeSide(tester);
 
     await tester.tap(find.byKey(const Key('tools-input-chip')));
     await tester.pumpAndSettle();
@@ -120,15 +118,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('参数面板里的「结果」打开结果弹层', (tester) async {
+  testWidgets('运行条上的「结果」打开结果弹层', (tester) async {
     await pumpPhone(tester);
 
-    await tester.tap(
-      find.byKey(const Key('tools-mobile-colorize')),
-      warnIfMissed: false,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('tools-director-mobile-results')));
+    await tester.tap(find.byKey(const Key('tools-mobile-results')));
     await tester.pumpAndSettle();
 
     expect(

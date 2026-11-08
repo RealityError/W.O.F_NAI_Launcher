@@ -1,0 +1,30 @@
+﻿00:00 +0: loading D:/project/WOF-android/test/presentation/ui/tools/tools_director_mobile_test.dart
+00:00 +0: 进入即有运行按钮和工具介绍，选工具不用先进弹层
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: null
+  Actual: FlutterError:<A RenderFlex overflowed by 1.00 pixels on the bottom.>
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///D:/project/WOF-android/test/presentation/ui/tools/tools_director_mobile_test.dart:46:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///D:/project/WOF-android/test/presentation/ui/tools/tools_director_mobile_test.dart line 46
+The test description was:
+  进入即有运行按钮和工具介绍，选工具不用先进弹层
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:02 +0 -1: 进入即有运行按钮和工具介绍，选工具不用先进弹层 [E]
+  Test failed. See exception logs above.
+  The test description was: 进入即有运行按钮和工具介绍，选工具不用先进弹层
+  
+00:02 +0 -1: Some tests failed.
+
+Failing tests:
+  D:/project/WOF-android/test/presentation/ui/tools/tools_director_mobile_test.dart: 进入即有运行按钮和工具介绍，选工具不用先进弹层
