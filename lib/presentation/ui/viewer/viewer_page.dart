@@ -39,8 +39,11 @@ abstract class ViewerController {
   void openZoomMenu(UiPopoverAnchor anchor);
   void closePopover();
 
-  /// 全屏时控件（角标、胶片条）是否显示：鼠标静止 2 秒自动藏。
+  /// 全屏时控件（角标、胶片条）是否显示：鼠标静止 2 秒自动藏；手机上点图片切换。
   bool get chromeVisible;
+
+  /// 手机全屏：点图片显示 / 隐藏角标与胶片条（触屏没有鼠标悬停）。
+  void toggleChrome();
 
   /// 全屏时鼠标在底部：显示胶片条。
   bool get filmstripPeek;
@@ -194,17 +197,23 @@ class _ImageViewerPageState extends State<ImageViewerPage>
     }
   }
 
-  /// 全屏：动一下鼠标显示控件，静止 2 秒藏起来。
+  /// 全屏：桌面动一下鼠标显示控件，静止 2 秒藏起来；
+  /// 手机没有悬停，进入全屏后控件常显，由点图片显式切换（见 [toggleChrome]）。
   void _wake([Offset? pointer, double? height]) {
     _idleTimer?.cancel();
-    final peek = pointer != null && height != null && pointer.dy > height - 110;
+    final mobile = usesMobileLayout;
+    final peek =
+        !mobile &&
+        pointer != null &&
+        height != null &&
+        pointer.dy > height - 110;
     if (!_chrome || peek != _peek) {
       setState(() {
         _chrome = true;
         _peek = peek;
       });
     }
-    if (!_data.fullscreen) return;
+    if (!_data.fullscreen || mobile) return;
     _idleTimer = Timer(const Duration(seconds: 2), () {
       if (mounted && !_drawer) {
         setState(() {
@@ -213,6 +222,12 @@ class _ImageViewerPageState extends State<ImageViewerPage>
         });
       }
     });
+  }
+
+  @override
+  void toggleChrome() {
+    _idleTimer?.cancel();
+    setState(() => _chrome = !_chrome);
   }
 
   @override

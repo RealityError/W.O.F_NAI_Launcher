@@ -262,6 +262,9 @@ enum ViewerAction {
   copyTo,
   showInFolder,
 
+  /// 交给系统分享面板（Android 手机端；桌面不给该动作）。
+  shareImage,
+
   /// 生成结果保存到图库。
   save,
 }

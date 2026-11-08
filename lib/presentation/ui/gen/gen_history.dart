@@ -280,7 +280,8 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
             if (!hideHeader)
               Container(
                 key: const Key('gen-history-header'),
-                height: 40,
+                // 手机端图标按钮命中区 48dp，标题行随之加高。
+                height: usesMobileLayout ? 56 : 40,
                 padding: const EdgeInsets.only(left: 8, right: 6),
                 decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: c.line)),
@@ -429,7 +430,7 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
             if (selection.active)
               Container(
                 key: const Key('gen-history-selection'),
-                height: 40,
+                height: usesMobileLayout ? 56 : 40,
                 padding: const EdgeInsets.only(left: 10, right: 6),
                 decoration: BoxDecoration(
                   color: c.accent.withValues(alpha: .06),
@@ -480,7 +481,8 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
               ),
             Container(
               key: const Key('gen-history-footer'),
-              height: 40,
+              // 手机端底部一排（自动保存 / 锁定 / 全存 / 清空）按 48dp 触控目标。
+              height: usesMobileLayout ? 56 : 40,
               padding: const EdgeInsets.symmetric(horizontal: 6),
               decoration: BoxDecoration(
                 border: Border(

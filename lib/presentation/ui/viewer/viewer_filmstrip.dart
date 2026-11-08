@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_text.dart';
 import 'viewer_contract.dart';
@@ -134,7 +135,9 @@ class _ViewerFilmstripState extends State<ViewerFilmstrip> {
                   child: SingleChildScrollView(
                     controller: _scroll,
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: usesMobileLayout ? 8 : 14,
+                    ),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
                         minWidth: box.maxWidth - 28,
@@ -170,7 +173,7 @@ class _Fade extends StatelessWidget {
     right: left ? null : 0,
     top: 0,
     bottom: 0,
-    width: 60,
+    width: usesMobileLayout ? 24 : 60,
     child: IgnorePointer(
       child: DecoratedBox(
         decoration: BoxDecoration(

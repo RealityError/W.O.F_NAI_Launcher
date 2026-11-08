@@ -1434,6 +1434,7 @@ class GenSlots {
     this.translationGuide,
     this.agentToggle,
     this.viewerControls,
+    this.mobileHeaderActions = const <Widget>[],
     this.historyCaptionInset = true,
     this.preserveHistory = false,
   });
@@ -1452,6 +1453,10 @@ class GenSlots {
 
   /// 简洁查看器的展示选项，不改变画布数据。
   final Widget? viewerControls;
+
+  /// 手机顶栏右侧的动作（如「解除相机锁定」）。手机布局独占，
+  /// 由接线层提供，界面层不直接读 provider。
+  final List<Widget> mobileHeaderActions;
 
   /// Agent 停靠右侧时，历史栏不再占用窗口按钮所在的一行。
   final bool historyCaptionInset;

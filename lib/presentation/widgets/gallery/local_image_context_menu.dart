@@ -30,6 +30,11 @@ enum LocalImageContextAction {
   /// 桌面右键菜单不展示该动作，避免改变桌面入口。
   saveToAlbum,
 
+  /// 手机端：把图片交给系统分享面板（Android ACTION_SEND）。
+  ///
+  /// 桌面右键菜单不展示该动作，避免改变桌面入口。
+  share,
+
   /// 手机端：心形收藏开关（桌面是卡片悬停按钮，触屏无 hover）。
   toggleFavorite,
   delete,
@@ -290,12 +295,18 @@ class LocalImageContextMenu {
           l.localGallery_showInFolder,
           StudioIcons.galleryReveal,
         ),
-        if (Platform.isAndroid)
+        if (Platform.isAndroid) ...[
+          item(
+            LocalImageContextAction.share,
+            l.common_share,
+            StudioIcons.gallerySend,
+          ),
           item(
             LocalImageContextAction.saveToAlbum,
             l.common_export,
             Icons.save_alt_rounded,
           ),
+        ],
         item(
           LocalImageContextAction.delete,
           l.common_delete,

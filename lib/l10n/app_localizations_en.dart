@@ -66,6 +66,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get common_export => 'Export';
 
   @override
+  String get common_share => 'Share';
+
+  @override
   String get common_import => 'Import';
 
   @override
@@ -14683,6 +14686,40 @@ class AppLocalizationsEn extends AppLocalizations {
       'New preferences are saved and used for the next offspring.';
 
   @override
+  String get generation_backgroundRunningTitle => 'Generating in background';
+
+  @override
+  String get generation_backgroundRunningText =>
+      'NovelAI is generating images. You will be notified when it finishes.';
+
+  @override
+  String get generation_backgroundDoneTitle => 'Generation complete';
+
+  @override
+  String generation_backgroundDoneText(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images generated',
+      one: '1 image generated',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get generation_backgroundFailedTitle => 'Generation failed';
+
+  @override
+  String get generation_backgroundFailedText =>
+      'Tap to return to the app for details.';
+
+  @override
+  String get generation_backgroundCancelledTitle => 'Generation cancelled';
+
+  @override
+  String get generation_backgroundCancelledText => 'Tap to return to the app.';
+
+  @override
   String get gen_cancel => 'Cancel';
 
   @override
@@ -16828,9 +16865,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get channel_motionSub => 'Subtle animation, paused while generating';
 
   @override
-  String get channel_toastTitle => 'This session';
-
-  @override
   String channel_batch(String time, int count) {
     return '$time · ×$count';
   }
@@ -16880,11 +16914,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get channel_weekday7 => 'Sun';
-
-  @override
-  String channel_scrubWhen(String day, String time) {
-    return '$day $time';
-  }
 
   @override
   String get rag_title => 'RAG vector system';

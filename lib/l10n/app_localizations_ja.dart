@@ -66,6 +66,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get common_export => 'エクスポート';
 
   @override
+  String get common_share => '共有';
+
+  @override
   String get common_import => 'インポート';
 
   @override
@@ -14262,6 +14265,33 @@ class AppLocalizationsJa extends AppLocalizations {
   String get explore_compareDoneBody => '新しい優先度は保存され、次の子の生成に使われます。';
 
   @override
+  String get generation_backgroundRunningTitle => 'バックグラウンドで生成中';
+
+  @override
+  String get generation_backgroundRunningText =>
+      'NovelAI が画像を生成しています。完了すると通知します。';
+
+  @override
+  String get generation_backgroundDoneTitle => '生成完了';
+
+  @override
+  String generation_backgroundDoneText(int count) {
+    return '$count 枚の画像を生成しました';
+  }
+
+  @override
+  String get generation_backgroundFailedTitle => '生成に失敗しました';
+
+  @override
+  String get generation_backgroundFailedText => 'タップしてアプリに戻り理由を確認してください。';
+
+  @override
+  String get generation_backgroundCancelledTitle => '生成をキャンセルしました';
+
+  @override
+  String get generation_backgroundCancelledText => 'タップしてアプリに戻ります。';
+
+  @override
   String get gen_cancel => 'キャンセル';
 
   @override
@@ -16335,9 +16365,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get channel_motionSub => 'ごく軽い動き。生成中は自動で止まります';
 
   @override
-  String get channel_toastTitle => '今回のチャンネル';
-
-  @override
   String channel_batch(String time, int count) {
     return '$time · $count 枚';
   }
@@ -16387,11 +16414,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get channel_weekday7 => '日';
-
-  @override
-  String channel_scrubWhen(String day, String time) {
-    return '$day $time';
-  }
 
   @override
   String get rag_title => 'RAG ベクトルシステム';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_resource_kind.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
@@ -34,9 +35,11 @@ class GenHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ui;
     final scope = GenScope.of(context, GenAspect.header);
+    // 手机端：胶囊 50 高（描边内 48dp 命中区），顶栏一行 = 4 + 50 + 4 + 1px 边线。
+    final mobile = usesMobileLayout;
     return Container(
       key: const Key('gen-header'),
-      constraints: const BoxConstraints(minHeight: 37),
+      constraints: BoxConstraints(minHeight: mobile ? 58 : 37),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: c.line)),
       ),
@@ -87,7 +90,9 @@ class _Capsule extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ui;
     return Container(
-      height: 28,
+      // 手机端按钮/胶囊的命中区要 48dp：外框放到 50 高（描边内 48），
+      // 视觉上的胶囊仍由内部控件的 22-28dp 尺寸决定。桌面保持 28。
+      height: usesMobileLayout ? 50 : 28,
       decoration: BoxDecoration(
         color: c.bg,
         border: Border.all(color: GenFormat.capsuleBorder(c)),
@@ -129,13 +134,17 @@ class _ModelCapsule extends StatelessWidget {
     return _Capsule(
       key: const Key('gen-model-capsule'),
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 10, right: 6),
-          child: Text(
-            'Model',
-            style: UiText.sans(12, color: GenFormat.ink55(c)),
+        // 手机端省掉「Model」小标签：胶囊 + 额度胶囊才排得进 360dp 一行。
+        if (usesMobileLayout)
+          const SizedBox(width: 4)
+        else
+          Padding(
+            padding: const EdgeInsets.only(left: 10, right: 6),
+            child: Text(
+              'Model',
+              style: UiText.sans(12, color: GenFormat.ink55(c)),
+            ),
           ),
-        ),
         Builder(
           builder: (context) => UiPressable(
             key: const Key('gen-model'),
@@ -144,34 +153,36 @@ class _ModelCapsule extends StatelessWidget {
               (_) => const _ModelMenu(),
               tag: #model,
             ),
-            builder: (context, hover) => Container(
-              height: 22,
-              margin: const EdgeInsets.only(right: 3),
-              padding: const EdgeInsets.only(left: 7, right: 4),
-              decoration: BoxDecoration(
-                color: hover || open ? Color.lerp(c.ink, c.bg, .14) : c.ink,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                spacing: 5,
-                children: [
-                  // 素材是纯黑剪影，按反色内胆底色着色。
-                  GenNaiIcon('novelai-icon.svg', size: 13, color: c.bg),
-                  Text(
-                    data.currentModel.name,
-                    style: UiText.sans(
-                      12,
-                      weight: FontWeight.w700,
+            builder: (context, hover) => GenTouchTarget(
+              child: Container(
+                height: 22,
+                margin: const EdgeInsets.only(right: 3),
+                padding: const EdgeInsets.only(left: 7, right: 4),
+                decoration: BoxDecoration(
+                  color: hover || open ? Color.lerp(c.ink, c.bg, .14) : c.ink,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  spacing: 5,
+                  children: [
+                    // 素材是纯黑剪影，按反色内胆底色着色。
+                    GenNaiIcon('novelai-icon.svg', size: 13, color: c.bg),
+                    Text(
+                      data.currentModel.name,
+                      style: UiText.sans(
+                        12,
+                        weight: FontWeight.w700,
+                        color: c.bg,
+                      ),
+                    ),
+                    UiGlyph(
+                      UiGlyphs.chevronDown,
+                      size: 14,
+                      strokeWidth: 2.4,
                       color: c.bg,
                     ),
-                  ),
-                  UiGlyph(
-                    UiGlyphs.chevronDown,
-                    size: 14,
-                    strokeWidth: 2.4,
-                    color: c.bg,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -205,20 +216,22 @@ class _ModelCapsule extends StatelessWidget {
                   ),
                 ],
               );
-              return Tooltip(
-                message: context.l10n.gen_modeTip,
-                child: compact
-                    ? SizedBox(
-                        height: 26,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+              return GenTouchTarget(
+                child: Tooltip(
+                  message: context.l10n.gen_modeTip,
+                  child: compact
+                      ? SizedBox(
+                          height: 26,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: mode,
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.only(left: 10, right: 9),
                           child: mode,
                         ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.only(left: 10, right: 9),
-                        child: mode,
-                      ),
+                ),
               );
             },
           ),
@@ -257,26 +270,29 @@ class _TurboButton extends StatelessWidget {
             onTap: enabled
                 ? () => scope.actions.onTurboChanged!(!active)
                 : null,
-            builder: (context, hover) => Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: active
-                    ? c.warnBg
-                    : hover && enabled
-                    ? c.hover
-                    : c.control,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              alignment: Alignment.center,
-              child: UiGlyph(
-                active ? UiGlyphs.bolt : UiGlyphs.boltOff,
-                size: 14,
-                color: active
-                    ? c.warn
-                    : enabled
-                    ? c.muted
-                    : c.faint,
+            builder: (context, hover) => GenTouchTarget(
+              // 手机端补齐 48×48 命中区；视觉仍是 22×22 的小方块。
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: active
+                      ? c.warnBg
+                      : hover && enabled
+                      ? c.hover
+                      : c.control,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                alignment: Alignment.center,
+                child: UiGlyph(
+                  active ? UiGlyphs.bolt : UiGlyphs.boltOff,
+                  size: 14,
+                  color: active
+                      ? c.warn
+                      : enabled
+                      ? c.muted
+                      : c.faint,
+                ),
               ),
             ),
           ),
@@ -383,45 +399,51 @@ class _ModelMenu extends StatelessWidget {
           scope.controller.closePopover();
           if (!on) scope.actions.onModelChanged(m.id);
         },
-        builder: (context, hover) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: hover ? c.control : null,
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Row(
-            spacing: 10,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      m.name,
-                      style: UiText.sans(
-                        13,
-                        weight: on ? FontWeight.w600 : FontWeight.w500,
-                        color: c.ink,
-                      ),
-                    ),
-                    if (m.description != null)
+        builder: (context, hover) => GenTouchTarget(
+          child: Container(
+            // 手机端菜单是底部面板，行高至少 48dp 触摸目标。
+            padding: EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: usesMobileLayout ? 10 : 7,
+            ),
+            decoration: BoxDecoration(
+              color: hover ? c.control : null,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Row(
+              spacing: 10,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        m.description!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: UiText.sans(11.5, color: c.muted),
+                        m.name,
+                        style: UiText.sans(
+                          13,
+                          weight: on ? FontWeight.w600 : FontWeight.w500,
+                          color: c.ink,
+                        ),
                       ),
-                  ],
+                      if (m.description != null)
+                        Text(
+                          m.description!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: UiText.sans(11.5, color: c.muted),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              if (on)
-                UiGlyph(
-                  UiGlyphs.check,
-                  size: 14,
-                  strokeWidth: 2.4,
-                  color: c.accent,
-                ),
-            ],
+                if (on)
+                  UiGlyph(
+                    UiGlyphs.check,
+                    size: 14,
+                    strokeWidth: 2.4,
+                    color: c.accent,
+                  ),
+              ],
+            ),
           ),
         ),
       );

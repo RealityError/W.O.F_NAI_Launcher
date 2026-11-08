@@ -35,6 +35,7 @@ import 'generation_canvas_menu.dart';
 import 'generation_data_wiring.dart';
 import 'generation_editor_wiring.dart';
 import 'generation_history_actions.dart';
+import 'gen_camera_lock_wiring.dart';
 import 'generation_operations.dart';
 import 'generation_references.dart';
 import 'generation_settings.dart';
@@ -277,6 +278,7 @@ class _GenerationWiringState extends ConsumerState<GenerationWiring> {
         historyCaptionInset: !agentExpanded,
         preserveHistory: agentExpanded,
         viewerControls: simpleViewer ? const SimpleViewerGroupControl() : null,
+        mobileHeaderActions: const [GenMobileCameraLockWiring()],
         canvas: simpleViewer
             ? (context, tile) => const PromptUndoBoundary(
                 child: SimpleViewerNavigation(child: GenSimpleStage()),

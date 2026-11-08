@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/common/text_editing_shortcuts.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../gen/gen_parts.dart';
@@ -259,50 +260,62 @@ class _ToolsEditorPageState extends State<ToolsEditorPage>
                     child: Material(
                       key: const Key('tools-editor'),
                       color: c.bg,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _TopBar(onLeave: () => _leave(scope)),
-                          const ToolsOptionsBar(),
-                          Expanded(
-                            child: Row(
+                      // 手机端：画布优先 + 底部工具条 + 参数/图层底部弹层；
+                      // 桌面端保持原三栏结构不变。
+                      child: usesMobileLayout
+                          ? _MobileEditorLayout(
+                              slots: widget.slots,
+                              onLeave: () => _leave(scope),
+                            )
+                          : Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const _Rail(),
+                                _TopBar(onLeave: () => _leave(scope)),
+                                const ToolsOptionsBar(),
                                 Expanded(
-                                  child: Stack(
-                                    fit: StackFit.expand,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
-                                      _Work(slots: widget.slots),
-                                      if (narrow && _side)
-                                        Positioned(
-                                          top: 0,
-                                          right: 0,
-                                          bottom: 0,
-                                          width: ToolsEditorPage.sideWidth,
-                                          child: DecoratedBox(
-                                            decoration: BoxDecoration(
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: .18),
-                                                  blurRadius: 24,
+                                      const _Rail(),
+                                      Expanded(
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            _Work(slots: widget.slots),
+                                            if (narrow && _side)
+                                              Positioned(
+                                                top: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                width:
+                                                    ToolsEditorPage.sideWidth,
+                                                child: DecoratedBox(
+                                                  decoration: BoxDecoration(
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                              alpha: .18,
+                                                            ),
+                                                        blurRadius: 24,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child:
+                                                      const ToolsEditorSide(),
                                                 ),
-                                              ],
-                                            ),
-                                            child: const ToolsEditorSide(),
-                                          ),
+                                              ),
+                                          ],
                                         ),
+                                      ),
+                                      if (!narrow) const ToolsEditorSide(),
                                     ],
                                   ),
                                 ),
-                                if (!narrow) const ToolsEditorSide(),
+                                const _Status(),
                               ],
                             ),
-                          ),
-                          const _Status(),
-                        ],
-                      ),
                     ),
                   ),
                 ),
@@ -878,6 +891,8 @@ class _RailTool extends StatelessWidget {
     required this.label,
     this.shortcut,
     this.on = false,
+    this.size = 40,
+    this.showShortcut = true,
     required this.onTap,
   });
 
@@ -887,6 +902,10 @@ class _RailTool extends StatelessWidget {
   final String label;
   final String? shortcut;
   final bool on;
+
+  /// 按钮边长：桌面竖栏 40，手机底部工具条 48（≥48dp 触控目标）。
+  final double size;
+  final bool showShortcut;
   final VoidCallback onTap;
 
   @override
@@ -894,7 +913,7 @@ class _RailTool extends StatelessWidget {
     final c = context.ui;
     final path = glyph ?? (icon!.startsWith('g:') ? icon!.substring(2) : null);
     return Tooltip(
-      message: shortcut == null ? label : '$label  $shortcut',
+      message: shortcut == null || !showShortcut ? label : '$label  $shortcut',
       waitDuration: const Duration(milliseconds: 400),
       child: UiPressable(
         onTap: onTap,
@@ -903,8 +922,8 @@ class _RailTool extends StatelessWidget {
               ? c.accent
               : (hover ? c.ink : c.ink.withValues(alpha: .78));
           return Container(
-            width: 40,
-            height: 40,
+            width: size,
+            height: size,
             decoration: BoxDecoration(
               color: on
                   ? c.accent.withValues(alpha: .13)
@@ -915,10 +934,10 @@ class _RailTool extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 if (path != null)
-                  UiGlyph(path, size: 19, color: ink)
+                  UiGlyph(path, size: size > 40 ? 21 : 19, color: ink)
                 else
-                  ToolsIcon(icon!, size: 19, color: ink),
-                if (shortcut != null)
+                  ToolsIcon(icon!, size: size > 40 ? 21 : 19, color: ink),
+                if (shortcut != null && showShortcut)
                   Positioned(
                     right: 2,
                     bottom: 1,
@@ -1030,6 +1049,466 @@ class _Status extends StatelessWidget {
             ),
           ),
           Text(right, maxLines: 1, style: style),
+        ],
+      ),
+    );
+  }
+}
+
+// ───────────────────────── 手机布局（G13 方案 A） ─────────────────────────
+
+/// 手机端底部弹层类型。
+enum _MobileSheet { none, options, side }
+
+/// 手机端编辑器布局：顶栏（返回 / 标题 / 撤销 / 重做 / 下载）│ 画布 │
+/// 应用条（参数 / 面板 / 应用）│ 底部工具条（点工具直接切换）。
+/// 参数和图层面板从底部升起，工具条保持可点，面板开着也能直接换工具。
+/// 桌面端三栏布局完全不变。
+class _MobileEditorLayout extends StatefulWidget {
+  const _MobileEditorLayout({required this.slots, required this.onLeave});
+
+  final ToolsEditorSlots slots;
+  final VoidCallback onLeave;
+
+  @override
+  State<_MobileEditorLayout> createState() => _MobileEditorLayoutState();
+}
+
+class _MobileEditorLayoutState extends State<_MobileEditorLayout> {
+  var _sheet = _MobileSheet.none;
+
+  static const toolBarHeight = 64.0;
+  static const applyBarHeight = 56.0;
+  static const optionsSheetHeight = 152.0;
+
+  void _open(_MobileSheet sheet) => setState(() => _sheet = sheet);
+
+  void _close() => setState(() => _sheet = _MobileSheet.none);
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    final scope = ToolsEditorScope.of(context);
+    final d = scope.data;
+    final sheetOpen = _sheet != _MobileSheet.none;
+    final side = _sheet == _MobileSheet.side;
+    return PopScope(
+      // 弹层打开时系统返回键先关弹层，而不是退出编辑器。
+      canPop: !sheetOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _close();
+      },
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final sheetHeight = side
+              ? (box.maxHeight - toolBarHeight) * .92
+              : optionsSheetHeight;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _MobileTopBar(onLeave: widget.onLeave),
+                  Expanded(child: _Work(slots: widget.slots)),
+                  _MobileApplyBar(
+                    optionsOpen: _sheet == _MobileSheet.options,
+                    sideOpen: side,
+                    onOpenOptions: () => _open(_MobileSheet.options),
+                    onOpenSide: () => _open(_MobileSheet.side),
+                  ),
+                  _MobileToolBar(
+                    onOpenOptions: () => _open(_MobileSheet.options),
+                    onOpenSide: () => _open(_MobileSheet.side),
+                  ),
+                ],
+              ),
+              if (sheetOpen) ...[
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: toolBarHeight,
+                  child: GestureDetector(
+                    key: const Key('tools-editor-mobile-scrim'),
+                    onTap: _close,
+                    child: ColoredBox(
+                      color: Colors.black.withValues(alpha: .42),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: toolBarHeight,
+                  height: sheetHeight,
+                  child: Container(
+                    key: side
+                        ? const Key('tools-editor-mobile-side-sheet')
+                        : const Key('tools-editor-mobile-options-sheet'),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: c.bg,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(14),
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 32,
+                          offset: Offset(0, -8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _MobileSheetHeader(
+                          title: side
+                              ? l.tools_panel
+                              : ToolsFormat.toolLabel(
+                                  l,
+                                  d.tool,
+                                  inpaint: d.inpainting,
+                                ),
+                          closeKey: side
+                              ? const Key('tools-editor-mobile-side-close')
+                              : const Key('tools-editor-mobile-options-close'),
+                          onClose: _close,
+                        ),
+                        Expanded(
+                          child: side
+                              ? const ToolsEditorSide(
+                                  width: null,
+                                  showBorder: false,
+                                )
+                              : const SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      ToolsOptionsBar(),
+                                      Padding(
+                                        padding: EdgeInsets.fromLTRB(
+                                          14,
+                                          6,
+                                          14,
+                                          8,
+                                        ),
+                                        child: Row(children: [_Zoom()]),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 手机端顶栏：返回｜标题+尺寸｜撤销/重做/下载。不再塞快捷键帽和窗口按钮。
+class _MobileTopBar extends StatelessWidget {
+  const _MobileTopBar({required this.onLeave});
+  final VoidCallback onLeave;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final scope = ToolsEditorScope.of(context);
+    final d = scope.data;
+    final a = scope.actions;
+    final l = context.l10n;
+    final title = d.inpainting ? l.tools_inpaint : l.tools_edit;
+    return Container(
+      key: const Key('tools-editor-top'),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        spacing: 4,
+        children: [
+          ToolsIb(
+            key: const Key('tools-editor-back'),
+            glyph: ToolsGlyphs.back,
+            glyphSize: 20,
+            size: 48,
+            tooltip: l.tools_backEsc,
+            onTap: onLeave,
+          ),
+          Expanded(
+            child: Column(
+              key: const Key('tools-editor-title'),
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: UiText.sans(
+                    14.5,
+                    weight: FontWeight.w600,
+                    color: c.ink,
+                    height: 1.25,
+                  ),
+                ),
+                Text(
+                  ToolsFormat.size(d.width, d.height),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: UiText.sans(11, color: c.faint, height: 1.25),
+                ),
+              ],
+            ),
+          ),
+          ToolsIb(
+            key: const Key('tools-editor-undo'),
+            glyph: ToolsGlyphs.undo,
+            glyphSize: 20,
+            size: 48,
+            tooltip: l.tools_undo,
+            onTap: d.canUndo ? a.onUndo : null,
+          ),
+          ToolsIb(
+            key: const Key('tools-editor-redo'),
+            glyph: ToolsGlyphs.redo,
+            glyphSize: 20,
+            size: 48,
+            tooltip: l.tools_redo,
+            onTap: d.canRedo ? a.onRedo : null,
+          ),
+          ToolsIb(
+            key: const Key('tools-editor-download'),
+            glyph: ToolsGlyphs.download,
+            glyphSize: 20,
+            size: 48,
+            tooltip: l.tools_download,
+            onTap: a.onDownload,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端应用条：左边参数 / 面板弹层入口，右边主操作（应用 / 生成）。
+class _MobileApplyBar extends StatelessWidget {
+  const _MobileApplyBar({
+    required this.optionsOpen,
+    required this.sideOpen,
+    required this.onOpenOptions,
+    required this.onOpenSide,
+  });
+
+  final bool optionsOpen;
+  final bool sideOpen;
+  final VoidCallback onOpenOptions;
+  final VoidCallback onOpenSide;
+
+  static const height = _MobileEditorLayoutState.applyBarHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final scope = ToolsEditorScope.of(context);
+    final d = scope.data;
+    final a = scope.actions;
+    final l = context.l10n;
+    return Container(
+      key: const Key('tools-editor-mobile-apply-bar'),
+      height: height,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(top: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        spacing: 4,
+        children: [
+          ToolsIb(
+            key: const Key('tools-editor-mobile-options'),
+            glyph: ToolsGlyphs.sun,
+            glyphSize: 19,
+            size: 48,
+            on: optionsOpen,
+            tooltip: l.tools_edit,
+            onTap: onOpenOptions,
+          ),
+          ToolsIb(
+            key: const Key('tools-editor-mobile-side'),
+            glyph: ToolsGlyphs.panel,
+            glyphSize: 19,
+            size: 48,
+            on: sideOpen,
+            tooltip: l.tools_panel,
+            onTap: onOpenSide,
+          ),
+          const Spacer(),
+          if (d.inpainting)
+            const _ApplySplit()
+          else
+            ToolsButton(
+              key: const Key('tools-editor-apply'),
+              tone: ToolsButtonTone.primary,
+              onTap: a.onApply,
+              children: [Text(l.tools_useAsInit)],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端底部工具条：横滑切换工具，点一下直接生效（桌面端是左侧竖栏）。
+class _MobileToolBar extends StatelessWidget {
+  const _MobileToolBar({required this.onOpenOptions, required this.onOpenSide});
+
+  final VoidCallback onOpenOptions;
+  final VoidCallback onOpenSide;
+
+  static const height = _MobileEditorLayoutState.toolBarHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final scope = ToolsEditorScope.of(context);
+    final d = scope.data;
+    final a = scope.actions;
+    final l = context.l10n;
+    Widget tool(ToolsTool t) => _RailTool(
+      key: Key('tools-tool-${t.name}'),
+      icon: _Rail._toolIcon(t),
+      label: ToolsFormat.toolLabel(l, t, inpaint: d.inpainting),
+      on: d.tool == t && !d.expanding,
+      size: 48,
+      showShortcut: false,
+      onTap: () {
+        if (d.expanding) a.onExpanding(false);
+        if (d.tool != t) a.onTool(t);
+      },
+    );
+    Widget gap() => Container(
+      width: 1,
+      height: 30,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      color: c.line,
+    );
+    return Container(
+      key: const Key('tools-editor-mobile-toolbar'),
+      height: height,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(top: BorderSide(color: c.line)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 12,
+            offset: Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          spacing: 4,
+          children: d.inpainting
+              ? [
+                  for (final t in ToolsEditorData.inpaintTools) tool(t),
+                  gap(),
+                  _RailTool(
+                    key: const Key('tools-tool-clear'),
+                    icon: 'inpaint_clear',
+                    label: l.tools_clearMask,
+                    size: 48,
+                    showShortcut: false,
+                    onTap: a.onClearMask,
+                  ),
+                  _RailTool(
+                    key: const Key('tools-tool-expand'),
+                    icon: 'inpaint_shift',
+                    label: l.tools_expand,
+                    size: 48,
+                    showShortcut: false,
+                    on: d.expanding,
+                    onTap: () => a.onExpanding(!d.expanding),
+                  ),
+                ]
+              : [
+                  for (final t in ToolsEditorData.editTools.take(5)) tool(t),
+                  gap(),
+                  for (final t in ToolsEditorData.editTools.skip(5)) tool(t),
+                  gap(),
+                  _RailTool(
+                    key: const Key('tools-tool-adjust'),
+                    glyph: ToolsGlyphs.sun,
+                    label: l.tools_adjust,
+                    size: 48,
+                    showShortcut: false,
+                    onTap: onOpenSide,
+                  ),
+                  _RailTool(
+                    key: const Key('tools-tool-resize'),
+                    glyph: ToolsGlyphs.crop,
+                    label: l.tools_resize,
+                    size: 48,
+                    showShortcut: false,
+                    onTap: a.onResizeCanvas,
+                  ),
+                ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 底部面板小标题：标题 + 关闭按钮（48 触控目标）。
+class _MobileSheetHeader extends StatelessWidget {
+  const _MobileSheetHeader({
+    required this.title,
+    required this.closeKey,
+    required this.onClose,
+  });
+
+  final String title;
+  final Key closeKey;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.only(left: 14, right: 4),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: UiText.sans(13, weight: FontWeight.w600, color: c.ink),
+          ),
+          const Spacer(),
+          ToolsIb(
+            key: closeKey,
+            glyph: UiGlyphs.close,
+            glyphSize: 18,
+            size: 40,
+            onTap: onClose,
+          ),
         ],
       ),
     );

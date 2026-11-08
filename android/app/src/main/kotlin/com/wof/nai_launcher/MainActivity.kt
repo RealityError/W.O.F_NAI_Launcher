@@ -6,12 +6,15 @@ import android.content.ClipData
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Intent
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -34,24 +37,234 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val TAG = "WofPlatformChannel"
         private const val CHANNEL = "com.nailauncher/platform"
+        private const val GENERATION_CHANNEL = "com.nailauncher/generation"
         private const val FILE_PROVIDER_SUFFIX = ".fileprovider"
         private const val ALBUM_DIRECTORY = "W.O.F NAI Studio"
         private const val DIRECTORY_MIME_TYPE = "vnd.android.document/directory"
+        private const val GET_SHARED_IMAGE_METHOD = "getSharedImage"
+        private const val SHARE_RECEIVED_METHOD = "shareImageReceived"
+        private const val INCOMING_SHARE_DIRECTORY = "incoming_shares"
+    }
+
+    private var platformChannel: MethodChannel? = null
+
+    /** Cache path of an ACTION_SEND image not yet consumed by Dart. */
+    private var pendingSharedImage: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleShareIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShareIntent(intent)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "openFile" -> openFile(call, result)
-                    "shareFile" -> shareFile(call, result)
-                    "saveImageToMediaStore" -> saveImageToMediaStore(call, result)
-                    "openDirectory" -> openDirectory(call, result)
-                    "getSystemProxy" -> getSystemProxy(result)
-                    else -> result.notImplemented()
-                }
+        // G17: in-app APK update channel (`com.nailauncher/apk_install`).
+        ApkInstallHelper.register(flutterEngine, this)
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        channel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openFile" -> openFile(call, result)
+                "shareFile" -> shareFile(call, result)
+                "saveImageToMediaStore" -> saveImageToMediaStore(call, result)
+                "openDirectory" -> openDirectory(call, result)
+                "getSystemProxy" -> getSystemProxy(result)
+                GET_SHARED_IMAGE_METHOD -> getSharedImage(result)
+                else -> result.notImplemented()
             }
+        }
+        platformChannel = channel
+        // A share that started the app may arrive before Dart registers its
+        // handler; it stays pending for the startup `getSharedImage` poll.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            GENERATION_CHANNEL
+        ).setMethodCallHandler { call, result ->
+            handleGenerationServiceCall(call, result)
+        }
+    }
+
+    /**
+     * G10: keeps generation alive in the background through a dataSync
+     * foreground service and posts the completion notification.
+     */
+    private fun handleGenerationServiceCall(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            when (call.method) {
+                "start" -> {
+                    GenerationForegroundService.start(
+                        this,
+                        call.argument<String>("title"),
+                        call.argument<String>("text")
+                    )
+                    result.success(true)
+                }
+                "update" -> {
+                    GenerationForegroundService.update(
+                        this,
+                        call.argument<String>("title"),
+                        call.argument<String>("text"),
+                        progressArgument(call.argument<Any>("progress"))
+                    )
+                    result.success(true)
+                }
+                "stop" -> {
+                    GenerationForegroundService.stop(
+                        this,
+                        call.argument<String>("title"),
+                        call.argument<String>("text")
+                    )
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        } catch (error: Exception) {
+            // Never leak a native exception into Dart; report a boolean instead.
+            Log.w(TAG, "Generation service call failed: ${call.method}", error)
+            result.success(false)
+        }
+    }
+
+    private fun progressArgument(value: Any?): Double? {
+        val number = value as? Number ?: return null
+        val progress = number.toDouble()
+        return if (progress.isFinite()) progress else null
+    }
+
+    /**
+     * Android "share image to this app" (G16). Copies the shared content uri
+     * into the app cache, keeps it pending, then signals Dart if it is running.
+     */
+    private fun handleShareIntent(intent: Intent?) {
+        if (intent == null || intent.action != Intent.ACTION_SEND) {
+            return
+        }
+        val isImage = intent.type?.startsWith("image/") == true
+        if (!isImage) {
+            return
+        }
+        val uri = sharedImageUri(intent)
+        if (uri == null) {
+            Log.w(TAG, "ACTION_SEND without an image stream")
+            return
+        }
+        // Mark the intent consumed so activity recreation cannot re-import it.
+        intent.action = null
+        val cachedPath = copySharedImageToCache(uri)
+        if (cachedPath == null) {
+            Log.w(TAG, "Failed to import shared image: $uri")
+            return
+        }
+        pendingSharedImage = cachedPath
+        signalShareReceived()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun sharedImageUri(intent: Intent): Uri? {
+        val stream = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+        if (stream != null) {
+            return stream
+        }
+        val clip = intent.clipData
+        if (clip != null && clip.itemCount > 0) {
+            return clip.getItemAt(0).uri
+        }
+        return null
+    }
+
+    private fun copySharedImageToCache(uri: Uri): String? {
+        val type = try {
+            contentResolver.getType(uri)
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to resolve shared image type", error)
+            null
+        }
+        if (type != null && !type.startsWith("image/")) {
+            Log.w(TAG, "Shared content is not an image: $type")
+            return null
+        }
+        val displayName = querySharedDisplayName(uri) ?: "shared.png"
+        val directory = File(cacheDir, INCOMING_SHARE_DIRECTORY).apply { mkdirs() }
+        val target = File(
+            directory,
+            "${System.currentTimeMillis()}_${sanitizeSharedFileName(displayName)}"
+        )
+        return try {
+            val input = contentResolver.openInputStream(uri) ?: return null
+            input.use { source ->
+                FileOutputStream(target).use { output -> source.copyTo(output) }
+            }
+            if (!target.exists() || target.length() == 0L) {
+                target.delete()
+                null
+            } else {
+                target.absolutePath
+            }
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to copy shared image into cache", error)
+            target.delete()
+            null
+        }
+    }
+
+    private fun querySharedDisplayName(uri: Uri): String? {
+        return try {
+            contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor: Cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            } ?: uri.lastPathSegment
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to query shared image name", error)
+            uri.lastPathSegment
+        }
+    }
+
+    private fun sanitizeSharedFileName(name: String): String {
+        val base = name.substringAfterLast('/').substringAfterLast('\\')
+        val sanitized = base.replace(Regex("[\\\\/:*?\"<>|\\u0000-\\u001f]"), "_")
+        if (sanitized.isBlank() || sanitized.trim('_').isEmpty()) {
+            return "shared.png"
+        }
+        return if (sanitized.contains('.')) sanitized else "$sanitized.png"
+    }
+
+    /** Tells Dart that an image was shared while the app was already running. */
+    private fun signalShareReceived() {
+        val channel = platformChannel ?: return
+        try {
+            channel.invokeMethod(SHARE_RECEIVED_METHOD, null, object : MethodChannel.Result {
+                override fun success(result: Any?) {
+                    // Dart consumes the image through getSharedImage.
+                }
+
+                override fun error(code: String, message: String?, details: Any?) {
+                    Log.w(TAG, "Dart share handler error: $code $message")
+                }
+
+                override fun notImplemented() {
+                    // Dart is not ready yet; the startup/resume poll picks it up.
+                }
+            })
+        } catch (error: Exception) {
+            Log.w(TAG, "Failed to signal shared image to Dart", error)
+        }
+    }
+
+    /** Dart pulls the pending shared image; consuming it clears it natively. */
+    private fun getSharedImage(result: MethodChannel.Result) {
+        val path = pendingSharedImage
+        pendingSharedImage = null
+        result.success(path)
     }
 
     /** ACTION_VIEW on a FileProvider content uri, for images / videos / zips. */

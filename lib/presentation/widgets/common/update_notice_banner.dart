@@ -1,6 +1,7 @@
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../providers/update_provider.dart';
 import 'update_check_dialog.dart';
@@ -14,6 +15,9 @@ class UpdateNoticeBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Android 的更新入口在「设置 → 关于/更新」；横幅按钮会打开桌面更新
+    // 对话框，因此在移动端不展示，避免把桌面安装流程带进手机。
+    if (isAndroidPlatform) return const SizedBox.shrink();
     final state = ref.watch(updateStateProvider);
     final hasNotice = state.hasNewVersion || state.status == UpdateStatus.error;
     if (!state.notificationVisible || !hasNotice) {

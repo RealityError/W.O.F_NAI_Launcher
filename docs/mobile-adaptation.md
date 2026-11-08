@@ -268,13 +268,74 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 4. **文案**：新增 `floating_mobileTapHint`（zh/en/ja/ko；zh_TW 由 `tool/l10n` 重新生成，不手改）。
 5. **验证**：`flutter analyze` 干净；`test/presentation/ui/gen`（390 例）、浮窗宿主 / 数据源 / 资源窗口页与生成接线回归（103 例）全过；新增 `mobile_resource_library_test`（手机全屏外观、无缩放角/拖拽、44dp 点按行）、provider「临时窗口不落盘」、`gen_mobile_layout_test`「库入口与四类资源菜单」、宿主「手机不画浮窗」用例。
 
+### 8.12 图片查看器手机收尾（G12）
+
+1. **全屏 chrome 常驻**：手机全屏下不做空闲自动隐藏（否则没有退出入口），点画面切换 chrome；
+   顶部信息条改用手机版（信息 / 退出两个 44dp 图标），全屏底部出现横向胶片条。
+2. **胶片条**：手机端左右留白 8、淡出边 24dp（桌面 14 / 60），可横向拖动；点缩略图切图。
+3. **菜单**：长按图片取代右键（打开「更多」底部面板）；菜单行高 48dp、手机不画快捷键帽；
+   「加入收藏集」在手机上直接切到收藏集面板，不做向左展开的子菜单。
+4. **桌面不变**：popover、键帽、悬停胶片条、窗口按钮避让逻辑一行未改。
+5. **验证**：新增 `viewer_mobile_test.dart`（6 例：顶栏、胶片条拖动、缩略图选中、长按更多面板、
+   信息抽屉、全屏 chrome 常驻与退出）+ 360×640 追加用例；`test/presentation/ui/viewer` 全目录通过。
+
+### 8.13 触控目标 48dp 与 360×640 走查（G4 / G5）
+
+1. **共享命中区**：新增 `GenTouchTarget`（手机端包 48×48 命中区，桌面直接返回 child，
+   不增加 RenderObject），应用到 `GenIb` / `GenFloatButton` / `GenTab` / `GenSliderRow` 等。
+2. **生成页**：历史底栏 40→56（图标命中 48）、头部胶囊外框 50（描边内 48）、参数条种子行 56 /
+   下拉 48 / 抽屉标题 56、提示词工具条 28→48、生成按钮 40→48；手机顶栏隐藏 "Model" 小标签
+   回到单行（59dp，改前 113dp），Turbo 命中区 48×48（视觉 22）。
+3. **全屏编辑器 / 翻译浮层**：手机端全屏头部改两行（关闭 / 清除 48×48，正负向切换加 48 高
+   透明命中层；360dp 下标题保留）；翻译浮窗收起 / 关闭 / 发送 / 快捷 chip / 引用清除 / undo
+   全部 ≥48。桌面尺寸由测试守卫用例锁定（30×30、28 高、11×11、38×16 等原样）。
+4. **走查**：新增生成页手机走查 4 例、翻译浮窗 3 例、查看器 360×640 1 例，全程无 overflow；
+   桌面 golden 与尺寸守卫用例不变。
+
+### 8.14 编辑图片 / 局部重绘页手机化（G13 / G14）
+
+桌面编辑器是三栏（左 56 工具竖栏 + 画布 + 右 280 面板），360dp 下工具与面板互相挤。手机端
+复用「导演工具方案 A」：
+
+1. **布局**：`ToolsEditorPage` 增加 `usesMobileLayout` 分支——顶栏（返回 / 标题+尺寸 /
+   撤销 / 重做 / 下载，图标 48）、画布优先、底部应用条（参数、面板、应用 / 应用下拉）、
+   底部横滑工具条（点一下直接切工具，不显示快捷键字母帽）。桌面三栏代码原样。
+2. **弹层**：参数（当前工具的笔刷大小、方笔、蒙版外观颜色/不透明度/图案、缩放）与图层面板
+   从底部升起，工具条保持可点；系统返回键先关弹层。局部重绘的「应用蒙版」分成
+   「仅应用 / 应用并生成」两段，手机端下拉是底部弹层。
+3. **接线**：`image_editor_screen` 仍复用同一 `ToolsEditorPage`（`tools_editor_wiring`），
+   无需单独一套布局；`ToolsEditorSide` 增加整宽 / 无边框参数供手机面板使用。
+4. **验证**：新增 `tools_editor_mobile_test.dart`（7 例：布局、工具条切工具、参数弹层、
+   图层面板、弹层下切工具、局部重绘工具与应用分段、应用/下载动作）；
+   `image_editor_mobile_test.dart`（5 例：真实 `ImageEditorScreen(inpaint)` 手机布局、
+   参数弹层、图层面板、手指涂蒙版、应用下拉）；桌面 `test/presentation/ui/tools` 171 项全过。
+
+### 8.15 系统集成：后台生成 / 分享 / 应用内更新（G10 / G15–G17）
+
+1. **后台生成（G10）**：`GenerationBackgroundSync` 在 `_AppBootstrapEffectsState` 里挂
+   `imageGenerationNotifierProvider` listener，生成开始 / 进度 / 完成 / 失败 / 取消分别走
+   `com.nailauncher/generation` 的 `start` / `update` / `stop`；Kotlin
+   `GenerationForegroundService` 用 dataSync 前台服务保持进程并显示进度通知，停止后发完成通知
+   （点按回 App）。通知权限被拒时不崩，仅通知不可见。6 例状态迁移测试。
+2. **分享出站（G15）**：查看器「更多」、手机画廊长按、生成结果长按 → 系统分享面板；
+   Android-only 动作集合（桌面 action 列表 remove），UI 层不 import wiring。
+3. **接收分享（G16）**：MainActivity 处理 `ACTION_SEND image/*`，把 content:// 拷到
+   `cacheDir/incoming_shares/`；`getSharedImage` 拉取 + `shareImageReceived` 前台信号，
+   Dart 复用 `ImageWorkflowLauncher.openImageToImage` 进 img2img 并 toast。12 例通道 mock 测试。
+4. **应用内 APK 更新（G17）**：Android 独立链路（GitHub Release 选 ABI 匹配 APK → cache 下载 +
+   SHA256 校验 → `FileProvider` + 系统安装器；「安装未知应用」跳系统设置页，返回后重试），
+   设置页「关于/更新」卡片跟随 `UpdateState`；桌面更新器不变。22 例纯逻辑 / 通道 mock 测试。
+   注意：GitHub Release 需上传 `app-<abi>-release.apk` 命名的资产，否则只提示有新版本、无法装包。
+
 ### 8.3 本阶段遗留（后续处理）
 
-1. 复用桌面内容页后，个别行内小按钮（24–32dp）未达 44dp 触摸目标，需真机走查后统一包触摸区；
+1. 手机端生成页 / 全屏编辑器 / 翻译浮层 / 查看器 / 编辑器范围内的触控目标已统一到 ≥48dp；
+   仍有个别桌面对话框未做手机重排（见第 3 条）；
 2. "保存到相册"沿用现有 l10n `common_export`（"导出"）文案，精确文案需补 ARB key；
 3. 分类选择/批量元数据等次要桌面对话框未做手机重排；日期选择沿用现有日历（日期格 36dp）；
 4. 生成请求在代理链路上偶发 `HandshakeException`（代理节点对 image.novelai.net 不稳定），属环境网络问题，非 App 逻辑；首次冷启动自动登录失败时点"一键登录"可重试成功；
-5. 平板/横屏、Phase 2（浏览类页面）与 Phase 3（编辑器）尚未开始。
+5. 平板/横屏与桌面端未适配的次要页面（如部分管理类对话框）仍未开始；手机竖屏为主场景。
 
 > 生成页与桌面版的逐项差距、优先级和可复用工具，见 [mobile-gen-gaps.md](mobile-gen-gaps.md)。
+> Android 平台能力、构建与已知限制见 [android-port.md](android-port.md)。
 

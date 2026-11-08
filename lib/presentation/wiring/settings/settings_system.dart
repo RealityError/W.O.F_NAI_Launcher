@@ -108,6 +108,14 @@ class SettingsSystemActions {
   final BuildContext context;
   final WidgetRef ref;
   Future<void> checkUpdate() async {
+    // Android 的更新卡片直接跟随 UpdateState 展示结果，不打开桌面更新对话框。
+    if (isAndroidPlatform) {
+      await ref.read(updateCheckServiceReadyProvider.future);
+      await ref
+          .read(updateStateProvider.notifier)
+          .checkForUpdates(manual: true);
+      return;
+    }
     await ref.read(updateCheckServiceReadyProvider.future);
     final state = ref.read(updateStateProvider);
     if (!state.hasNewVersion && !state.hasDownloadedUpdate) {
@@ -119,6 +127,11 @@ class SettingsSystemActions {
   }
 
   Future<void> installUpdate() async {
+    // Android：下载 APK 并交给系统安装器，进度显示在设置页更新卡片里。
+    if (isAndroidPlatform) {
+      await ref.read(updateStateProvider.notifier).downloadAndInstall();
+      return;
+    }
     // Reuse the established download, integrity, task-idle and restart UI.
     if (context.mounted) await UpdateCheckDialog.show(context);
   }
