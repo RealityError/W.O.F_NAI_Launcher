@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nai_launcher/l10n/app_localizations.dart';
 import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
+import 'package:nai_launcher/presentation/ui/gen/gen_canvas.dart';
+import 'package:nai_launcher/presentation/ui/gen/gen_contract.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_fixture.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_page.dart';
 
@@ -117,5 +120,74 @@ void main() {
   testWidgets('unlocked camera shows no unlock action', (tester) async {
     await pumpMobile(tester);
     expect(find.byKey(const Key('gen-mobile-unlock-camera')), findsNothing);
+  });
+
+  testWidgets('canvas tile long press asks the wiring for the mobile menu', (
+    tester,
+  ) async {
+    final mobileCalls = <String>[];
+    final desktopCalls = <String>[];
+    await pumpGen(
+      tester,
+      data: GenFixture.view(),
+      window: 360 + genRail,
+      height: 780,
+      wrap: (page) => GenCanvasMenuScope(
+        onOpen: (_, id, _) => desktopCalls.add(id),
+        onOpenMobile: (_, id) => mobileCalls.add(id),
+        child: page,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final tile = find.byKey(const Key('gen-tile-i1'));
+    expect(tile, findsOneWidget);
+    await tester.longPress(tile);
+    await tester.pumpAndSettle();
+    // 手机没有右键：长按走底部菜单入口，不再走桌面右键回调。
+    expect(mobileCalls, ['i1']);
+    expect(desktopCalls, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('history batch long press opens the mobile action sheet', (
+    tester,
+  ) async {
+    await pumpMobile(tester);
+    await tester.tap(find.byKey(const Key('gen-mobile-history')));
+    await tester.pumpAndSettle();
+    final l = AppLocalizations.of(tester.element(find.byType(GenerationPage)))!;
+
+    final tile = find.byKey(const Key('gen-batch-tile-b1'));
+    expect(tile, findsOneWidget);
+    await tester.longPress(tile);
+    await tester.pumpAndSettle();
+
+    // 与桌面右键同源的常用动作；桌面文件管理项（打开文件夹）不出现。
+    expect(find.text(l.gen_copyImage), findsOneWidget);
+    expect(find.text(l.gen_sendImg2Img), findsOneWidget);
+    expect(find.text(l.gen_removeImage), findsOneWidget);
+    expect(find.text(l.gen_reveal), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile layout never renders the desktop bridge indicator', (
+    tester,
+  ) async {
+    final base = GenFixture.view();
+    await pumpGen(
+      tester,
+      data: base.copyWith(
+        prompt: const GenPromptData(
+          bridge: GenBridge(phase: GenBridgePhase.idle, label: 'Krita 桥接'),
+        ),
+      ),
+      window: 360 + genRail,
+      height: 780,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('gen-mobile-editor')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('gen-bridge')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

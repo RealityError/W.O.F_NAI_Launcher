@@ -10,6 +10,7 @@ import '../../core/utils/desktop_platform.dart';
 import '../../core/utils/localization_extension.dart';
 import '../../core/utils/max_enhance_utils.dart';
 import '../../data/models/upscale/local_upscale_models.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/cost_estimate_provider.dart';
 import '../providers/generation/cloud_upscale_provider.dart';
 import '../providers/generation/image_workflow_controller.dart';
@@ -99,6 +100,31 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
   );
 }
 
+/// 放大面板的后端卡片：Android/iOS 不随包本地引擎，隐藏「本地」只留云端。
+///
+/// 抽成纯函数是为了让手机端隐藏行为有独立回归测试（平台判断无法在测试里伪造）。
+@visibleForTesting
+List<ToolsUpscaleBackend> toolsUpscaleBackends(
+  AppLocalizations l, {
+  required bool mobile,
+  required bool localEnabled,
+  required int? cloudCost,
+}) => [
+  if (!mobile)
+    ToolsUpscaleBackend(
+      id: 'local',
+      title: l.localUpscale_local,
+      detail: l.localUpscale_description,
+      enabled: localEnabled,
+    ),
+  ToolsUpscaleBackend(
+    id: 'novelai',
+    title: l.img2img_novelAiCloudUpscaleTitle,
+    detail: l.img2img_novelAiCloudUpscale,
+    cost: cloudCost,
+  ),
+];
+
 ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
   final l = currentL10n;
   final workflow = ref.watch(imageWorkflowControllerProvider);
@@ -106,7 +132,9 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
   final models = ref.watch(localUpscaleModelsProvider).valueOrNull ?? [];
   final model = models.where((m) => m.id == settings.localModel).firstOrNull;
   final method = model?.method ?? LocalUpscaleMethod.standard;
-  final cloud = settings.backend == UpscaleBackend.novelai;
+  // 本地超分依赖随包可执行文件，Android 不提供：手机端固定走 NovelAI 云端，
+  // 面板里也不再出现「本地」死卡片。
+  final cloud = isMobilePlatform || settings.backend == UpscaleBackend.novelai;
   final windows = ref.watch(toolsWindowsProvider);
   final install = ref.watch(advancedUpscaleInstallProvider);
   final localTask = ref.watch(localUpscaleTaskProvider);
@@ -142,20 +170,12 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
     decimals: decimals,
   );
   return ToolsUpscaleData(
-    backends: [
-      ToolsUpscaleBackend(
-        id: 'local',
-        title: l.localUpscale_local,
-        detail: l.localUpscale_description,
-        enabled: windows,
-      ),
-      ToolsUpscaleBackend(
-        id: 'novelai',
-        title: l.img2img_novelAiCloudUpscaleTitle,
-        detail: l.img2img_novelAiCloudUpscale,
-        cost: cloudCost < 0 ? null : cloudCost,
-      ),
-    ],
+    backends: toolsUpscaleBackends(
+      l,
+      mobile: isMobilePlatform,
+      localEnabled: windows,
+      cloudCost: cloudCost < 0 ? null : cloudCost,
+    ),
     backend: cloud ? 'novelai' : 'local',
     sourceWidth: image.width,
     sourceHeight: image.height,
@@ -283,6 +303,12 @@ class ToolsGenerationSheetWiring extends ConsumerWidget {
           image.bytes,
           ImageWorkflowMode.enhance,
         );
+      } else if (isMobilePlatform) {
+        // Android 没有本地超分：打开面板时把后端固定回云端，
+        // 否则沿用桌面留下的本地后端会直接命中「平台不支持」。
+        ref
+            .read(imageWorkflowControllerProvider.notifier)
+            .updateUpscaleBackend(UpscaleBackend.novelai);
       }
       ref.read(toolsSheetProvider.notifier).state = ToolsSheetSession(
         sheet,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/localization_extension.dart';
+import '../mobile/mobile_context_menu.dart';
 import '../providers/image_generation_provider.dart';
 import '../screens/generation/widgets/canvas/generated_image_actions.dart';
 import '../ui/gen/gen_canvas.dart';
@@ -42,9 +43,92 @@ class _GenerationCanvasMenuWiringState
     }
   }
 
+  void _openMobile(BuildContext context, String id) {
+    final image = ref
+        .read(generationHistoryActionsProvider)
+        .images
+        .where((image) => image.id == id)
+        .firstOrNull;
+    if (image != null) {
+      unawaited(openGenerationCanvasMenuMobile(context, ref, image));
+    }
+  }
+
   @override
-  Widget build(BuildContext context) =>
-      GenCanvasMenuScope(onOpen: _onOpen, child: widget.child);
+  Widget build(BuildContext context) => GenCanvasMenuScope(
+    onOpen: _onOpen,
+    onOpenMobile: _openMobile,
+    child: widget.child,
+  );
+}
+
+/// 手机端：把右键菜单拍平成底部菜单，动作与桌面右键同源。
+///
+/// `打开文件夹` 是桌面文件管理动作，手机不给；其余条目与桌面右键一致。
+Future<void> openGenerationCanvasMenuMobile(
+  BuildContext context,
+  WidgetRef ref,
+  GeneratedImage image,
+) async {
+  final scope = GenScope.read(context);
+  final a = scope.actions;
+  final l = context.l10n;
+  final id = image.id;
+  final canInput = image.canUseAsGenerationInput && !scope.data.canvas.locked;
+  scope.controller.closePopover();
+  await showMobileContextMenu(
+    context,
+    items: [
+      MobileMenuItem(
+        label: l.shortcut_action_save_image,
+        icon: Icons.save_alt,
+        enabled: image.canSave,
+        onTap: () => a.onSaveImage(id),
+      ),
+      MobileMenuItem(
+        label: l.shortcut_action_copy_image,
+        icon: Icons.copy,
+        enabled: image.canSave,
+        onTap: () => a.onCopyImage(id),
+      ),
+      MobileMenuItem(
+        label: l.imageMenu_details,
+        icon: Icons.open_in_full,
+        onTap: () => a.onOpenViewer(id),
+      ),
+      MobileMenuItem(
+        label: l.common_delete,
+        icon: Icons.delete_outline,
+        destructive: true,
+        onTap: () => a.onDeleteImages([id]),
+      ),
+      MobileMenuItem(
+        label: l.drop_img2img,
+        icon: Icons.image_outlined,
+        enabled: canInput,
+        onTap: () => a.onSendTo(id, GenSendTarget.img2img),
+      ),
+      MobileMenuItem(
+        label: l.drop_vibeTransfer,
+        icon: StudioIcons.vibeLibrary,
+        enabled: canInput && scope.data.refs.vibes != null,
+        onTap: () => a.onSendTo(id, GenSendTarget.vibe),
+      ),
+      MobileMenuItem(
+        label: l.drop_characterReference,
+        icon: StudioIcons.preciseReference,
+        enabled: canInput && scope.data.refs.precise != null,
+        onTap: () => a.onSendTo(id, GenSendTarget.precise),
+      ),
+      MobileMenuItem(
+        label: l.drop_saveToPreciseRefLibrary,
+        icon: Icons.bookmark_add_outlined,
+        enabled: canInput,
+        onTap: () =>
+            unawaited(saveBytesToPreciseRefLibrary(ref, context, image.bytes)),
+      ),
+    ],
+  );
 }
 
 /// 复用旧图片菜单：顶部快捷操作，编辑与更多操作分别折入子菜单。

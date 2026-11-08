@@ -185,7 +185,7 @@ class _PromptHead extends StatelessWidget {
           ),
         ),
         if (overflow) negativeTab else Flexible(child: negativeTab),
-        if (p.bridge case final b?) _Bridge(bridge: b),
+        if (p.bridge case final b? when !usesMobileLayout) _Bridge(bridge: b),
       ],
     );
     if (!overflow) {
