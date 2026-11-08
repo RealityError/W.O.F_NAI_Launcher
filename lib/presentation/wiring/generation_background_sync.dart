@@ -17,24 +17,37 @@ class GenerationBackgroundSync {
   GenerationBackgroundSync._();
 
   static bool _attached = false;
+  static ProviderSubscription<ImageGenerationState>? _subscription;
   static double _lastProgress = -1;
   static int _lastCurrentImage = -1;
 
   /// 在应用启动时挂一次（`_AppBootstrapEffectsState.initState`）。
+  ///
+  /// initState 阶段不允许用 `ref.listen`（它只能在 build 里调用），这里用
+  /// `listenManual` 并持有订阅，由 [detach] 关闭。
   static void attach(WidgetRef ref) {
     if (!GenerationForegroundService.isSupported || _attached) return;
     _attached = true;
-    ref.listen<ImageGenerationState>(imageGenerationNotifierProvider, (
-      previous,
-      next,
-    ) {
-      updateForState(previous, next);
-    });
+    _subscription = ref.listenManual<ImageGenerationState>(
+      imageGenerationNotifierProvider,
+      (previous, next) => updateForState(previous, next),
+    );
     AppLogger.i('Attached background generation sync', 'GenerationBackground');
+  }
+
+  /// 解开监听（`_AppBootstrapEffectsState.dispose`）。
+  static void detach() {
+    _subscription?.close();
+    _subscription = null;
+    _attached = false;
+    _lastProgress = -1;
+    _lastCurrentImage = -1;
   }
 
   @visibleForTesting
   static void resetForTest() {
+    _subscription?.close();
+    _subscription = null;
     _attached = false;
     _lastProgress = -1;
     _lastCurrentImage = -1;

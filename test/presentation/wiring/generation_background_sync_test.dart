@@ -2,7 +2,9 @@
 //
 // 这里不测 Kotlin，只钉住 Dart 侧的状态迁移协议：什么时候 start / update /
 // stop、通知文案从哪来、进度节流、非 Android 平台完全惰性。
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/core/utils/localization_extension.dart';
 import 'package:nai_launcher/data/services/generation_foreground_service.dart';
@@ -197,4 +199,36 @@ void main() {
     expect(calls, isEmpty);
     expect(GenerationForegroundService.isSupported, isFalse);
   });
+
+  // 线上崩溃回归：attach 在 initState 里被调用，而 ref.listen 只允许在
+  // build 内使用；必须走 listenManual，否则真机一打开就红屏断言。
+  testWidgets('initState 里挂载不会触发 ref.listen 的 build-only 断言', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: _AttachProbe())),
+    );
+    expect(tester.takeException(), isNull);
+
+    // 二次 build 不应重复注册/抛异常。
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+}
+
+/// 在 initState 里调用 [GenerationBackgroundSync.attach] 的最小探针。
+class _AttachProbe extends ConsumerStatefulWidget {
+  const _AttachProbe();
+
+  @override
+  ConsumerState<_AttachProbe> createState() => _AttachProbeState();
+}
+
+class _AttachProbeState extends ConsumerState<_AttachProbe> {
+  @override
+  void initState() {
+    super.initState();
+    GenerationBackgroundSync.attach(ref);
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

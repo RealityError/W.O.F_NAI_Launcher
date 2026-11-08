@@ -134,7 +134,10 @@ class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
   @override
   void dispose() {
     _clipboardHistoryPaste.dispose();
-    if (isAndroidPlatform) AndroidShareWiring.detach();
+    if (isAndroidPlatform) {
+      AndroidShareWiring.detach();
+      GenerationBackgroundSync.detach();
+    }
     if (Platform.isMacOS) macOSAppChannel.setMethodCallHandler(null);
     _anlasWatcherSubscription?.close();
     _backgroundRefreshSubscription?.close();
