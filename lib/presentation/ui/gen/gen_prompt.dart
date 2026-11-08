@@ -1227,16 +1227,22 @@ class _ResourceWindowsRowState extends State<_ResourceWindowsRow> {
           onTap: () => widget.onOpen(kind),
         ),
     ];
-    void openAsPopover() => scope.controller.openPopover(
-      const UiPopoverAnchor(Offset.zero),
-      (_) => UiMenu(
-        key: const Key('gen-resource-menu'),
-        width: 240,
-        onClose: scope.controller.closePopover,
-        items: resourceItems(),
-      ),
-      tag: #resourceWindows,
-    );
+    void openAsPopover() {
+      // 先把条目算好：openPopover 会换掉当前面板，旧菜单随即被销毁，
+      // 闭包里再拿这个 context 查 l10n/主题会撞上“已失活组件”的断言。
+      final items = resourceItems();
+      scope.controller.openPopover(
+        const UiPopoverAnchor(Offset.zero),
+        (_) => UiMenu(
+          key: const Key('gen-resource-menu'),
+          width: 240,
+          onClose: scope.controller.closePopover,
+          items: items,
+        ),
+        tag: #resourceWindows,
+      );
+    }
+
     return OverlayPortal(
       controller: _portal,
       overlayChildBuilder: (overlayContext) {
