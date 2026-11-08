@@ -239,6 +239,15 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 3. **放大设置**：后端卡手机端竖排；放大方式 / 模型 / 倍数三行改折行布局；高级设置每项标签在上、控件在下。
 4. **验证**：`tools_sheets_test.dart` 新增手机 3 例（增强、增强自定义强度、放大含高级设置），共 14 例通过；桌面「面板落在工具条下面、尖角指着按钮」用例仍通过。
 
+### 8.9 画布：同步上游 2.3.2「移除视觉通道导航尺 + 自动聚焦居中」
+
+上游 2.3.2 的画布组改动对手机是净收益（画布右缘那条装饰性刻度尺不再占地方），按 `docs/upstream-sync-2.3.2-2026-11-08.md` 的结论手工移植，不整包合并：
+
+1. **移除导航尺/进入提示**：删除 `lib/presentation/ui/channel/channel_overlay.dart` 与 `ChannelActions`、`canvasChannelEntryNoticeProvider`；`channel_contract/fixture/geometry`、`canvas_channel_provider`、`generation_canvas_view`、`generation_canvas_wiring` 按上游新版精简。440da91d 为窄屏把主题名从 4 个改成 2 个的那行随文件删除作废（该提示整体移除）。
+2. **自动聚焦居中**：`GenCanvas` 用 `_TopBar/_InfoBar/_ActionBar` 的 GlobalKey 实测悬浮条内侧边界，`focusPaddingOf` 取代固定留白 `40/50/40/70`；手机底部工具条更高，生成占位/结果不再被压。`_BottomBars` 增加 `infoOffset`，`<360` 时仍上下叠放。
+3. **保留手机分支**：`gen_canvas.dart` 里 8.8 的「工具面板贴底铺宽」`usesMobileLayout` 分支重新应用到上游新版之上。
+4. **验证**：`flutter analyze` 无问题；channel + 画布接线 183 例、`test/presentation/ui/gen` 374 例、生图接线核心 133 例全部通过；`dart format` 无改动；桌面 `scope.slots.canvas == null` 的测试舞台保留旧构图，golden 不变。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 复用桌面内容页后，个别行内小按钮（24–32dp）未达 44dp 触摸目标，需真机走查后统一包触摸区；
