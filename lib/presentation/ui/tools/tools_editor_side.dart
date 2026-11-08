@@ -17,7 +17,17 @@ import 'tools_parts.dart';
 /// 编辑图像：图层（撑满）│ 调整颜色（当前图层）│ 画布尺寸。
 /// 局部重绘：重绘设置 │ 图层（撑满）│ 一句结果说明。
 class ToolsEditorSide extends StatelessWidget {
-  const ToolsEditorSide({super.key});
+  const ToolsEditorSide({
+    super.key,
+    this.width = ToolsEditorPage.sideWidth,
+    this.showBorder = true,
+  });
+
+  /// 桌面右栏固定 280；手机底部面板传 null 由父级拉伸到整宽。
+  final double? width;
+
+  /// 手机面板有自己的圆角和阴影，不需要左侧分隔线。
+  final bool showBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -26,10 +36,10 @@ class ToolsEditorSide extends StatelessWidget {
     final d = scope.data;
     return Container(
       key: const Key('tools-editor-side'),
-      width: ToolsEditorPage.sideWidth,
+      width: width,
       decoration: BoxDecoration(
         color: c.bg,
-        border: Border(left: BorderSide(color: c.line)),
+        border: showBorder ? Border(left: BorderSide(color: c.line)) : null,
       ),
       child: d.inpainting
           ? const Column(

@@ -25,7 +25,7 @@
 | G2 | 历史批次菜单 | 批次菜单只绑右键（[gen_history.dart:616](../lib/presentation/ui/gen/gen_history.dart#L616-L618)） | 长按批次或点批次右上「…」→ 同一套菜单：查看大图、复制、收藏、发送到图生图 / 风格参考 / 精准参考、保存整批 | `gen_history.dart` | S | ✅（长按） |
 | G3 | 批次封面悬停按钮 | 复核后：批次封面没有 hover 专属操作按钮，hover 只改透明度（[gen_history.dart:639-643](../lib/presentation/ui/gen/gen_history.dart#L639-L643)）；原清单引用的 `141-155` 行其实是右键菜单项 | 无需常显按钮；保存 / 复制等动作走 G2 长按菜单 | — | S | ✅（复核为不适用） |
 | G4 | 触控目标 48dp | 历史底部一排图标、画布浮动按钮、头部胶囊、参数条多为 24–32dp | 生成页范围内可点区域 ≥ 48dp（视觉可维持 32dp） | `gen_history.dart`、`gen_canvas.dart`、`gen_params.dart`、`gen_header.dart` | M | ⬜ |
-| G5 | 验收已有手机适配 | 提示词全屏编辑器、翻译调整浮层、查看器主界面已有 `usesMobileLayout` 分支，未系统验收 | 360×640 逐项走查无溢出、可操作，补 widget 测试 | `gen_prompt.dart`、`translation_adjust_window.dart`、`viewer_page.dart` | S | ⬜ |
+| G5 | 验收已有手机适配 | 提示词全屏编辑器、翻译调整浮层、查看器主界面已有 `usesMobileLayout` 分支，未系统验收 | 360×640 逐项走查无溢出、可操作，补 widget 测试 | `gen_prompt.dart`、`translation_adjust_window.dart`、`viewer_page.dart` | S | ✅ |
 
 ## 2. Android 缺失 / 桌面专属功能（P1–P2）
 
@@ -35,24 +35,24 @@
 | G7 | 增强面板「本地」因子 | 已按平台排除（[tools_generation_wiring.dart:59-65](../lib/presentation/wiring/tools_generation_wiring.dart#L59-L65)） | 无需改动，仅记录 | — | — | ✅ |
 | G8 | 本地超分引擎（NCNN / SeedVR2 / RTX Video） | 随包 Windows 可执行文件，Android 无实现（另一条产品线，非移植项） | 若要做：Android 侧 ONNX/NCNN 推理或改走 ComfyUI 后端 | 新立项 | L | ⛔ |
 | G9 | Krita 桥接 / 打开文件夹 / 发送到 Krita | 桥接图标连本机 socket（[gen_prompt.dart:413-452](../lib/presentation/ui/gen/gen_prompt.dart#L413-L452)）；「打开文件夹」是桌面文件管理 | Android 隐藏这三项，不留必失败入口 | `gen_prompt.dart`、`generation_canvas_menu.dart` | S | ✅ |
-| G10 | 生成中切后台 | 无前台服务/通知，系统回收进程会中断生成 | 前台服务 + 完成通知（可选：保持后台持续生成） | Android 原生 + `image_generation_provider` | M | ⬜ |
+| G10 | 生成中切后台 | 无前台服务/通知，系统回收进程会中断生成 | 前台服务 + 完成通知（可选：保持后台持续生成） | Android 原生 + `image_generation_provider` | M | ✅ |
 
 ## 3. 生成页延伸目标页（P1–P2）
 
 | ID | 事项 | 现状 | 目标 | 涉及文件 | 量级 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
 | G11 | 资源库入口 + 全屏化（原「浮动资源小窗」） | 复核：手机端曾无独立入口，入口藏在编辑浮层里，点开是**桌面式浮窗**（可拖拽/缩放、桌面边框）。现已按方案 A 完成：编辑浮层标题栏新增「库」按钮（图库 / 块库 / 风格库 / 精准参考库），前三者推出手机全屏库页（搜索 + 44dp 点按行，点块插入当前提示词、点缩略图加入生图页），图库直接跳现有图库页；桌面浮窗路径完全未改动 | `resource_window_wiring.dart`、`mobile_resource_library.dart`、`floating_resource_window.dart`、`gen_page.dart` | A≈M | ✅ |
-| G12 | 图片查看器收尾 | 主界面已手机化，底部胶片条 / 更多菜单未适配（更多菜单可复用 `showMobileContextMenu`） | 胶片条横向可滑；更多菜单用底部弹层 | `viewer_page.dart`、`viewer_stage.dart`、`generation_viewer_wiring.dart` | M | ⬜ |
-| G13 | 编辑图片页 | `tools_editor.dart` 无手机分支（工具竖栏 + 快捷键提示被裁） | 画布优先 + 底部工具条 + 参数弹层（同导演工具方案 A） | `tools_editor.dart` | L | ⬜ |
-| G14 | 局部重绘 / 蒙版页 | 同上，桌面布局 | 同上 | 蒙版编辑页 | L | ⬜ |
+| G12 | 图片查看器收尾 | 主界面已手机化，底部胶片条 / 更多菜单未适配（更多菜单可复用 `showMobileContextMenu`） | 胶片条横向可滑；更多菜单用底部弹层 | `viewer_page.dart`、`viewer_stage.dart`、`generation_viewer_wiring.dart` | M | ✅ |
+| G13 | 编辑图片页 | `tools_editor.dart` 无手机分支（工具竖栏 + 快捷键提示被裁） | 画布优先 + 底部工具条 + 参数弹层（同导演工具方案 A） | `tools_editor.dart` | L | ✅ |
+| G14 | 局部重绘 / 蒙版页 | 同上，桌面布局 | 同上 | 蒙版编辑页（`tools_editor.dart` 共用手机布局 + `image_editor_screen` 接线） | L | ✅ |
 
 ## 4. 系统集成（可选项，P2）
 
 | ID | 事项 | 目标 | 量级 | 状态 |
 | --- | --- | --- | --- | --- |
-| G15 | 分享图片到其他 App | `share_plus` 接入，替代桌面「复制/拖出」 | M | ⬜ |
-| G16 | 从系统分享接收图片 | manifest 增加 `ACTION_SEND` + `image/*`，直接进 img2img / 参考图 | M | ⬜ |
-| G17 | 应用内 APK 更新 | 桌面更新器不适用，接 APK 下载/安装（当前手动装包） | M | ⬜ |
+| G15 | 分享图片到其他 App | 已用原生 `ACTION_SEND`（`AndroidShareService` / `PlatformFileChannel.shareFile`），入口：查看器「更多」、画廊长按、生成结果长按，替代桌面「复制/拖出」 | M | ✅ |
+| G16 | 从系统分享接收图片 | manifest 增加 `ACTION_SEND` + `image/*`，直接进 img2img / 参考图 | M | ✅ |
+| G17 | 应用内 APK 更新 | Android 独立链路：GitHub Release 选包 → cache 下载+SHA256 → `FileProvider` + 系统安装器；桌面更新器原样 | M | ✅ |
 
 ## 5. 明确不做（桌面专属）
 
@@ -64,8 +64,8 @@ Windows 剪贴板历史粘贴、随包本地超分可执行文件。
 
 1. **第一批（S，约 0.5–1 天，建议先做）**：G1 画布长按菜单、G2 历史批次菜单、G3 悬停按钮常显、
    G6 隐藏本地超分卡片、G9 隐藏 Krita 桥接 —— 把「触屏点不出来」和「死按钮」清掉。✅ 已完成（见 §8）
-2. **第二批（M，约 1–2 天）**：G12 查看器收尾、G4 触控目标、G5 走查验收（G11 已提前完成，见 §8）。
-3. **第三批（L）**：G13 编辑图片页手机化、G14 局部重绘页手机化、G10 后台生成、G15–G17 系统集成。
+2. **第二批（M，约 1–2 天）**：G12 查看器收尾、G4 触控目标、G5 走查验收（G11 已提前完成，见 §8）。✅ 已完成
+3. **第三批（L）**：G13 编辑图片页手机化、G14 局部重绘页手机化、G10 后台生成、G15–G17 系统集成。✅ 已完成（G17 见 [android-port.md](android-port.md)）
 4. **另立项**：G8 本地超分引擎（Android 推理，不是移植工作量级）。
 
 ## 7. 验收口径
@@ -117,3 +117,49 @@ Windows 剪贴板历史粘贴、随包本地超分可执行文件。
 与生成接线回归共 600+ 项全过；新增 `test/presentation/wiring/mobile_resource_library_test.dart`
 （全屏外观、无缩放角/拖拽、44dp 点按行）、浮动窗口 provider 的「临时窗口不落盘」用例、
 `gen_mobile_layout_test.dart` 的「库入口 + 四类资源菜单」用例、宿主「手机不画浮窗」用例。
+
+### 2026-11-09 · 第二批（G12 / G4 / G5）
+
+- **G12 查看器收尾**：手机全屏 chrome 不再自动隐藏（否则没有退出入口），点画面切换 chrome；
+  底部胶片条手机端横向可滑、淡出边收窄到 24dp；长按图片取代右键（更多菜单走底部弹层）；
+  菜单行高 48dp、手机不画键帽；全屏信息条改用手机版（信息 / 退出两个 44dp 图标）。
+  桌面 popover、键帽、悬停胶片条与窗口按钮避让一行未改。
+- **G4 触控目标 48dp**：新增 `GenTouchTarget`（桌面直接返回 child，无额外 RenderObject），
+  生成页 `GenIb` / `GenFloatButton` / `GenTab` / `GenSliderRow`、历史栏（40→56，图标 48）、
+  头部胶囊（手机外框 50、描边内 48）、参数条（种子行 56、下拉 48、抽屉标题 56）、
+  提示词工具条（28→48）、生成按钮（40→48）全部 ≥48；手机顶栏隐藏 "Model" 小标签恢复单行
+  （实测 59dp，改前 113dp），Turbo 命中区 48×48（视觉 22）；全屏提示词编辑器头部手机端改两行
+  （关闭 / 清除 48×48，正负向切换加 48 高透明命中层）；翻译调整浮窗的收起 / 关闭 / 发送 /
+  快捷 chip / 引用清除 / undo 全部 ≥48。桌面尺寸由测试守卫用例锁定不变。
+- **G5 360×640 走查**：新增生成页手机走查 4 例（主页、编辑浮层→工具菜单→全屏编辑器、
+  历史浮层 + 长按菜单、参数抽屉滚动）、翻译浮窗 3 例、查看器 360×640 1 例，
+  全程 `takeException() == null`，未发现 overflow。
+
+验证：`flutter analyze --no-pub` 干净；`test/presentation/ui/gen` 393 项、tools 171 项、
+viewer 全目录通过；桌面 golden 与尺寸守卫用例（header 37、gen-pin 32×30、无 gen-mobile-editor 等）不变。
+
+### 2026-11-09 · 第三批（G13 / G14 / G10 / G15 / G16 / G17）
+
+- **G13 编辑图片页**：`tools_editor.dart` 新增手机布局（方案 A）——顶栏返回/标题/撤销/重做/下载，
+  画布优先，底部应用条（参数、面板、应用），底部横滑工具条（点一下直接切工具，快捷键字母帽不出现），
+  参数与图层面板改为底部弹层（工具条在弹层下保持可点）；`ToolsEditorSide` 支持整宽无左边框。
+  桌面三栏布局原样（新增手机测试 7 例，tools 全目录 171 项全过）。
+- **G14 局部重绘 / 蒙版页**：复用同一手机布局；参数弹层含笔刷大小、方笔、蒙版外观
+  （颜色 / 不透明度 / 图案），图层面板含重绘强度、输出设置、图层；应用下拉在手机上是底部弹层
+  （仅应用 / 应用并生成）。真实 `ImageEditorScreen(inpaint)` 手机 5 例（含手指在画布上涂蒙版）。
+- **G10 后台生成**：Dart `GenerationBackgroundSync` 监听生成状态 → `com.nailauncher/generation`
+  通道；Kotlin `GenerationForegroundService` 用 dataSync 前台服务保持进程，通知栏显示文案/进度，
+  完成 / 失败 / 取消各发一条通知（点按回 App），通知权限被拒也不崩；6 例状态迁移测试。
+- **G15 分享出站**：查看器「更多」、手机画廊长按菜单、生成结果长按菜单
+  → 系统分享面板（`AndroidShareService` / `PlatformFileChannel.shareFile`，Android-only 动作集合，
+  UI 不 import wiring）；桌面不出现分享动作。
+- **G16 接收系统分享**：MainActivity 处理 `ACTION_SEND image/*`（onCreate + onNewIntent，
+  content:// 拷到 cache），`getSharedImage` 拉取 + `shareImageReceived` 前台信号；
+  Dart 复用 `ImageWorkflowLauncher.openImageToImage` 直接进 img2img；12 例 channel mock 测试。
+- **G17 应用内 APK 更新**：Android 独立链路——GitHub Release 选 ABI 匹配 APK → cache 下载
+  （`.part` + rename、大小/SHA256 校验）→ `FileProvider` + 系统安装器；未授权「安装未知应用」
+  时跳系统设置页，返回后重试；桌面更新器行为不变；22 例纯逻辑 / 通道 mock 测试。
+
+验证：`flutter analyze --no-pub` 全项目干净；全量 `flutter test --no-pub` 通过（最终验收记录见
+[android-port.md](android-port.md)）；`flutter build apk --debug --target-platform android-x64`
+编译通过（Kotlin + manifest 校验）。真机手测项（更新 / 分享 / 后台生成）见 android-port.md。

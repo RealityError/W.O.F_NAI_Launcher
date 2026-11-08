@@ -217,6 +217,12 @@ abstract class AppLocalizations {
   /// **'Export'**
   String get common_export;
 
+  /// No description provided for @common_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get common_share;
+
   /// No description provided for @common_import.
   ///
   /// In en, this message translates to:
@@ -25433,6 +25439,54 @@ abstract class AppLocalizations {
   /// **'New preferences are saved and used for the next offspring.'**
   String get explore_compareDoneBody;
 
+  /// No description provided for @generation_backgroundRunningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating in background'**
+  String get generation_backgroundRunningTitle;
+
+  /// No description provided for @generation_backgroundRunningText.
+  ///
+  /// In en, this message translates to:
+  /// **'NovelAI is generating images. You will be notified when it finishes.'**
+  String get generation_backgroundRunningText;
+
+  /// No description provided for @generation_backgroundDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation complete'**
+  String get generation_backgroundDoneTitle;
+
+  /// No description provided for @generation_backgroundDoneText.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 image generated} other{{count} images generated}}'**
+  String generation_backgroundDoneText(int count);
+
+  /// No description provided for @generation_backgroundFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation failed'**
+  String get generation_backgroundFailedTitle;
+
+  /// No description provided for @generation_backgroundFailedText.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to return to the app for details.'**
+  String get generation_backgroundFailedText;
+
+  /// No description provided for @generation_backgroundCancelledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation cancelled'**
+  String get generation_backgroundCancelledTitle;
+
+  /// No description provided for @generation_backgroundCancelledText.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to return to the app.'**
+  String get generation_backgroundCancelledText;
+
   /// No description provided for @gen_cancel.
   ///
   /// In en, this message translates to:
@@ -29357,12 +29411,6 @@ abstract class AppLocalizations {
   /// **'Subtle animation, paused while generating'**
   String get channel_motionSub;
 
-  /// No description provided for @channel_toastTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'This session'**
-  String get channel_toastTitle;
-
   /// No description provided for @channel_batch.
   ///
   /// In en, this message translates to:
@@ -29440,12 +29488,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sun'**
   String get channel_weekday7;
-
-  /// No description provided for @channel_scrubWhen.
-  ///
-  /// In en, this message translates to:
-  /// **'{day} {time}'**
-  String channel_scrubWhen(String day, String time);
 
   /// No description provided for @rag_title.
   ///

@@ -198,14 +198,16 @@ class _PromptHead extends StatelessWidget {
         ],
       );
     }
-    const fixedTailWidth = 28 + 7 + 6; // Menu, divider and row gaps.
+    // 手机端工具按钮命中区 48dp，占位也按 48 算，避免把页签压出边界。
+    final tail = usesMobileLayout ? 48.0 : 28.0;
+    final fixedTailWidth = tail + 7 + 6; // Menu, divider and row gaps.
     return LayoutBuilder(
       builder: (context, box) => Row(
         spacing: 2,
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: math.max(0, box.maxWidth - fixedTailWidth - 28),
+              maxWidth: math.max(0, box.maxWidth - fixedTailWidth - tail),
             ),
             child: tabs,
           ),
@@ -275,9 +277,13 @@ class _PromptToolsStripState extends State<_PromptToolsStrip> {
 
   @override
   Widget build(BuildContext context) {
+    // 手机端工具按钮的命中区是 48dp，滚动条按同样的行高/列宽计算。
+    final mobile = usesMobileLayout;
     final widths = [
       for (var i = 0; i < widget.children.length; i++)
-        i == widget.translationIndex ? 46.0 : 28.0,
+        i == widget.translationIndex
+            ? (mobile ? 48.0 : 46.0)
+            : (mobile ? 48.0 : 28.0),
     ];
     final overflow = widths.length >= 5;
     final desiredWidth = overflow
@@ -292,7 +298,7 @@ class _PromptToolsStripState extends State<_PromptToolsStrip> {
         return SizedBox(
           key: const Key('gen-prompt-tools-strip'),
           width: width,
-          height: 28,
+          height: mobile ? 48 : 28,
           child: Listener(
             onPointerSignal: (event) {
               if (event is! PointerScrollEvent ||
@@ -340,7 +346,7 @@ class _PromptToolsStripState extends State<_PromptToolsStrip> {
                       for (var i = 0; i < widget.children.length; i++)
                         SizedBox(
                           width: widths[i],
-                          height: 28,
+                          height: mobile ? 48 : 28,
                           child: Center(child: widget.children[i]),
                         ),
                     ],
@@ -638,7 +644,7 @@ class _ToolsMenu extends StatelessWidget {
     final l = context.l10n;
     // 手机端弹层是底部面板，行高按触摸目标放大到 46，字号也上一档。
     final mobile = usesMobileLayout;
-    final rowHeight = mobile ? 46.0 : 34.0;
+    final rowHeight = mobile ? 48.0 : 34.0;
     final rowPad = mobile ? 14.0 : 10.0;
     final glyphSize = mobile ? 17.0 : 15.0;
     final labelSize = mobile ? 14.0 : 13.0;
@@ -915,18 +921,20 @@ class _PromptFoot extends StatelessWidget {
                       tag: #preset,
                       width: 220,
                     ),
-              builder: (context, hover) => Row(
-                spacing: 4,
-                children: [
-                  Text(
-                    '${p.negative ? l.gen_ucPreset : l.gen_qualityPreset}: $label',
-                    style: UiText.sans(
-                      11,
-                      color: hover ? c.ink : GenFormat.ink55(c),
+              builder: (context, hover) => GenTouchTarget(
+                child: Row(
+                  spacing: 4,
+                  children: [
+                    Text(
+                      '${p.negative ? l.gen_ucPreset : l.gen_qualityPreset}: $label',
+                      style: UiText.sans(
+                        11,
+                        color: hover ? c.ink : GenFormat.ink55(c),
+                      ),
                     ),
-                  ),
-                  UiGlyph(UiGlyphs.chevronDown, size: 11, color: c.muted),
-                ],
+                    UiGlyph(UiGlyphs.chevronDown, size: 11, color: c.muted),
+                  ],
+                ),
               ),
             ),
           ),
@@ -951,31 +959,33 @@ class _Transparent extends StatelessWidget {
       child: UiPressable(
         key: const Key('gen-transparent'),
         onTap: () => scope.actions.onTransparentChanged(!on),
-        builder: (context, hover) => Row(
-          spacing: 4,
-          children: [
-            Container(
-              width: 14,
-              height: 14,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3),
-                border: on ? Border.all(color: c.accent) : null,
-              ),
-              child: CustomPaint(
-                painter: _Checker(
-                  a: c.control,
-                  b: Color.lerp(c.control, c.ink, .12)!,
+        builder: (context, hover) => GenTouchTarget(
+          child: Row(
+            spacing: 4,
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  border: on ? Border.all(color: c.accent) : null,
+                ),
+                child: CustomPaint(
+                  painter: _Checker(
+                    a: c.control,
+                    b: Color.lerp(c.control, c.ink, .12)!,
+                  ),
                 ),
               ),
-            ),
-            UiGlyph(
-              on ? UiGlyphs.check : UiGlyphs.close,
-              size: 11,
-              strokeWidth: on ? 2.4 : 1.8,
-              color: on ? c.accent : (hover ? c.ink : c.muted),
-            ),
-          ],
+              UiGlyph(
+                on ? UiGlyphs.check : UiGlyphs.close,
+                size: 11,
+                strokeWidth: on ? 2.4 : 1.8,
+                color: on ? c.accent : (hover ? c.ink : c.muted),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1040,6 +1050,50 @@ class GenFullscreenEditor extends StatelessWidget {
     final title = ch == null
         ? l.gen_basePrompt
         : data.characters!.list[ch].name ?? l.gen_characterN(ch + 1);
+    // 手机端头部：标题和「正向/负向」分两行，关闭/清除补到 48dp 命中区；
+    // 桌面仍是原来的单行（标题 + 28 高分段 + 30dp 图标）。
+    final mobile = usesMobileLayout;
+    final showTabs = ch == null && data.prompt.negativeSupported;
+    final titleText = Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: UiText.sans(
+        15,
+        weight: FontWeight.w600,
+        color: c.ink,
+        height: 1.2,
+      ),
+    );
+    final chip = ch != null && data.prompt.negativeSupported
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: c.control,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              negative ? l.gen_negative : l.gen_positive,
+              style: UiText.sans(12, color: c.muted, height: 1.2),
+            ),
+          )
+        : null;
+    final clear = GenTouchTarget(
+      key: Key('gen-clear-$t'),
+      child: UiIconBox(
+        glyph: UiGlyphs.trash,
+        tooltip: l.gen_clear,
+        onTap: () => scope.actions.onClearPrompt(t),
+      ),
+    );
+    final close = GenTouchTarget(
+      key: const Key('gen-fullscreen-close'),
+      child: UiIconBox(
+        glyph: UiGlyphs.close,
+        tooltip: '${l.gen_close} (Esc)',
+        onTap: scope.controller.closeDialog,
+      ),
+    );
     return UiPopoverSurface(
       key: const Key('gen-fullscreen-editor'),
       width: (size.width - 96).clamp(560.0, 960.0),
@@ -1050,67 +1104,66 @@ class GenFullscreenEditor extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              height: 56,
+              // 手机端单行放不下「标题 + 分段 + 两个 48dp 按钮」：标题一行 56、
+              // 分段单独一行 48（视觉分段仍 28 高，用上下留白补命中区）。
+              // +1 是底边线占掉的高度（和顶栏 59dp 同理）。
+              height: mobile && showTabs ? 105 : 56,
               padding: const EdgeInsets.only(left: 20, right: 12),
               decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: c.line)),
               ),
-              child: Row(
-                spacing: 10,
-                children: [
-                  UiGlyph(UiGlyphs.expand, size: 15, color: c.muted),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: UiText.sans(
-                        15,
-                        weight: FontWeight.w600,
-                        color: c.ink,
-                        height: 1.2,
-                      ),
-                    ),
-                  ),
-                  if (ch == null && data.prompt.negativeSupported)
-                    UiSegmented<bool>(
-                      key: const Key('gen-fullscreen-tabs'),
-                      values: const [false, true],
-                      selected: negative,
-                      height: 28,
-                      itemPadding: 12,
-                      labelOf: (v) => v ? l.gen_negative : l.gen_positive,
-                      onChanged: scope.actions.onNegativeTab,
+              child: mobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          height: 56,
+                          child: Row(
+                            spacing: 10,
+                            children: [
+                              UiGlyph(
+                                UiGlyphs.expand,
+                                size: 15,
+                                color: c.muted,
+                              ),
+                              Expanded(child: titleText),
+                              if (chip != null) chip,
+                              clear,
+                              close,
+                            ],
+                          ),
+                        ),
+                        if (showTabs)
+                          SizedBox(
+                            height: 48,
+                            child: _FullscreenSegmented(
+                              key: const Key('gen-fullscreen-tabs'),
+                              negative: negative,
+                              onChanged: scope.actions.onNegativeTab,
+                            ),
+                          ),
+                      ],
                     )
-                  else if (ch != null && data.prompt.negativeSupported)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: c.control,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        negative ? l.gen_negative : l.gen_positive,
-                        style: UiText.sans(12, color: c.muted, height: 1.2),
-                      ),
+                  : Row(
+                      spacing: 10,
+                      children: [
+                        UiGlyph(UiGlyphs.expand, size: 15, color: c.muted),
+                        Expanded(child: titleText),
+                        if (showTabs)
+                          UiSegmented<bool>(
+                            key: const Key('gen-fullscreen-tabs'),
+                            values: const [false, true],
+                            selected: negative,
+                            height: 28,
+                            itemPadding: 12,
+                            labelOf: (v) => v ? l.gen_negative : l.gen_positive,
+                            onChanged: scope.actions.onNegativeTab,
+                          ),
+                        if (chip != null) chip,
+                        clear,
+                        close,
+                      ],
                     ),
-                  UiIconBox(
-                    key: Key('gen-clear-$t'),
-                    glyph: UiGlyphs.trash,
-                    tooltip: l.gen_clear,
-                    onTap: () => scope.actions.onClearPrompt(t),
-                  ),
-                  UiIconBox(
-                    key: const Key('gen-fullscreen-close'),
-                    glyph: UiGlyphs.close,
-                    tooltip: '${l.gen_close} (Esc)',
-                    onTap: scope.controller.closeDialog,
-                  ),
-                ],
-              ),
             ),
             Expanded(
               child: GenEditorArea(
@@ -1157,6 +1210,61 @@ class GenFullscreenEditor extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 手机端全屏编辑器的「正向 / 负向」切换。
+///
+/// 视觉仍用桌面同款 [UiSegmented]（28 高），但上面盖一层左右各占一半、48 高的
+/// 透明命中区，让每个 tab 的触控目标达到 48dp。桌面不经过这里，尺寸不变。
+class _FullscreenSegmented extends StatelessWidget {
+  const _FullscreenSegmented({
+    super.key,
+    required this.negative,
+    required this.onChanged,
+  });
+
+  final bool negative;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IgnorePointer(
+          child: UiSegmented<bool>(
+            values: const [false, true],
+            selected: negative,
+            height: 28,
+            itemPadding: 12,
+            labelOf: (v) => v ? l.gen_negative : l.gen_positive,
+            onChanged: (_) {},
+          ),
+        ),
+        Positioned.fill(
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  key: const Key('gen-fullscreen-tab-positive'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: negative ? () => onChanged(false) : null,
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  key: const Key('gen-fullscreen-tab-negative'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: negative ? null : () => onChanged(true),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1304,7 +1412,7 @@ class _ResourceWindowsRowState extends State<_ResourceWindowsRow> {
           onTap: mobile ? openAsPopover : _open,
           builder: (context, hover) => Container(
             key: _row,
-            height: mobile ? 46 : 34,
+            height: mobile ? 48 : 34,
             padding: EdgeInsets.symmetric(horizontal: mobile ? 14 : 10),
             decoration: BoxDecoration(
               color: hover || _portal.isShowing ? c.control : null,

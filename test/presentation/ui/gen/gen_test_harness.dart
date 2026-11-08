@@ -10,6 +10,7 @@ import 'package:nai_launcher/presentation/ui/gen/gen_contract.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_fixture_editor.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_page.dart';
 import 'package:nai_launcher/presentation/widgets/navigation/window_chrome_layout.dart';
+import 'package:nai_launcher/presentation/wiring/gen_camera_lock_wiring.dart';
 
 /// 主导航宽度：页面可用宽度 = 窗口宽 − 48。
 const genRail = 48.0;
@@ -58,7 +59,13 @@ Future<void> pumpGen(
   final page = GenerationPage(
     data: data,
     actions: actions ?? GenActions.logging((_) {}),
-    slots: slots ?? const GenSlots(editor: GenFixtureEditor.builder),
+    slots:
+        slots ??
+        const GenSlots(
+          editor: GenFixtureEditor.builder,
+          // 手机顶栏动作由接线层注入（和 generation_wiring 一致）。
+          mobileHeaderActions: [GenMobileCameraLockWiring()],
+        ),
   );
   await tester.pumpWidget(
     genApp(

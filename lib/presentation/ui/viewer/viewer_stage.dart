@@ -32,6 +32,7 @@ class ViewerStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = usesMobileLayout;
     if (!fullscreen) {
       return const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -48,7 +49,18 @@ class ViewerStage extends StatelessWidget {
         const Positioned.fill(child: _View(fullscreen: true)),
         if (ctrl.chromeVisible) ...[
           const Positioned(right: 16, top: 14, child: _FullscreenBadge()),
-          if (!ctrl.filmstripPeek)
+          // 手机上控件常显，胶片条直接落在底部；桌面仍靠鼠标移到底部浮出。
+          if (mobile)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ColoredBox(
+                color: Color(0xCC000000),
+                child: ViewerFilmstrip(),
+              ),
+            )
+          else if (!ctrl.filmstripPeek)
             const Positioned(
               left: 0,
               right: 0,
@@ -56,7 +68,7 @@ class ViewerStage extends StatelessWidget {
               child: Center(child: _FullscreenHint()),
             ),
         ],
-        if (ctrl.filmstripPeek)
+        if (!mobile && ctrl.filmstripPeek)
           const Positioned(
             left: 0,
             right: 0,
@@ -196,7 +208,7 @@ class ViewerTopBar extends StatelessWidget {
               tooltip: backLabel,
               glyph: UiGlyphs.arrowLeft,
               size: 20,
-              extent: 40,
+              extent: usesMobileLayout ? 44 : 40,
               onTap: () => scope.actions.onClose(keyboard: false),
             ),
             Expanded(child: where),
@@ -206,7 +218,7 @@ class ViewerTopBar extends StatelessWidget {
               tooltip: l10n.imageViewer_fullscreen,
               glyph: _G.full,
               size: 18,
-              extent: 40,
+              extent: usesMobileLayout ? 44 : 40,
               onTap: () => ctrl.run(ViewerCommand.fullscreen),
             ),
             ViewerDarkIcon(
@@ -214,7 +226,7 @@ class ViewerTopBar extends StatelessWidget {
               tooltip: l10n.imageViewer_infoPanel,
               glyph: UiGlyphs.panel,
               size: 18,
-              extent: 40,
+              extent: usesMobileLayout ? 44 : 40,
               on: ctrl.infoVisible,
               onTap: ctrl.toggleInfo,
             ),
@@ -577,6 +589,17 @@ class _ViewState extends State<_View> {
                         child: GestureDetector(
                           key: const Key('viewer-view'),
                           behavior: HitTestBehavior.opaque,
+                          // 手机全屏：点图片显示 / 隐藏角标与胶片条。
+                          onTap: widget.fullscreen && usesMobileLayout
+                              ? ctrl.toggleChrome
+                              : null,
+                          // 手机没有右键：长按照片打开「更多」（手机上是底部面板）。
+                          onLongPress: usesMobileLayout && canOpenImageMenu
+                              ? () => ctrl.openMore(
+                                  const UiPopoverAnchor(Offset.zero),
+                                  fromImage: true,
+                                )
+                              : null,
                           onSecondaryTapUp: canOpenImageMenu
                               ? (details) {
                                   if (rect.contains(details.localPosition)) {
@@ -1196,6 +1219,57 @@ class _FullscreenBadge extends StatelessWidget {
     );
     final gen = data.mode == ViewerMode.generation;
     final index = data.items.indexWhere((e) => e.key == data.currentKey);
+    final position = Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: viewerNumber(context, gen ? index + 1 : data.position + 1),
+            style: const TextStyle(color: ViewerInk.strong),
+          ),
+          TextSpan(
+            text:
+                ' / ${viewerNumber(context, gen ? data.items.length : data.total)}',
+          ),
+        ],
+      ),
+      style: UiText.mono(
+        12.5,
+        weight: FontWeight.w500,
+        color: const Color(0xFFBDBDBD),
+      ),
+    );
+    // 手机没有键盘：角标只留位置 + 两个图标按钮（信息栏 / 退出全屏）。
+    if (usesMobileLayout) {
+      return ViewerGlass(
+        key: const Key('viewer-fullscreen-badge'),
+        height: 44,
+        padding: const EdgeInsets.only(left: 12, right: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            position,
+            const SizedBox(width: 4),
+            ViewerDarkIcon(
+              key: const Key('viewer-fullscreen-info'),
+              tooltip: l10n.imageViewer_infoShort,
+              glyph: UiGlyphs.panel,
+              size: 18,
+              extent: 44,
+              onTap: () => scope.controller.run(ViewerCommand.toggleInfo),
+            ),
+            ViewerDarkIcon(
+              key: const Key('viewer-fullscreen-exit'),
+              tooltip: l10n.imageViewer_exitFullscreen,
+              glyph: _G.full,
+              size: 18,
+              extent: 44,
+              onTap: () => scope.controller.run(ViewerCommand.fullscreen),
+            ),
+          ],
+        ),
+      );
+    }
     return ViewerGlass(
       key: const Key('viewer-fullscreen-badge'),
       height: 34,
@@ -1204,28 +1278,7 @@ class _FullscreenBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 8,
         children: [
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: viewerNumber(
-                    context,
-                    gen ? index + 1 : data.position + 1,
-                  ),
-                  style: const TextStyle(color: ViewerInk.strong),
-                ),
-                TextSpan(
-                  text:
-                      ' / ${viewerNumber(context, gen ? data.items.length : data.total)}',
-                ),
-              ],
-            ),
-            style: UiText.mono(
-              12.5,
-              weight: FontWeight.w500,
-              color: const Color(0xFFBDBDBD),
-            ),
-          ),
+          position,
           const ViewerDarkSep(margin: 0),
           link(
             ViewerCommand.toggleInfo,

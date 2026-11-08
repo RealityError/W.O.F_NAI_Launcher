@@ -10,6 +10,7 @@ import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_text.dart';
+import 'gen_parts.dart';
 
 /// 「追加翻译调整」浮窗，照原型 `.devin/mockups/fix-batch-1024/mock.html` 场景 translate
 /// （`.tfloat`）。纯界面：会话、块引用、撤销都由接线层给数据和回调。
@@ -529,20 +530,25 @@ class _TranslationAdjustWindowState extends State<TranslationAdjustWindow> {
                 UiPressable(
                   key: const Key('translation-adjustment-undo'),
                   onTap: widget.actions.onUndo,
-                  builder: (context, hover) => Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: 4,
-                    children: [
-                      UiGlyph(
-                        UiGlyphs.undo,
-                        size: 12,
-                        color: hover ? c.ink : c.faint,
-                      ),
-                      Text(
-                        l.common_undo,
-                        style: UiText.sans(11, color: hover ? c.ink : c.faint),
-                      ),
-                    ],
+                  builder: (context, hover) => GenTouchTarget(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 4,
+                      children: [
+                        UiGlyph(
+                          UiGlyphs.undo,
+                          size: 12,
+                          color: hover ? c.ink : c.faint,
+                        ),
+                        Text(
+                          l.common_undo,
+                          style: UiText.sans(
+                            11,
+                            color: hover ? c.ink : c.faint,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
             ],
@@ -619,29 +625,35 @@ class _TranslationAdjustWindowState extends State<TranslationAdjustWindow> {
                 child: UiPressable(
                   key: const Key('translation-adjustment-send'),
                   onTap: v.busy ? widget.actions.onStop : _send,
-                  builder: (context, hover) => Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: hover ? c.ink.withValues(alpha: .85) : c.ink,
-                      borderRadius: BorderRadius.circular(8),
+                  builder: (context, hover) => GenTouchTarget(
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: hover ? c.ink.withValues(alpha: .85) : c.ink,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: v.busy
+                          ? UiGlyph(
+                              UiGlyphs.stop,
+                              key: const Key(
+                                'translation-adjustment-stop-glyph',
+                              ),
+                              size: 11,
+                              filled: true,
+                              color: c.bg,
+                            )
+                          : UiGlyph(
+                              UiGlyphs.arrowUp,
+                              key: const Key(
+                                'translation-adjustment-send-glyph',
+                              ),
+                              size: 15,
+                              strokeWidth: 2,
+                              color: c.bg,
+                            ),
                     ),
-                    child: v.busy
-                        ? UiGlyph(
-                            UiGlyphs.stop,
-                            key: const Key('translation-adjustment-stop-glyph'),
-                            size: 11,
-                            filled: true,
-                            color: c.bg,
-                          )
-                        : UiGlyph(
-                            UiGlyphs.arrowUp,
-                            key: const Key('translation-adjustment-send-glyph'),
-                            size: 15,
-                            strokeWidth: 2,
-                            color: c.bg,
-                          ),
                   ),
                 ),
               ),
@@ -671,15 +683,17 @@ class _HeadButton extends StatelessWidget {
       message: tooltip,
       child: UiPressable(
         onTap: onTap,
-        builder: (context, hover) => Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: hover ? c.hover : null,
-            borderRadius: BorderRadius.circular(6),
+        builder: (context, hover) => GenTouchTarget(
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: hover ? c.hover : null,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: UiGlyph(glyph, size: 15, color: hover ? c.ink : c.muted),
           ),
-          child: UiGlyph(glyph, size: 15, color: hover ? c.ink : c.muted),
         ),
       ),
     );
@@ -702,28 +716,30 @@ class _QuickChip extends StatelessWidget {
     final c = context.ui;
     return UiPressable(
       onTap: onTap,
-      builder: (context, hover) => Container(
-        height: 26,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
-        decoration: BoxDecoration(
-          color: c.bg,
-          border: Border.all(color: hover ? c.strong : c.line),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 5,
-          children: [
-            UiGlyph(glyph, size: 13, color: hover ? c.ink : c.muted),
-            Text(
-              label,
-              style: UiText.sans(
-                12,
-                color: hover ? c.ink : c.muted,
-                height: 1.2,
+      builder: (context, hover) => GenTouchTarget(
+        child: Container(
+          height: 26,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: c.bg,
+            border: Border.all(color: hover ? c.strong : c.line),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              UiGlyph(glyph, size: 13, color: hover ? c.ink : c.muted),
+              Text(
+                label,
+                style: UiText.sans(
+                  12,
+                  color: hover ? c.ink : c.muted,
+                  height: 1.2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -759,10 +775,13 @@ class _RefChip extends StatelessWidget {
             message: tooltip,
             child: UiPressable(
               onTap: onClear,
-              builder: (context, hover) => UiGlyph(
-                UiGlyphs.close,
-                size: 11,
-                color: c.accent.withValues(alpha: hover ? 1 : .7),
+              builder: (context, hover) => GenTouchTarget(
+                key: const Key('translation-adjustment-refs-clear'),
+                child: UiGlyph(
+                  UiGlyphs.close,
+                  size: 11,
+                  color: c.accent.withValues(alpha: hover ? 1 : .7),
+                ),
               ),
             ),
           ),

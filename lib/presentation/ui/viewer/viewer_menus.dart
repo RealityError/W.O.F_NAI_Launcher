@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_dialog.dart';
@@ -44,7 +45,8 @@ class _Row extends StatelessWidget {
     return UiPressable(
       onTap: onTap,
       builder: (context, hover) => Container(
-        height: 32,
+        // 手机交互行至少 44dp，桌面保持原型里的 32 高紧凑菜单。
+        height: usesMobileLayout ? 48 : 32,
         padding: EdgeInsets.only(left: 10 + indent, right: 10),
         decoration: BoxDecoration(
           color: hover || active ? c.control : null,
@@ -138,7 +140,9 @@ class _CollectionsList extends StatelessWidget {
             filled: item.favorite,
           ),
           label: l10n.imageViewer_favorite,
-          trailing: _kb(context, _keyOf(data, ViewerCommand.favorite)),
+          trailing: usesMobileLayout
+              ? null
+              : _kb(context, _keyOf(data, ViewerCommand.favorite)),
           onTap: () => a.onSetFavorite(item.key, !item.favorite),
         ),
         if (list != null && list.isNotEmpty) ...[
@@ -174,11 +178,11 @@ class ViewerCollectionsMenu extends StatelessWidget {
   const ViewerCollectionsMenu({super.key});
 
   @override
-  Widget build(BuildContext context) => const UiPopoverSurface(
-    key: Key('viewer-collections'),
-    width: 210,
-    padding: EdgeInsets.all(5),
-    child: _CollectionsList(),
+  Widget build(BuildContext context) => UiPopoverSurface(
+    key: const Key('viewer-collections'),
+    width: usesMobileLayout ? null : 210,
+    padding: const EdgeInsets.all(5),
+    child: const _CollectionsList(),
   );
 }
 
@@ -207,12 +211,21 @@ class _ViewerMoreMenuState extends State<ViewerMoreMenu> {
         data.detail?.key == item.key &&
         data.detail!.status == ViewerMetaStatus.ready;
     final gallery = data.mode == ViewerMode.gallery && !data.libraryReadOnly;
+    final mobile = usesMobileLayout;
     void run(ViewerAction a) {
       scope.controller.closePopover();
       scope.actions.onAction(item.key, a);
     }
 
     final rows = <Widget>[
+      // Android 手机端：把当前图片交给系统分享面板。桌面无该动作，不出现此行。
+      if (has(ViewerAction.shareImage))
+        _Row(
+          key: const Key('viewer-more-share'),
+          icon: _icon(UiGlyphs.send),
+          label: l10n.common_share,
+          onTap: () => run(ViewerAction.shareImage),
+        ),
       if (has(ViewerAction.copyImage))
         _Row(
           key: const Key('viewer-more-copyImage'),
@@ -249,7 +262,12 @@ class _ViewerMoreMenuState extends State<ViewerMoreMenu> {
           label: l10n.imageViewer_addToCollection,
           active: _sub,
           trailing: UiGlyph(UiGlyphs.chevronRight, size: 13, color: c.faint),
-          onTap: () => setState(() => _sub = !_sub),
+          // 手机底部面板没有“向左挂子菜单”的空间：直接切到收藏集面板。
+          onTap: mobile
+              ? () => scope.controller.openCollections(
+                  const UiPopoverAnchor(Offset.zero),
+                )
+              : () => setState(() => _sub = !_sub),
         ),
         if (has(ViewerAction.moveTo))
           _Row(
@@ -271,7 +289,9 @@ class _ViewerMoreMenuState extends State<ViewerMoreMenu> {
           icon: _icon(ViewerGlyphs.trash),
           danger: true,
           label: l10n.imageViewer_moveToTrash,
-          trailing: _kb(context, _keyOf(data, ViewerCommand.delete)),
+          trailing: mobile
+              ? null
+              : _kb(context, _keyOf(data, ViewerCommand.delete)),
           onTap: () {
             scope.controller.closePopover();
             scope.controller.requestDelete();
@@ -287,6 +307,18 @@ class _ViewerMoreMenuState extends State<ViewerMoreMenu> {
       if (meta) ViewerAction.saveAsBlock,
     ].where(has).length;
     final top = before * 32.0 + 9 - 6;
+    // 手机：通栏底部面板，不做“向左长”的子菜单（收藏集直接换一页）。
+    if (mobile) {
+      return UiPopoverSurface(
+        key: const Key('viewer-more'),
+        padding: const EdgeInsets.all(5),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: rows,
+        ),
+      );
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,

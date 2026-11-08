@@ -29,6 +29,15 @@ flutter build apk --release --split-per-abi
 - release 当前复用 debug 签名，**产物不能发布**；正式签名流程见 `docs/android-port.md` 第 7 节
 - 新 clone 构建前先跑：`flutter pub get` → `dart run tool/generate.dart` → `flutter gen-l10n`
 
+Android 侧能力与权限（2026-11-09 起）：
+
+- 权限：`INTERNET` / `ACCESS_NETWORK_STATE`；`POST_NOTIFICATIONS`（后台生成通知，应用不主动请求运行时权限）；`REQUEST_INSTALL_PACKAGES`（应用内 APK 更新）；`FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_DATA_SYNC`（生成中 dataSync 前台服务）；`READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` 等图库导入权限。
+- 平台通道：`com.nailauncher/platform`（打开/分享/另存相册/打开目录/系统代理/分享入站）、`com.nailauncher/generation`（后台生成前台服务）、`com.nailauncher/apk_install`（APK 安装器桥）。
+- 应用内更新（G17）：检查 GitHub Release → 下载 APK 到 cache → 系统安装器。**Release 必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` 等），否则会提示有新版本但无包可装；首次安装更新需要允许“安装未知应用”，未授权时会跳到本应用的系统设置页。
+- 后台生成（G10）：dataSync 前台服务 + 通知 channel `wof_generation`；Android 13+ 通知权限默认关闭时通知不可见，但生成继续。
+- 分享（G15/G16）：查看器「更多」/ 画廊长按菜单 / 生成结果长按菜单可分享到系统面板；其它应用 `ACTION_SEND image/*`（单张）进来会拷贝到 cache 并打开图生图。
+- 应用内更新、分享、后台生成的真机手测清单见 [docs/android-port.md](../docs/android-port.md) 第 3.9 节。
+
 `local.properties`、Gradle wrapper 可执行文件、keystore 等已由本目录和根目录的 `.gitignore` 忽略；`GeneratedPluginRegistrant.java` 是生成文件，不要手改。
 
 完整的 SDK 版本、能力判断、功能矩阵、CI 和排障见 [docs/android-port.md](../docs/android-port.md)。

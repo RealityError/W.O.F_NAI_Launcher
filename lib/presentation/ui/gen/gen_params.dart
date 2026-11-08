@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -140,10 +141,18 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
+    // 手机端参数列按 48dp 触控目标留高：视觉只多几像素内边距，行高到 48+。
+    final mobile = usesMobileLayout;
     final cell = UiPressable(
       onTap: onTap,
       builder: (context, hover) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        constraints: mobile
+            ? const BoxConstraints(minWidth: 48, minHeight: 48)
+            : null,
+        padding: EdgeInsets.symmetric(
+          horizontal: mobile ? 12 : 10,
+          vertical: mobile ? 10 : 6,
+        ),
         decoration: BoxDecoration(
           color: hover ? c.control : null,
           borderRadius: BorderRadius.circular(5),
@@ -386,7 +395,8 @@ class _Drawer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            height: 40,
+            // 手机端这个标题行里要放 48dp 的关闭按钮。
+            height: usesMobileLayout ? 56 : 40,
             padding: const EdgeInsets.only(left: 14, right: 6),
             child: Row(
               children: [
@@ -461,25 +471,29 @@ class _Drawer extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         if (p.varietyPlus case final v?)
-                          Tooltip(
-                            message: l.gen_varietyTip,
-                            child: UiFilterChip(
-                              key: const Key('gen-variety'),
-                              label: 'Variety+',
-                              selected: v,
-                              showCheck: true,
-                              onTap: () => a.onVarietyChanged(!v),
+                          GenTouchTarget(
+                            child: Tooltip(
+                              message: l.gen_varietyTip,
+                              child: UiFilterChip(
+                                key: const Key('gen-variety'),
+                                label: 'Variety+',
+                                selected: v,
+                                showCheck: true,
+                                onTap: () => a.onVarietyChanged(!v),
+                              ),
                             ),
                           ),
                         if (p.decrisp case final v?)
-                          Tooltip(
-                            message: l.gen_decrispTip,
-                            child: UiFilterChip(
-                              key: const Key('gen-decrisp'),
-                              label: 'Decrisp',
-                              selected: v,
-                              showCheck: true,
-                              onTap: () => a.onDecrispChanged(!v),
+                          GenTouchTarget(
+                            child: Tooltip(
+                              message: l.gen_decrispTip,
+                              child: UiFilterChip(
+                                key: const Key('gen-decrisp'),
+                                label: 'Decrisp',
+                                selected: v,
+                                showCheck: true,
+                                onTap: () => a.onDecrispChanged(!v),
+                              ),
                             ),
                           ),
                       ],
@@ -521,7 +535,8 @@ class _Dropdown extends StatelessWidget {
     return UiPressable(
       onTap: onTap,
       builder: (context, hover) => Container(
-        height: 32,
+        // 手机端下拉框行高 = 48dp 触控目标；桌面保持 32。
+        height: usesMobileLayout ? 48 : 32,
         padding: const EdgeInsets.only(left: 10, right: 8),
         decoration: BoxDecoration(
           color: hover ? c.hover : c.control,
@@ -653,7 +668,8 @@ class _SeedFieldState extends State<_SeedField> {
     return _Field(
       label: l.gen_seed,
       child: Container(
-        height: 32,
+        // 手机端要容纳 48dp 的掷骰 / 锁定按钮。
+        height: usesMobileLayout ? 56 : 32,
         padding: const EdgeInsets.only(left: 10, right: 2),
         decoration: BoxDecoration(
           color: c.control,
@@ -724,29 +740,35 @@ class _SmeaRow extends StatelessWidget {
       child: Row(
         spacing: 6,
         children: [
-          Tooltip(
-            message: l.gen_smeaAutoTip,
-            child: UiFilterChip(
-              key: const Key('gen-smea-auto'),
-              label: l.gen_auto,
-              selected: s.auto,
-              showCheck: true,
-              onTap: () => set(auto: !s.auto),
+          GenTouchTarget(
+            child: Tooltip(
+              message: l.gen_smeaAutoTip,
+              child: UiFilterChip(
+                key: const Key('gen-smea-auto'),
+                label: l.gen_auto,
+                selected: s.auto,
+                showCheck: true,
+                onTap: () => set(auto: !s.auto),
+              ),
             ),
           ),
-          UiFilterChip(
-            key: const Key('gen-smea'),
-            label: 'SMEA',
-            selected: s.smea,
-            showCheck: true,
-            onTap: s.auto ? null : () => set(on: !s.smea),
+          GenTouchTarget(
+            child: UiFilterChip(
+              key: const Key('gen-smea'),
+              label: 'SMEA',
+              selected: s.smea,
+              showCheck: true,
+              onTap: s.auto ? null : () => set(on: !s.smea),
+            ),
           ),
-          UiFilterChip(
-            key: const Key('gen-smea-dyn'),
-            label: 'DYN',
-            selected: s.dyn,
-            showCheck: true,
-            onTap: s.auto || !s.smea ? null : () => set(dyn: !s.dyn),
+          GenTouchTarget(
+            child: UiFilterChip(
+              key: const Key('gen-smea-dyn'),
+              label: 'DYN',
+              selected: s.dyn,
+              showCheck: true,
+              onTap: s.auto || !s.smea ? null : () => set(dyn: !s.dyn),
+            ),
           ),
         ],
       ),

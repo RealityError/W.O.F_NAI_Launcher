@@ -66,6 +66,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get common_export => '내보내기';
 
   @override
+  String get common_share => '공유';
+
+  @override
   String get common_import => '가져오기';
 
   @override
@@ -14294,6 +14297,33 @@ class AppLocalizationsKo extends AppLocalizations {
   String get explore_compareDoneBody => '새 선호도가 저장되어 다음 자손 생성에 사용됩니다.';
 
   @override
+  String get generation_backgroundRunningTitle => '백그라운드 생성 중';
+
+  @override
+  String get generation_backgroundRunningText =>
+      'NovelAI가 이미지를 생성하고 있습니다. 완료되면 알려드립니다.';
+
+  @override
+  String get generation_backgroundDoneTitle => '생성 완료';
+
+  @override
+  String generation_backgroundDoneText(int count) {
+    return '$count장의 이미지가 생성되었습니다';
+  }
+
+  @override
+  String get generation_backgroundFailedTitle => '생성 실패';
+
+  @override
+  String get generation_backgroundFailedText => '앱으로 돌아가 원인을 확인하세요.';
+
+  @override
+  String get generation_backgroundCancelledTitle => '생성이 취소되었습니다';
+
+  @override
+  String get generation_backgroundCancelledText => '앱으로 돌아갑니다.';
+
+  @override
   String get gen_cancel => '취소';
 
   @override
@@ -16377,9 +16407,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get channel_motionSub => '아주 가벼운 움직임. 생성 중에는 자동으로 멈춥니다';
 
   @override
-  String get channel_toastTitle => '이번 채널';
-
-  @override
   String channel_batch(String time, int count) {
     return '$time · $count장';
   }
@@ -16429,11 +16456,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get channel_weekday7 => '일';
-
-  @override
-  String channel_scrubWhen(String day, String time) {
-    return '$day $time';
-  }
 
   @override
   String get rag_title => 'RAG 벡터 시스템';

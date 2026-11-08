@@ -16,6 +16,7 @@ import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/storage_keys.dart';
+import '../../../core/services/android_share_service.dart';
 import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/app_support_directory.dart';
@@ -543,6 +544,20 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
       AppToast.success(context, l10n.image_imageSaved(displayName));
     } else {
       AppToast.error(context, l10n.image_saveFailed('MediaStore'));
+    }
+  }
+
+  /// Android：把画廊图片交给系统分享面板（桌面右键菜单不展示该动作）。
+  Future<void> _shareRecord(LocalImageRecord record) async {
+    if (!await File(record.path).exists()) {
+      if (mounted) {
+        AppToast.info(context, context.l10n.localGallery_imageFileMissing);
+      }
+      return;
+    }
+    final shared = await AndroidShareService.shareFile(record.path);
+    if (!shared) {
+      AppLogger.w('分享图片失败: ${record.path}', 'LocalGallery');
     }
   }
 
@@ -2284,6 +2299,8 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
         }
       case LocalImageContextAction.saveToAlbum:
         await _saveRecordToAlbum(record);
+      case LocalImageContextAction.share:
+        await _shareRecord(record);
       case LocalImageContextAction.delete:
         await _confirmDeleteImage(record);
     }

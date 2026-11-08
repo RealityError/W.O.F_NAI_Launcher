@@ -537,6 +537,10 @@ class _ImageViewerWiringState extends ConsumerState<ImageViewerWiring> {
       // Local / advanced upscale relies on bundled desktop executables and has
       // no Android implementation, so the action entry is hidden entirely.
       actions.remove(ViewerAction.upscale);
+      // Android 手机端：提供系统分享入口（桌面不出现该动作）。
+      actions.add(ViewerAction.shareImage);
+    } else {
+      actions.remove(ViewerAction.shareImage);
     }
     final data = ViewerViewData(
       mode: widget.session.mode,

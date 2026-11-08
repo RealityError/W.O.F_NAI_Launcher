@@ -1203,13 +1203,16 @@ class _UpscaleStrip extends StatelessWidget {
                   style: UiText.sans(12, weight: FontWeight.w600, color: c.ink),
                 ),
               ),
-              UiBtn(
-                key: const Key('gen-upscale-cancel'),
-                size: UiBtnSize.small,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                onTap: () =>
-                    scope.actions.onUpscale(scope.data.canvas.info!.tileId),
-                children: [Text(l.tools_cancel)],
+              GenTouchTarget(
+                minWidth: 48,
+                child: UiBtn(
+                  key: const Key('gen-upscale-cancel'),
+                  size: UiBtnSize.small,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  onTap: () =>
+                      scope.actions.onUpscale(scope.data.canvas.info!.tileId),
+                  children: [Text(l.tools_cancel)],
+                ),
               ),
             ],
           ),
@@ -1316,27 +1319,29 @@ class _InfoBar extends StatelessWidget {
                 tag: #seed,
                 width: 190,
               ),
-              builder: (context, hover) => Container(
-                height: 30,
-                padding: const EdgeInsets.only(left: 2, right: 8),
-                decoration: BoxDecoration(
-                  color: hover ? c.control : null,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 5,
-                  children: [
-                    GenNaiIcon('seed', size: 13, color: c.ink),
-                    Text(
-                      '${info.seed}',
-                      style: UiText.mono(
-                        12.5,
-                        weight: FontWeight.w500,
-                        color: c.ink,
+              builder: (context, hover) => GenTouchTarget(
+                child: Container(
+                  height: 30,
+                  padding: const EdgeInsets.only(left: 2, right: 8),
+                  decoration: BoxDecoration(
+                    color: hover ? c.control : null,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 5,
+                    children: [
+                      GenNaiIcon('seed', size: 13, color: c.ink),
+                      Text(
+                        '${info.seed}',
+                        style: UiText.mono(
+                          12.5,
+                          weight: FontWeight.w500,
+                          color: c.ink,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1392,7 +1397,8 @@ class _BottomBars extends StatelessWidget {
       child: const _ActionBar(),
     );
     return LayoutBuilder(
-      builder: (context, box) => box.maxWidth < _stackWidth
+      // 手机端控件按 48dp 命中区后两条工具条放不进一行：和窄画布一样改为上下叠放。
+      builder: (context, box) => usesMobileLayout || box.maxWidth < _stackWidth
           ? Stack(
               children: [
                 Positioned(
@@ -1615,28 +1621,32 @@ class _DisplayPopover extends StatelessWidget {
         child: UiPressable(
           key: Key('gen-bd-$b'),
           onTap: () => scope.actions.onBackdropChanged(b),
-          builder: (context, hover) => Container(
-            width: 30,
-            height: 30,
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: on ? c.accent : (hover ? c.strong : Colors.transparent),
-                width: 2,
-              ),
-            ),
+          builder: (context, hover) => GenTouchTarget(
             child: Container(
-              clipBehavior: Clip.antiAlias,
+              width: 30,
+              height: 30,
+              padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: c.line),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: on
+                      ? c.accent
+                      : (hover ? c.strong : Colors.transparent),
+                  width: 2,
+                ),
               ),
-              child: CustomPaint(
-                painter: b == 'none'
-                    ? _Slash(c.error)
-                    : GenBackdropPainter(b, c),
-                child: const SizedBox.expand(),
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(color: c.line),
+                ),
+                child: CustomPaint(
+                  painter: b == 'none'
+                      ? _Slash(c.error)
+                      : GenBackdropPainter(b, c),
+                  child: const SizedBox.expand(),
+                ),
               ),
             ),
           ),

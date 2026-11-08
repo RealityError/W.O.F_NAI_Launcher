@@ -204,6 +204,10 @@ class UpdateCheckService {
 
   final DateTime Function() _now;
 
+  /// 桌面走应用内安装器，Android 走独立的 APK 下载安装链路。
+  bool get _supportsInAppUpdates =>
+      supportsInAppUpdateInstall || isAndroidPlatform;
+
   /// 默认仓库所有者
   static const String defaultOwner = 'z15087716457-stack';
 
@@ -259,8 +263,8 @@ class UpdateCheckService {
   /// 成功检查使用常规 24 小时间隔；失败尝试只冷却 30 分钟。已经发现
   /// 新版本时，“稍后提醒”到期会绕过常规间隔，确保提示不会消失一天。
   Future<bool> shouldCheck() async {
-    // 移动端没有应用内更新安装链路，自动检查只会提示桌面安装包。
-    if (!supportsInAppUpdateInstall) return false;
+    // 桌面/Android 支持应用内更新；其它平台自动检查只会提示桌面安装包。
+    if (!_supportsInAppUpdates) return false;
     final now = _now();
     final remindAfter = _storage.getUpdateRemindAfter();
     if (remindAfter != null && now.isBefore(remindAfter)) {
@@ -297,7 +301,7 @@ class UpdateCheckService {
   /// 返回 [VersionInfo] 如果有新版本，否则返回 null
   /// 如果版本被标记为跳过，则返回 null
   Future<VersionInfo?> checkForUpdates({bool ignoreSkipped = false}) async {
-    if (!supportsInAppUpdateInstall) {
+    if (!_supportsInAppUpdates) {
       throw UpdateCheckException(currentL10n.update_errorInAppUnsupported);
     }
     final attemptTime = _now();
@@ -308,7 +312,9 @@ class UpdateCheckService {
         owner: defaultOwner,
         repo: defaultRepo,
         currentVersion: currentVersion,
-        platform: _installationService.getReleaseAssetPreference(),
+        platform: isAndroidPlatform
+            ? 'android'
+            : _installationService.getReleaseAssetPreference(),
         includePrerelease: shouldIncludePrerelease(),
       );
 

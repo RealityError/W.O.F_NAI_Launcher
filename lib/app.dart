@@ -44,6 +44,8 @@ import 'presentation/wiring/floating_resource_window.dart';
 import 'presentation/wiring/floating_resource_windows_host.dart';
 import 'presentation/providers/floating_resource_windows_provider.dart';
 import 'presentation/wiring/resource_window_wiring.dart';
+import 'presentation/wiring/android_share_wiring.dart';
+import 'presentation/wiring/generation_background_sync.dart';
 
 double windowCaptionHeightForRoute(String path) => switch (path) {
   AppRoutes.localGallery => 62,
@@ -92,6 +94,11 @@ class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
   void initState() {
     super.initState();
     _clipboardHistoryPaste.register();
+    // Android 手机端：接收系统 ACTION_SEND 分享进来的图片 + 生成中后台保活。
+    if (isAndroidPlatform) {
+      AndroidShareWiring.attach(ref);
+      GenerationBackgroundSync.attach(ref);
+    }
     if (Platform.isMacOS) {
       macOSAppChannel.setMethodCallHandler((call) async {
         if (call.method == 'openSettings' &&
@@ -127,6 +134,7 @@ class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
   @override
   void dispose() {
     _clipboardHistoryPaste.dispose();
+    if (isAndroidPlatform) AndroidShareWiring.detach();
     if (Platform.isMacOS) macOSAppChannel.setMethodCallHandler(null);
     _anlasWatcherSubscription?.close();
     _backgroundRefreshSubscription?.close();

@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' show Ref;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/services/android_update_service.dart';
 import '../../core/services/update_check_service.dart';
 import '../../core/services/update_installer_service.dart';
 import '../../core/utils/app_logger.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../../data/models/version/version_info.dart';
 import '../../core/utils/localization_extension.dart';
 
@@ -133,6 +135,9 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
     if (_initialized) return;
     _initialized = true;
 
+    // Android 的更新包由系统安装器直接安装，不做跨启动恢复。
+    if (isAndroidPlatform) return;
+
     final installer = ref.read(updateInstallerServiceProvider);
     final result = await installer.consumeExecutionResult();
     final restored = await installer.restorePendingUpdate();
@@ -216,11 +221,14 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
         state = const UpdateState(status: UpdateStatus.checking);
       }
       final versionInfo = await service.checkForUpdates(ignoreSkipped: manual);
+      final resolvedVersionInfo = versionInfo != null && isAndroidPlatform
+          ? await _withAndroidApkAsset(versionInfo)
+          : versionInfo;
       if (!_canPublishCheck(revision)) return;
-      if (versionInfo != null) {
+      if (resolvedVersionInfo != null) {
         state = UpdateState(
           status: UpdateStatus.available,
-          versionInfo: versionInfo,
+          versionInfo: resolvedVersionInfo,
           notificationVisible: true,
         );
       } else {
@@ -316,23 +324,36 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
     );
 
     try {
-      final downloaded = await ref
-          .read(updateInstallerServiceProvider)
-          .downloadUpdate(
-            versionInfo,
-            cancelToken: cancelToken,
-            onProgress: (progress) {
-              if (cancelToken.isCancelled) return;
-              state = state.copyWith(
-                status: UpdateStatus.downloading,
-                downloadProgress: progress.progress,
-                receivedBytes: progress.receivedBytes,
-                totalBytes: progress.totalBytes,
-                downloadBytesPerSecond: progress.bytesPerSecond,
-                notificationVisible: true,
-              );
-            },
-          );
+      void publishProgress(UpdateDownloadProgress progress) {
+        if (cancelToken.isCancelled) return;
+        state = state.copyWith(
+          status: UpdateStatus.downloading,
+          downloadProgress: progress.progress,
+          receivedBytes: progress.receivedBytes,
+          totalBytes: progress.totalBytes,
+          downloadBytesPerSecond: progress.bytesPerSecond,
+          notificationVisible: true,
+        );
+      }
+
+      final DownloadedUpdate downloaded;
+      if (isAndroidPlatform) {
+        downloaded = await ref
+            .read(androidUpdateServiceProvider)
+            .download(
+              versionInfo,
+              cancelToken: cancelToken,
+              onProgress: publishProgress,
+            );
+      } else {
+        downloaded = await ref
+            .read(updateInstallerServiceProvider)
+            .downloadUpdate(
+              versionInfo,
+              cancelToken: cancelToken,
+              onProgress: publishProgress,
+            );
+      }
       state = state.copyWith(
         status: UpdateStatus.downloaded,
         downloadedUpdate: downloaded,
@@ -380,6 +401,17 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
       notificationVisible: true,
     );
     try {
+      if (isAndroidPlatform) {
+        await ref.read(androidUpdateServiceProvider).install(downloaded);
+        if (_disposed) return;
+        // 系统安装器已经在前台；应用本身保持可用，安装完成后由用户返回。
+        state = state.copyWith(
+          status: UpdateStatus.downloaded,
+          downloadProgress: 1,
+          notificationVisible: false,
+        );
+        return;
+      }
       await ref
           .read(updateInstallerServiceProvider)
           .installAndRestart(downloaded);
@@ -394,6 +426,19 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
         notificationVisible: true,
       );
     }
+  }
+
+  /// Android：下载并立即交给系统安装器（桌面仍走更新对话框）。
+  Future<void> downloadAndInstall() async {
+    if (!isAndroidPlatform) {
+      await installAndRestart();
+      return;
+    }
+    if (state.downloadedUpdate == null) {
+      await downloadUpdate();
+    }
+    if (_disposed || state.downloadedUpdate == null) return;
+    await installAndRestart();
   }
 
   Future<void> openDownloadPage() async {
@@ -413,6 +458,22 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
     _downloadCancelToken = null;
     _reminderTimer?.cancel();
     state = const UpdateState();
+  }
+
+  /// Android 的 Release 检查需要先拿到完整资产列表，再按设备 ABI 选 APK。
+  Future<VersionInfo> _withAndroidApkAsset(VersionInfo versionInfo) async {
+    try {
+      final asset = await ref
+          .read(androidUpdateServiceProvider)
+          .findApkAsset(versionInfo);
+      return versionInfo.copyWith(primaryAsset: asset);
+    } catch (error) {
+      AppLogger.w(
+        'Failed to select Android APK asset: $error',
+        'UpdateNotifier',
+      );
+      return versionInfo.copyWith(primaryAsset: null);
+    }
   }
 
   String _formatError(Object error) {

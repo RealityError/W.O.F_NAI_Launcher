@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
+import '../../core/services/android_share_service.dart';
 import '../../core/utils/file_explorer_utils.dart';
 import '../services/image_clipboard_service.dart';
 import '../../core/utils/localization_extension.dart';
@@ -90,6 +91,24 @@ class ImageViewerActionHost {
         return false;
       }
       await FileExplorerUtils.revealFile(path);
+      return false;
+    } else if (action == ViewerAction.shareImage) {
+      if (!Platform.isAndroid) {
+        return false;
+      }
+      // Android 手机端：交给系统分享面板；没有文件路径的生成结果直接用内存字节。
+      final handled = path != null
+          ? await AndroidShareService.shareFile(path)
+          : await AndroidShareService.shareBytes(
+              await source.getImageBytes(),
+              fileName: 'shared.png',
+            );
+      if (!handled && alive() && context.mounted) {
+        AppToast.error(
+          context,
+          l10n.localGallery_sendFailed(l10n.common_share),
+        );
+      }
       return false;
     } else if (action == ViewerAction.copyImage) {
       await ref

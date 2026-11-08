@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/anlas_calculator.dart';
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -70,7 +71,8 @@ class GenGenerateButton extends StatelessWidget {
             : (running && hover ? c.hover : c.control);
         final fg = ready ? c.onBrand : (running ? c.ink : c.faint);
         return Container(
-          height: 40,
+          // 手机端主按钮按 48dp 触控目标；桌面保持 40 高。
+          height: usesMobileLayout ? 48 : 40,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: bg,

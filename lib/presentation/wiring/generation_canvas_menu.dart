@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/services/android_share_service.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../../core/utils/localization_extension.dart';
 import '../mobile/mobile_context_menu.dart';
 import '../providers/image_generation_provider.dart';
@@ -91,6 +93,19 @@ Future<void> openGenerationCanvasMenuMobile(
         enabled: image.canSave,
         onTap: () => a.onCopyImage(id),
       ),
+      // Android 手机：分享当前生成结果（未保存的图也能分享内存字节）。
+      if (isAndroidPlatform)
+        MobileMenuItem(
+          label: l.common_share,
+          icon: Icons.share_outlined,
+          enabled: image.canSave,
+          onTap: () => unawaited(
+            AndroidShareService.shareBytes(
+              image.bytes,
+              fileName: GeneratedImageActions(ref).previewImageFileName(image),
+            ),
+          ),
+        ),
       MobileMenuItem(
         label: l.imageMenu_details,
         icon: Icons.open_in_full,

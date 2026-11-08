@@ -8,11 +8,13 @@ import 'package:go_router/go_router.dart';
 import 'generation_viewer_window.dart';
 
 import '../../core/constants/api_constants.dart';
+import '../../core/services/android_share_service.dart';
 import '../../core/shortcuts/default_shortcuts.dart';
 import '../../core/shortcuts/shortcut_config.dart';
 import '../../core/shortcuts/shortcut_manager.dart';
 import '../providers/shortcuts_provider.dart';
 import '../../core/storage/local_storage_service.dart';
+import '../../core/utils/app_logger.dart';
 import '../../core/utils/localization_extension.dart';
 import '../../data/models/gallery/nai_image_metadata.dart';
 import '../../data/models/prompt_block/pill_document.dart';
@@ -381,6 +383,22 @@ class _GenerationViewerWiringState
         );
       case ViewerAction.showInFolder:
         await op.reveal(id);
+      case ViewerAction.shareImage:
+        if (!Platform.isAndroid) {
+          throw UnsupportedError(currentL10n.bridge_conflict);
+        }
+        // Android 手机端：交给系统分享面板；未保存的生成结果用内存字节分享。
+        final image = ref.read(generationHistoryActionsProvider).image(id);
+        final imagePath = image.filePath;
+        final shared = imagePath != null && imagePath.isNotEmpty
+            ? await AndroidShareService.shareFile(imagePath)
+            : await AndroidShareService.shareBytes(
+                image.bytes,
+                fileName: 'generated_$id.png',
+              );
+        if (!shared) {
+          AppLogger.w('分享生成结果失败: $id', 'GenerationViewer');
+        }
       case ViewerAction.saveToRefLibrary:
         await saveBytesToPreciseRefLibrary(
           ref,
@@ -466,6 +484,7 @@ class _GenerationViewerWiringState
             ViewerAction.preciseRef,
             // Local / advanced upscale has no Android implementation.
             if (!Platform.isAndroid) ViewerAction.upscale,
+            if (Platform.isAndroid) ViewerAction.shareImage,
             ViewerAction.copyImage,
             ViewerAction.copyAllPrompts,
             ViewerAction.saveToRefLibrary,

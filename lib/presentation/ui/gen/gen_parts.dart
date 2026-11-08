@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/common/studio_glass_surface.dart';
 import '../../widgets/common/studio_animated_icon.dart';
 import '../kit/ui_colors.dart';
@@ -55,6 +56,39 @@ class GenNaiIcon extends StatelessWidget {
     size: size,
     colorFilter: ColorFilter.mode(color ?? context.ui.ink, BlendMode.srcIn),
   );
+}
+
+/// 手机端最小触控目标（Material 建议 48dp）。
+///
+/// 桌面端直接返回 [child]，组件树与视觉尺寸完全不变；手机端只在共享控件外面
+/// 加一层至少 48×48 的按压区域，图标/胶囊本身仍是 28-32dp 的视觉尺寸。
+/// 命中区随 [GenTouchTarget] 改变布局占位，因此承载它的行/容器也要按手机
+/// 行高留出空间（见各调用点的 `usesMobileLayout` 分支）。
+class GenTouchTarget extends StatelessWidget {
+  const GenTouchTarget({
+    super.key,
+    required this.child,
+    this.minWidth = 48,
+    this.minHeight = 48,
+  });
+
+  final Widget child;
+  final double minWidth;
+  final double minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!usesMobileLayout) return child;
+    return ConstrainedBox(
+      constraints: BoxConstraints(minWidth: minWidth, minHeight: minHeight),
+      child: Align(
+        alignment: Alignment.center,
+        widthFactor: 1,
+        heightFactor: 1,
+        child: child,
+      ),
+    );
+  }
 }
 
 /// The host pre-blurs the decoration; editing never re-samples the backdrop.
@@ -302,40 +336,42 @@ class _GenIbState extends State<GenIb> with SingleTickerProviderStateMixin {
     final icon = widget.icon;
     final box = UiPressable(
       onTap: onTap == null ? null : _activate,
-      builder: (context, hover) => Container(
-        width: width ?? size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: widget.plain
-              ? null
-              : active
-              ? c.control
-              : (hover ? c.control : null),
-          border: bordered ? Border.all(color: c.line) : null,
-          borderRadius: BorderRadius.circular(bordered ? 6 : 5),
-        ),
-        child: AnimatedBuilder(
-          animation: _tap,
-          builder: (_, child) => Transform.scale(
-            scale: 1 - .16 * (1 - (2 * _tap.value - 1).abs()),
-            child: child,
+      builder: (context, hover) => GenTouchTarget(
+        child: Container(
+          width: width ?? size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: widget.plain
+                ? null
+                : active
+                ? c.control
+                : (hover ? c.control : null),
+            border: bordered ? Border.all(color: c.line) : null,
+            borderRadius: BorderRadius.circular(bordered ? 6 : 5),
           ),
-          child: widget.animatedIcon != null
-              ? StudioAnimatedIcon(
-                  icon: widget.animatedIcon!,
-                  trigger: _trigger,
-                  size: glyphSize,
-                  color: color ?? (hover || active ? c.ink : c.muted),
-                )
-              : icon ??
-                    UiGlyph(
-                      glyph!,
-                      size: glyphSize,
-                      strokeWidth: strokeWidth,
-                      filled: filled,
-                      color: color ?? (hover || active ? c.ink : c.muted),
-                    ),
+          child: AnimatedBuilder(
+            animation: _tap,
+            builder: (_, child) => Transform.scale(
+              scale: 1 - .16 * (1 - (2 * _tap.value - 1).abs()),
+              child: child,
+            ),
+            child: widget.animatedIcon != null
+                ? StudioAnimatedIcon(
+                    icon: widget.animatedIcon!,
+                    trigger: _trigger,
+                    size: glyphSize,
+                    color: color ?? (hover || active ? c.ink : c.muted),
+                  )
+                : icon ??
+                      UiGlyph(
+                        glyph!,
+                        size: glyphSize,
+                        strokeWidth: strokeWidth,
+                        filled: filled,
+                        color: color ?? (hover || active ? c.ink : c.muted),
+                      ),
+          ),
         ),
       ),
     );
@@ -451,25 +487,27 @@ class GenTab extends StatelessWidget {
     final c = context.ui;
     return UiPressable(
       onTap: selected ? null : onTap,
-      builder: (context, hover) => Container(
-        height: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? GenFormat.selected(c)
-              : (hover ? c.control.withValues(alpha: .6) : null),
-          borderRadius: BorderRadius.circular(3),
-        ),
-        child: Center(
-          widthFactor: 1,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: UiText.sans(
-              13,
-              weight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected || hover ? c.ink : GenFormat.ink55(c),
+      builder: (context, hover) => GenTouchTarget(
+        child: Container(
+          height: 28,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? GenFormat.selected(c)
+                : (hover ? c.control.withValues(alpha: .6) : null),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Center(
+            widthFactor: 1,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: UiText.sans(
+                13,
+                weight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected || hover ? c.ink : GenFormat.ink55(c),
+              ),
             ),
           ),
         ),
@@ -620,14 +658,16 @@ class _GenSliderRowState extends State<GenSliderRow> {
                 : null,
           ),
         ),
-        UiNumBox(
-          value: v,
-          min: widget.min,
-          max: widget.max,
-          inputMax: widget.inputMax,
-          decimals: widget.decimals,
-          compact: widget.compact,
-          onSubmitted: widget.enabled ? widget.onChanged : null,
+        GenTouchTarget(
+          child: UiNumBox(
+            value: v,
+            min: widget.min,
+            max: widget.max,
+            inputMax: widget.inputMax,
+            decimals: widget.decimals,
+            compact: widget.compact,
+            onSubmitted: widget.enabled ? widget.onChanged : null,
+          ),
         ),
       ],
     );
@@ -722,18 +762,20 @@ class GenFloatButton extends StatelessWidget {
     final c = context.ui;
     final b = UiPressable(
       onTap: onTap,
-      builder: (context, hover) => Container(
-        width: width,
-        height: 30,
-        padding: padding,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected
-              ? c.accent.withValues(alpha: .14)
-              : (active || hover ? c.control : null),
-          borderRadius: BorderRadius.circular(6),
+      builder: (context, hover) => GenTouchTarget(
+        child: Container(
+          width: width,
+          height: 30,
+          padding: padding,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? c.accent.withValues(alpha: .14)
+                : (active || hover ? c.control : null),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: child,
         ),
-        child: child,
       ),
     );
     final shown = onTap == null ? Opacity(opacity: .35, child: b) : b;

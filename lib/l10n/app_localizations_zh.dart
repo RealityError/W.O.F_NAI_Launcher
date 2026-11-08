@@ -66,6 +66,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get common_export => '导出';
 
   @override
+  String get common_share => '分享';
+
+  @override
   String get common_import => '导入';
 
   @override
@@ -14057,6 +14060,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get explore_compareDoneBody => '新的偏好已经保存，下次生成子代就会用上。';
 
   @override
+  String get generation_backgroundRunningTitle => '后台生成中';
+
+  @override
+  String get generation_backgroundRunningText => 'NovelAI 正在生成图片，完成后会通知你。';
+
+  @override
+  String get generation_backgroundDoneTitle => '生成完成';
+
+  @override
+  String generation_backgroundDoneText(int count) {
+    return '已生成 $count 张图片';
+  }
+
+  @override
+  String get generation_backgroundFailedTitle => '生成失败';
+
+  @override
+  String get generation_backgroundFailedText => '点按回到应用查看原因。';
+
+  @override
+  String get generation_backgroundCancelledTitle => '已取消生成';
+
+  @override
+  String get generation_backgroundCancelledText => '点按回到应用。';
+
+  @override
   String get gen_cancel => '取消';
 
   @override
@@ -16119,9 +16148,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get channel_motionSub => '很轻的动效，生成时自动暂停';
 
   @override
-  String get channel_toastTitle => '本次通道';
-
-  @override
   String channel_batch(String time, int count) {
     return '$time · $count 张';
   }
@@ -16171,11 +16197,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get channel_weekday7 => '周日';
-
-  @override
-  String channel_scrubWhen(String day, String time) {
-    return '$day $time';
-  }
 
   @override
   String get rag_title => 'RAG 向量系统';
@@ -21740,6 +21761,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get common_export => '匯出';
+
+  @override
+  String get common_share => '分享';
 
   @override
   String get common_import => '匯入';
@@ -35733,6 +35757,32 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get explore_compareDoneBody => '新的偏好已經儲存，下次生成子代就會用上。';
 
   @override
+  String get generation_backgroundRunningTitle => '後臺生成中';
+
+  @override
+  String get generation_backgroundRunningText => 'NovelAI 正在生成圖片，完成後會通知你。';
+
+  @override
+  String get generation_backgroundDoneTitle => '生成完成';
+
+  @override
+  String generation_backgroundDoneText(int count) {
+    return '已生成 $count 張圖片';
+  }
+
+  @override
+  String get generation_backgroundFailedTitle => '生成失敗';
+
+  @override
+  String get generation_backgroundFailedText => '點按回到應用檢視原因。';
+
+  @override
+  String get generation_backgroundCancelledTitle => '已取消生成';
+
+  @override
+  String get generation_backgroundCancelledText => '點按回到應用。';
+
+  @override
   String get gen_cancel => '取消';
 
   @override
@@ -37795,9 +37845,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get channel_motionSub => '很輕的動效，生成時自動暫停';
 
   @override
-  String get channel_toastTitle => '本次通道';
-
-  @override
   String channel_batch(String time, int count) {
     return '$time · $count 張';
   }
@@ -37847,11 +37894,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get channel_weekday7 => '週日';
-
-  @override
-  String channel_scrubWhen(String day, String time) {
-    return '$day $time';
-  }
 
   @override
   String get rag_title => 'RAG 向量系統';

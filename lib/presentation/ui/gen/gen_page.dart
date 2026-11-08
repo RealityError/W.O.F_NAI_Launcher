@@ -3,10 +3,8 @@ import 'dart:math' as math;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/localization_extension.dart';
-import '../../providers/canvas_settings_provider.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../../widgets/common/drag_preview_divider.dart';
 import '../kit/ui_colors.dart';
@@ -419,12 +417,15 @@ class _GenMobileLayoutState extends State<_GenMobileLayout> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const GenHeader(
+              GenHeader(
                 collapsible: false,
                 // 顶栏只留模型 / 配额，保持单行；编辑提示词与最近生成移到
                 // 底部生成条两侧（手机竖屏下顶栏换行会吃掉画布高度）。
-                // 锁相机时临时出现解锁按钮，未锁定时不占位。
-                actions: [_MobileCameraLockAction()],
+                // 锁相机时临时出现解锁按钮（接线层提供），未锁定时不占位。
+                actions: GenScope.of(
+                  context,
+                  GenAspect.header,
+                ).slots.mobileHeaderActions,
               ),
               const Expanded(child: GenParamDrawerHost(child: GenCanvas())),
               const GenParamStrip(),
@@ -470,27 +471,6 @@ class _GenMobileLayoutState extends State<_GenMobileLayout> {
             ),
         ],
       ),
-    );
-  }
-}
-
-/// 手机端「解除相机锁定」入口：锁相机会禁用一切手动相机输入（拖拽平移、
-/// 双指缩放），触屏上没有任何替代操作，画布看上去就像「图片流不动了」。
-/// 因此只在锁定状态出现一个顶栏按钮，点一下即恢复手势浏览。
-class _MobileCameraLockAction extends ConsumerWidget {
-  const _MobileCameraLockAction();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final locked = ref.watch(canvasLockCameraNotifierProvider);
-    if (!locked) return const SizedBox.shrink();
-    return GenIb(
-      key: const Key('gen-mobile-unlock-camera'),
-      glyph: UiGlyphs.lock,
-      glyphSize: 16,
-      tooltip: context.l10n.gen_unlockCamera,
-      onTap: () =>
-          ref.read(canvasLockCameraNotifierProvider.notifier).setLocked(false),
     );
   }
 }
@@ -568,7 +548,8 @@ class _MobileOverlayPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            height: 48,
+            // 49 = 48 触控目标 + 1px 底边线（border 会内缩子节点，48 会量到 47）。
+            height: 49,
             padding: const EdgeInsets.only(left: 4),
             decoration: BoxDecoration(
               color: c.bg,

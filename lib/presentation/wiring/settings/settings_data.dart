@@ -209,7 +209,8 @@ SettingsViewData settingsViewData(
   final update = ref.watch(updateStateProvider);
   final models = settingsModelsData(context, ref);
   final attention = <SettingsAttention>[
-    if (supportsInAppUpdateInstall && update.hasNewVersion)
+    if ((supportsInAppUpdateInstall || isAndroidPlatform) &&
+        update.hasNewVersion)
       SettingsAttention(
         kind: SettingsAttentionKind.update,
         tone: SettingsTone.warn,
