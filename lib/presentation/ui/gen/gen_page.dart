@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../providers/canvas_settings_provider.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../../widgets/common/drag_preview_divider.dart';
 import '../kit/ui_colors.dart';
@@ -415,39 +417,37 @@ class _GenMobileLayoutState extends State<_GenMobileLayout> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const GenHeader(collapsible: false),
-              Expanded(
-                child: GenParamDrawerHost(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      const GenCanvas(),
-                      Positioned(
-                        left: 12,
-                        bottom: 12,
-                        child: _MobileCanvasAction(
-                          key: const Key('gen-mobile-editor'),
-                          icon: Icons.edit_note_rounded,
-                          label: context.l10n.gen_edit,
-                          onTap: () => setState(() => _editorOpen = true),
-                        ),
-                      ),
-                      Positioned(
-                        right: 12,
-                        bottom: 12,
-                        child: _MobileCanvasAction(
-                          key: const Key('gen-mobile-history'),
-                          icon: Icons.history_rounded,
-                          label: context.l10n.gen_history,
-                          onTap: () => setState(() => _historyOpen = true),
-                        ),
-                      ),
-                    ],
-                  ),
+              const GenHeader(
+                collapsible: false,
+                // 顶栏只留模型 / 配额，保持单行；编辑提示词与最近生成移到
+                // 底部生成条两侧（手机竖屏下顶栏换行会吃掉画布高度）。
+                // 锁相机时临时出现解锁按钮，未锁定时不占位。
+                actions: [_MobileCameraLockAction()],
+              ),
+              const Expanded(child: GenParamDrawerHost(child: GenCanvas())),
+              const GenParamStrip(),
+              GenGenerateBar(
+                leading: GenIb(
+                  key: const Key('gen-mobile-editor'),
+                  glyph: GenGlyphs.editNote,
+                  glyphSize: 18,
+                  size: 40,
+                  width: 44,
+                  bordered: true,
+                  tooltip: context.l10n.gen_edit,
+                  onTap: () => setState(() => _editorOpen = true),
+                ),
+                trailing: GenIb(
+                  key: const Key('gen-mobile-history'),
+                  glyph: GenGlyphs.history,
+                  glyphSize: 18,
+                  size: 40,
+                  width: 44,
+                  bordered: true,
+                  tooltip: context.l10n.gen_recent,
+                  onTap: () => setState(() => _historyOpen = true),
                 ),
               ),
-              const GenParamStrip(),
-              const GenGenerateBar(),
             ],
           ),
           if (_editorOpen)
@@ -460,12 +460,34 @@ class _GenMobileLayoutState extends State<_GenMobileLayout> {
           if (_historyOpen)
             _MobileOverlayPanel(
               key: const Key('gen-mobile-history-panel'),
-              title: context.l10n.gen_history,
+              title: context.l10n.gen_recent,
+              subtitle: context.l10n.gen_recentHint,
               onClose: _closeOverlays,
-              child: GenHistoryPanel(width: width),
+              child: GenHistoryPanel(width: width, compactHeader: true),
             ),
         ],
       ),
+    );
+  }
+}
+
+/// 手机端「解除相机锁定」入口：锁相机会禁用一切手动相机输入（拖拽平移、
+/// 双指缩放），触屏上没有任何替代操作，画布看上去就像「图片流不动了」。
+/// 因此只在锁定状态出现一个顶栏按钮，点一下即恢复手势浏览。
+class _MobileCameraLockAction extends ConsumerWidget {
+  const _MobileCameraLockAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locked = ref.watch(canvasLockCameraNotifierProvider);
+    if (!locked) return const SizedBox.shrink();
+    return GenIb(
+      key: const Key('gen-mobile-unlock-camera'),
+      glyph: UiGlyphs.lock,
+      glyphSize: 16,
+      tooltip: context.l10n.gen_unlockCamera,
+      onTap: () =>
+          ref.read(canvasLockCameraNotifierProvider.notifier).setLocked(false),
     );
   }
 }
@@ -475,11 +497,13 @@ class _MobileOverlayPanel extends StatelessWidget {
   const _MobileOverlayPanel({
     super.key,
     required this.title,
+    this.subtitle,
     required this.child,
     required this.onClose,
   });
 
   final String title;
+  final String? subtitle;
   final Widget child;
   final VoidCallback onClose;
 
@@ -507,15 +531,30 @@ class _MobileOverlayPanel extends StatelessWidget {
                   tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                 ),
                 Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: UiText.sans(
-                      14.5,
-                      weight: FontWeight.w600,
-                      color: c.ink,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        key: const Key('gen-mobile-overlay-title'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: UiText.sans(
+                          14.5,
+                          weight: FontWeight.w600,
+                          color: c.ink,
+                        ),
+                      ),
+                      if (subtitle case final hint?)
+                        Text(
+                          hint,
+                          key: const Key('gen-mobile-overlay-subtitle'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: UiText.sans(11, color: c.faint),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -524,50 +563,6 @@ class _MobileOverlayPanel extends StatelessWidget {
           ),
           Expanded(child: child),
         ],
-      ),
-    );
-  }
-}
-
-/// 画布上的浮动操作按钮（手机端）。
-class _MobileCanvasAction extends StatelessWidget {
-  const _MobileCanvasAction({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.ui;
-    return Material(
-      color: c.bg,
-      elevation: 2,
-      borderRadius: BorderRadius.circular(18),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: c.line),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 6,
-            children: [
-              Icon(icon, size: 16, color: c.ink),
-              Text(label, style: UiText.sans(12.5, color: c.ink)),
-            ],
-          ),
-        ),
       ),
     );
   }

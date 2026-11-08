@@ -8351,6 +8351,8 @@
   "gen_history": "歷史記錄",
   "gen_historyEmpty": "這次還沒有生成",
   "gen_historyEmptySub": "生成的圖會按批次排在這裡",
+  "gen_recent": "最近生成",
+  "gen_recentHint": "本次執行的結果；長期儲存的圖片在圖庫",
   "gen_batchCount": "{count} 張",
   "@gen_batchCount": {
     "placeholders": {
@@ -8379,6 +8381,7 @@
   "gen_autoSaveOff": "自動儲存到圖庫：關",
   "gen_scrollLock": "鎖定滾動（新圖來了不跳到頂部）",
   "gen_scrollUnlock": "解除鎖定滾動",
+  "gen_unlockCamera": "解除畫布相機鎖定",
   "gen_saveAll": "全部儲存到圖庫",
   "gen_clearHistory": "清空歷史",
   "gen_clearHistoryTitle": "清空這次的歷史？",

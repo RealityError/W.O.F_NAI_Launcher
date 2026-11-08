@@ -8341,6 +8341,8 @@
   "gen_history": "History",
   "gen_historyEmpty": "Nothing generated yet",
   "gen_historyEmptySub": "Your images will appear here batch by batch",
+  "gen_recent": "Recent",
+  "gen_recentHint": "Results from this session; saved images live in the gallery",
   "gen_batchCount": "{count} images",
   "@gen_batchCount": {
     "placeholders": {
@@ -8369,6 +8371,7 @@
   "gen_autoSaveOff": "Auto-save to gallery: off",
   "gen_scrollLock": "Lock scroll (stay put when new images arrive)",
   "gen_scrollUnlock": "Unlock scroll",
+  "gen_unlockCamera": "Unlock canvas camera",
   "gen_saveAll": "Save all to gallery",
   "gen_clearHistory": "Clear history",
   "gen_clearHistoryTitle": "Clear this session’s history?",

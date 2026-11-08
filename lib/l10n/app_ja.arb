@@ -8341,6 +8341,8 @@
   "gen_history": "履歴",
   "gen_historyEmpty": "まだ生成していません",
   "gen_historyEmptySub": "生成した画像がバッチごとに並びます",
+  "gen_recent": "最近の生成",
+  "gen_recentHint": "今回の実行分の結果。保存済み画像はギャラリーにあります",
   "gen_batchCount": "{count} 枚",
   "@gen_batchCount": {
     "placeholders": {
@@ -8369,6 +8371,7 @@
   "gen_autoSaveOff": "ギャラリーへ自動保存：オフ",
   "gen_scrollLock": "スクロールを固定（新しい画像で先頭に戻らない）",
   "gen_scrollUnlock": "スクロール固定を解除",
+  "gen_unlockCamera": "キャンバスカメラのロックを解除",
   "gen_saveAll": "すべてギャラリーに保存",
   "gen_clearHistory": "履歴をクリア",
   "gen_clearHistoryTitle": "このセッションの履歴をクリアしますか？",

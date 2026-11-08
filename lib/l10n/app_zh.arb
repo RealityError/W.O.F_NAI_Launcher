@@ -8341,6 +8341,8 @@
   "gen_history": "历史记录",
   "gen_historyEmpty": "这次还没有生成",
   "gen_historyEmptySub": "生成的图会按批次排在这里",
+  "gen_recent": "最近生成",
+  "gen_recentHint": "本次运行的结果；长期保存的图片在图库",
   "gen_batchCount": "{count} 张",
   "@gen_batchCount": {
     "placeholders": {
@@ -8369,6 +8371,7 @@
   "gen_autoSaveOff": "自动保存到图库：关",
   "gen_scrollLock": "锁定滚动（新图来了不跳到顶部）",
   "gen_scrollUnlock": "解除锁定滚动",
+  "gen_unlockCamera": "解除画布相机锁定",
   "gen_saveAll": "全部保存到图库",
   "gen_clearHistory": "清空历史",
   "gen_clearHistoryTitle": "清空这次的历史？",

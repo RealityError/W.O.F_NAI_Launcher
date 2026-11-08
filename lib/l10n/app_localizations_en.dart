@@ -15436,6 +15436,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your images will appear here batch by batch';
 
   @override
+  String get gen_recent => 'Recent';
+
+  @override
+  String get gen_recentHint =>
+      'Results from this session; saved images live in the gallery';
+
+  @override
   String gen_batchCount(Object count) {
     return '$count images';
   }
@@ -15479,6 +15486,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gen_scrollUnlock => 'Unlock scroll';
+
+  @override
+  String get gen_unlockCamera => 'Unlock canvas camera';
 
   @override
   String get gen_saveAll => 'Save all to gallery';

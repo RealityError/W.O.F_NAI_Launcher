@@ -15,7 +15,21 @@ import 'tools_parts.dart';
 /// 导演工具右栏（320 宽）：当前工具（图标 + 名字 + 一句说明）│ 选项 │ 运行（工具名 + 价格，Ctrl+Enter）│
 /// 结果列表（缩略图、工具、时间、花费；点一行回看，悬停“沿用设置”）。
 class ToolsDirectorSide extends StatelessWidget {
-  const ToolsDirectorSide({super.key});
+  const ToolsDirectorSide({
+    super.key,
+    this.width,
+    this.showBorder = true,
+    this.mobileSheet = false,
+  });
+
+  /// 手机端浮层里铺满可用宽度；桌面端保持固定 320。
+  final double? width;
+
+  /// 手机端作为底部弹层时不画桌面右栏的左侧分隔线。
+  final bool showBorder;
+
+  /// 手机端底部弹层：运行按钮钉在底部常驻，选项与结果一起滚动。
+  final bool mobileSheet;
 
   @override
   Widget build(BuildContext context) {
@@ -25,77 +39,108 @@ class ToolsDirectorSide extends StatelessWidget {
     final l = context.l10n;
     return Container(
       key: const Key('tools-director-side'),
-      width: ToolsDirectorPage.sideWidth,
+      width: width ?? ToolsDirectorPage.sideWidth,
       decoration: BoxDecoration(
         color: c.bg,
-        border: Border(left: BorderSide(color: c.line)),
+        border: showBorder ? Border(left: BorderSide(color: c.line)) : null,
       ),
       child: LayoutBuilder(
-        builder: (context, box) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ToolsPanelSection(
-              key: const Key('tools-dt-head'),
-              child: Row(
-                spacing: 10,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: c.accent,
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: ToolsIcon(
-                      ToolsFormat.toolIcon(d.tool),
-                      size: 18,
-                      color: Colors.white,
-                    ),
+        builder: (context, box) {
+          final head = ToolsPanelSection(
+            key: const Key('tools-dt-head'),
+            child: Row(
+              spacing: 10,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: c.accent,
+                    borderRadius: BorderRadius.circular(9),
                   ),
-                  Expanded(
+                  child: ToolsIcon(
+                    ToolsFormat.toolIcon(d.tool),
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ToolsFormat.toolName(l, d.tool),
+                        style: UiText.sans(
+                          14,
+                          weight: FontWeight.w600,
+                          color: c.ink,
+                        ),
+                      ),
+                      Text(
+                        ToolsFormat.toolDesc(l, d.tool),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: UiText.sans(12, color: c.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+          if (mobileSheet) {
+            // 弹层高度固定：运行按钮钉在底部，选项和结果一起滚动，
+            // 不会像桌面那样把「运行」挤到滚动区下面看不见。
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                head,
+                Expanded(
+                  child: SingleChildScrollView(
+                    key: const Key('tools-dt-options'),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ToolsFormat.toolName(l, d.tool),
-                          style: UiText.sans(
-                            14,
-                            weight: FontWeight.w600,
-                            color: c.ink,
-                          ),
-                        ),
-                        Text(
-                          ToolsFormat.toolDesc(l, d.tool),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: UiText.sans(12, color: c.muted),
-                        ),
-                      ],
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [..._options(context, scope)],
                     ),
                   ),
-                ],
-              ),
-            ),
-            // 选项 + 运行按内容高，太高时滚动；结果列表至少留 180。
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: (box.maxHeight - 66 - 180).clamp(
-                  120,
-                  double.infinity,
+                ),
+                // 运行按钮常驻；上边画分隔线，滚动内容裁切线看起来是设计的一部分。
+                Container(
+                  decoration: BoxDecoration(
+                    color: c.bg,
+                    border: Border(top: BorderSide(color: c.line)),
+                  ),
+                  child: const _Run(mobile: true),
+                ),
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              head,
+              // 选项 + 运行按内容高，太高时滚动；结果列表至少留 180。
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: (box.maxHeight - 66 - 180).clamp(
+                    120,
+                    double.infinity,
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  key: const Key('tools-dt-options'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [..._options(context, scope), const _Run()],
+                  ),
                 ),
               ),
-              child: SingleChildScrollView(
-                key: const Key('tools-dt-options'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [..._options(context, scope), const _Run()],
-                ),
-              ),
-            ),
-            const Expanded(child: _Results()),
-          ],
-        ),
+              const Expanded(child: _Results()),
+            ],
+          );
+        },
       ),
     );
   }
@@ -438,8 +483,11 @@ class _PromptFieldState extends State<_PromptField> {
 }
 
 /// 运行按钮（44 高、圆角 10、品牌蓝）：“运行 + 工具名” + 价格；下面一行快捷键说明。
+/// 手机弹层里不显示 Ctrl+↵ 键帽（没有键盘）。
 class _Run extends StatelessWidget {
-  const _Run();
+  const _Run({this.mobile = false});
+
+  final bool mobile;
 
   @override
   Widget build(BuildContext context) {
@@ -523,7 +571,7 @@ class _Run extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: 6,
             children: [
-              const UiKeycaps(['Ctrl', '↵']),
+              if (!mobile) const UiKeycaps(['Ctrl', '↵']),
               Text(
                 d.currentInput == null ? l.tools_runNeedInput : l.tools_runHint,
                 style: UiText.sans(11, color: c.faint),
@@ -534,6 +582,14 @@ class _Run extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 手机端「结果」弹层：复用右栏结果列表，占满弹层高度。
+class ToolsDirectorResults extends StatelessWidget {
+  const ToolsDirectorResults({super.key});
+
+  @override
+  Widget build(BuildContext context) => const _Results();
 }
 
 /// 结果列表：新的在前；当前看的那条强调色 9% 底；悬停出“沿用设置”。

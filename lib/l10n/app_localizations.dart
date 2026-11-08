@@ -26837,6 +26837,18 @@ abstract class AppLocalizations {
   /// **'Your images will appear here batch by batch'**
   String get gen_historyEmptySub;
 
+  /// No description provided for @gen_recent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get gen_recent;
+
+  /// No description provided for @gen_recentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Results from this session; saved images live in the gallery'**
+  String get gen_recentHint;
+
   /// No description provided for @gen_batchCount.
   ///
   /// In en, this message translates to:
@@ -26914,6 +26926,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock scroll'**
   String get gen_scrollUnlock;
+
+  /// No description provided for @gen_unlockCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock canvas camera'**
+  String get gen_unlockCamera;
 
   /// No description provided for @gen_saveAll.
   ///

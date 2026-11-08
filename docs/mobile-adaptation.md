@@ -121,11 +121,12 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 现状：左栏（提示词/参数/生成条）+ 画布 + 历史栏三栏。手机目标：
 
 - **画布优先**：
-  - 顶部紧凑 `GenHeader`（模型/配额）；
+  - 顶部紧凑 `GenHeader`（模型/配额）保持单行；编辑提示词、最近生成入口在底部生成条两侧（不再占顶栏）；
+  - 「解除相机锁定」仅在锁定状态临时出现在顶栏；
   - 主体 = 画布（`GenCanvas`，含空白欢迎态）；
-  - 底部固定：`GenParamStrip`（参数摘要，点开参数抽屉）+ `GenGenerateBar`（生成按钮）；
-  - 画布左下浮动「提示词」按钮 → 打开 **全屏 bottom sheet**，内容是 `GenEditorColumn(collapsible: false)`（提示词/角色/参考图/尺寸 + 它自己的生成条）；
-  - 右上「历史」按钮 → 打开右侧抽屉（`GenHistoryPanel`），点击历史项复用现有回填逻辑。
+  - 底部固定：`GenParamStrip`（参数摘要，点开参数抽屉）+ `GenGenerateBar`（`leading` = 提示词编辑、`trailing` = 最近生成）；
+  - 编辑提示词 / 最近生成都在 **页面内全屏浮层**：内容是 `GenEditorColumn(collapsible: false)` / `GenHistoryPanel`；不用 Navigator overlay，避免丢失 `GenScope`；
+  - 画布手势：单指拖拽平移、双指缩放；「锁定画布相机」开启时所有手动相机输入被禁用（桌面同一设置），此时顶栏会出现解锁按钮。
 - 复用 `GenHost` / `GenScope` / `GenActions` / 所有模块 widget，不改状态逻辑；
 - 桌面 `_GenLayoutRow` 三栏与拖拽改宽保持原样。
 
@@ -172,7 +173,8 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 | 模块 | 文件 | 说明 |
 | --- | --- | --- |
 | 移动端地基 | `lib/presentation/mobile/` | `mobile_breakpoints`（usesMobileLayout）、`MobilePageScaffold`、`showMobileSheet`、`MobileContextMenuRegion`/`showMobileContextMenu`、`MobileSectionHeader`/`MobileListTile`、`MobileTapCard`、`mobileAdaptiveTheme`（Tooltip 长按） |
-| 生成页 | `lib/presentation/ui/gen/gen_page.dart` | `usesMobileLayout` → `_GenMobileLayout`：画布优先 + 编辑/历史页面内浮层 + 参数条 + 生成条；桌面三栏 `_GenLayoutRow` 原样保留 |
+| 生成页 | `lib/presentation/ui/gen/gen_page.dart`、`gen_generate.dart` | `usesMobileLayout` → `_GenMobileLayout`：单行顶栏 + 画布优先 + 参数条 + 生成条；编辑提示词 / 最近生成锚定在生成条两侧，内容为页面内浮层；桌面三栏 `_GenLayoutRow` 原样保留 |
+| 导演工具 | `lib/presentation/ui/tools/tools_director.dart` | `_MobileDirectorLayout`：不经过 `WindowHeader` 的紧凑顶栏（返回/标题/面板/Anlas）+ 横向滚动的舞台 + 右栏浮层；桌面三栏原样保留 |
 | 设置页 | `lib/presentation/ui/settings/settings_mobile.dart` + 内容页窄屏分支 | 分组列表 → 详情页（复用桌面 `_pageOf` 内容）、搜索/深链/锚点、撤销浮条、详情页操作位；桌面双栏原样保留 |
 | 画廊 | `lib/presentation/screens/local_gallery/mobile_local_gallery.dart` + 画廊组件移动分支 | 移动工具栏/范围浏览/筛选/排序弹层、卡片长按动作菜单（bottom sheet）、inspector bottom sheet、多选批量条、回收站操作；桌面三栏与右键菜单原样保留 |
 | 主题 | `lib/app.dart`、`splash/app_bootstrap.dart` | 移动端套用 `mobileAdaptiveTheme`（Tooltip 长按、触摸目标）；桌面主题不变 |
@@ -184,11 +186,67 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 - `dart analyze lib`：No issues；
 - 新增移动测试：
   - `test/presentation/mobile/mobile_components_test.dart` 4 例（360dp 骨架/弹层/长按菜单/断点常量）；
-  - `test/presentation/ui/gen/gen_mobile_layout_test.dart` 3 例（画布优先、编辑浮层开关、历史浮层开关）；
+  - `test/presentation/ui/gen/gen_mobile_layout_test.dart` 5 例（画布优先且入口不在顶栏、编辑浮层开关、最近生成浮层标题/副标题、锁相机时顶栏出现解锁入口、未锁定不显示）；
+  - `test/presentation/ui/tools/tools_director_mobile_test.dart` 2 例（360dp 不溢出且右栏不内联、右栏浮层开关）；
   - `test/presentation/ui/settings/mobile/` 16 例（列表/详情/返回/搜索锚点/深链/撤销/13 页滚动无 overflow）；
   - `test/presentation/widgets/gallery/mobile/` 9 例（长按菜单/多选/详情面板/筛选排序弹层/时间线语义）；
+- 生成页 UI 回归：`test/presentation/ui/gen` 376 例全部通过（测试宿主统一注入锁相机替身，不依赖 Hive）；导演工具 `test/presentation/ui/tools` 159 例（含 golden）通过；
 - 桌面回归：设置页 380 例、画廊 224 例全部通过；桌面布局代码路径未改动；
-- MuMu x86_64（Android 15，360dp 宽）实机验证：登录 → 生成页手机布局（画布/浮动编辑/历史/参数条/生成条）→ 长按画廊卡片弹出动作菜单 → 设置列表 → 概览详情页返回，全程无 overflow / 崩溃；Android 系统代理生效后网络检查与登录成功。
+- MuMu x86_64（Android 15，360dp 宽）实机验证：登录 → 生成页手机布局（画布/顶栏编辑与历史入口/参数条/生成条）→ 长按画廊卡片弹出动作菜单 → 设置列表 → 概览详情页返回，全程无 overflow / 崩溃；Android 系统代理生效后网络检查与登录成功。
+
+### 8.4 首轮反馈修复
+
+1. **画布被遮挡**：编辑提示词 / 历史记录原本是悬浮在画布上的圆形按钮，会压住画布工具条与图片；先收进头部 `Wrap`，再按二轮反馈下移到生成条两侧，顶栏恢复单行（见 8.5）。桌面端不传 `actions` / `leading` / `trailing`，行为不变。
+2. **导演工具 24px overflow**：右栏固定 320dp 宽度在 360dp 手机上把舞台挤到负宽；新增 `_MobileDirectorLayout`，右栏改为浮层，舞台独立横向滚动（内容最小 520dp），顶栏不再预留桌面窗口按钮的 138dp。
+3. **「多余的东西」= 导演工具右栏的解锁浮钮**：无说明的浮动圆钮已删除，改成顶栏带文字的「面板」按钮（`tools-director-mobile-side`），打开/关闭同一右栏浮层，返回键可先关浮层。
+4. **画布图片流「不能滑动」**：`canvas_lock_camera`（锁定画布相机）开启时会禁用拖拽平移与双指缩放——这是桌面原有设置，触屏上没有替代手势，表现就是画布冻结。移动端保持该设置语义不变，但锁定时在生成页顶栏显示「解除画布相机锁定」按钮（`gen-mobile-unlock-camera`），点一下即恢复手势浏览；同时在 `test/presentation/ui/gen/gen_test_harness.dart` 注入可控替身，避免测试依赖真实 Hive 设置。
+
+### 8.5 二轮反馈：顶栏精简 + 「最近生成」
+
+1. **顶栏单行**：手机端 `GenHeader` 不再承载编辑/历史入口，只留模型胶囊 + 配额胶囊（解锁相机按钮仅在锁定状态临时出现）。360dp 下常态顶栏保持 37dp 一行，把高度让给画布。
+2. **入口下移**：`GenGenerateBar` 新增可选 `leading` / `trailing`（桌面不传，布局等价），手机端传入两个 44×40 描边按钮——左「编辑提示词」（`gen-mobile-editor`）、右「最近生成」（`gen-mobile-history`），中间生成按钮自适应撑开，未新增任何行。
+3. **历史改称「最近生成」**：入口 tooltip、浮层标题改为 `gen_recent`，浮层副标题 `gen_recentHint` 说明「本次运行的结果；长期保存的图片在图库」。`GenHistoryPanel` 新增 `compactHeader`（默认 false，桌面不变）：手机浮层内不再重复渲染桌面收起按钮与「历史记录」标题，只保留计数 / 钉图 / 多选。功能不变：批次回填画布、双击开大图、批次菜单、钉图 Pins、保存全部、清空、锁定滚动。
+4. **与画廊的分工**：历史 = 本次运行内的生成结果与批次（内存态，重启清空，可回填/重抽）；画廊 = 落盘后的长期图库（自动保存默认开启，支持搜索/筛选/元数据/回收站）。手机端不合并两者，只在文案上区分，避免入口重复感。
+
+### 8.6 三轮反馈：调试模式 / 移动浮层 / 查看器
+
+1. **调试模式（无订阅也能讨论 UI）**：新增 `lib/presentation/dev/demo_fixtures.dart`，`--dart-define=NAI_DEMO=1`（或 `true`）构建时，启动后在延迟启动步骤里读本地 `assets/images/demo-sample.jpg`，用 `GeneratedImage.create` 造一张图并调用 `ImageGenerationNotifier.adoptDemoImages`——走的是和真实生成结果相同的状态结构（`currentImages` / `history` / `displayImages` / `generationRunId` / 批次宽高），画布、最近生成、查看器、导演工具都能照常打开，不请求接口也不扣费。默认关闭，桌面端与发布构建行为不变；构建命令：
+   `flutter build apk --debug --target-platform android-x64 --dart-define=NAI_DEMO=1`
+2. **弹层统一改成底部面板**：`UiPopover` 新增手机分支（`_MobilePopoverSheet`）——不再贴锚点定位，而是全宽（左右 8dp）+ 底部安全边距浮起的面板，带半透明遮罩（点遮罩收起）、180ms 上滑淡入、内部滚动、键盘弹起时贴键盘上沿；高度按弹层宿主 Overlay 的实际可用区域计算（内嵌 Navigator 的 Overlay 可能比整屏矮，按 `MediaQuery` 算会让顶边跑出屏幕）。桌面端仍按锚点定位，代码路径不变。`UiMenuItem` 在手机上把行高从 34 提到 46、字号 13→14、图标与内边距同步放大；提示词工具栏的「模块与开关」菜单（`_ToolsMenu`）行高 46、分节标题更大，且「资源小窗」二级菜单在手机上改成点开同一位置的新面板（桌面仍是悬停二级菜单）。
+3. **查看器手机适配**：桌面顶栏 61dp 里塞了返回文字 + Esc 帽 + 缩放 −/+/1:1/全屏/信息，360dp 下溢出 97–107px——调试构建里表现为右上角黄黑斜纹 + 竖排「RIGHT OVERFLOWED BY …」条。手机端顶栏改为 52dp：返回只留箭头（文字进 tooltip）、生成模式只显示保存状态、画廊模式只显示位置、缩放收成「适应 · 78% ▾」胶囊（点开同一套比例菜单，放大用双指）、右侧全屏/信息两个 40dp 图标。信息栏（`ViewerInfoPanel`）在手机上是整屏抽屉（全宽、顶部圆角、位于手机顶栏之下），不再固定 340dp。
+4. **验证**：新增 `test/presentation/providers/generation/demo_fixtures_test.dart`（示例图注入后画布/历史/目录/运行号/批次尺寸一致）、`test/presentation/ui/kit/ui_popover_mobile_test.dart`（手机弹层贴底且撑满宽度、点遮罩收起）；`test/presentation/ui/viewer` 105 例、`test/presentation/ui/gen` + `tools` + `kit` 回归全部通过；MuMu x86_64（360dp）实机确认生成页出现示例图、工具菜单为底部面板、查看器顶栏无溢出、信息抽屉整屏可读。
+
+### 8.7 导演工具手机布局（方案 A）
+
+按讨论选定的 A 方案重排手机端导演工具（桌面三栏布局不动）：
+
+1. **画布优先**：去掉左侧 56dp 工具竖栏与右侧 320dp 参数栏，画布独占整行；上条只留「输入 1/2 ▾」（点开输入队列弹层）和「适应 / 100%」。
+2. **底部工具条**：7 个工具（背景移除 / 杂线清理 / 线稿提取 / 草图化 / 上色 / 表情修复 / 像素对齐）以图标 + 名称排在底部，360dp 一屏放得下、不用横滑；选中项强调色描边。点工具**只切换选中项**，不再弹参数面板，运行按钮和介绍跟着变；工具条始终可见。
+3. **常驻运行条**：画布和工具条之间固定一条 89 高的运行条——上面一行是「工具名 · 一句话介绍」（功能介绍和画布同页，不用点进弹层才看得到），有可调选项的工具（上色 / 表情修复 / 像素对齐）右侧给「选项」入口，有结果时再给「结果 n」；下面一行是 44 高主按钮「运行{工具}」+ 价格（本机免费 / Anlas，运行中转圈），和主页面「生成」按钮同一主按钮样式。没有可调选项的工具（背景移除 / 杂线清理 / 线稿提取 / 草图化）直接点运行就能跑。
+4. **参数弹层（仅「选项」）**：带选项的工具点「选项」才打开底部弹层，右栏内容（表情网格、提示词、强度、调色板等）原样复用 `ToolsDirectorSide`（顶部圆角、抓手 + 关闭、点遮罩收起、返回键先关弹层）；运行按钮不放在弹层里，弹层只调参数。手机上不显示 Ctrl+↵ 键帽。`ToolsDirectorSide` 新增 `showBorder` / `mobileSheet`（默认 false，桌面行为不变）。
+5. **对比方式胶囊**：并排 / 滑动对比 / 只看结果从桌面舞台条的三段控件改成画布右上角胶囊，点开底部弹层选择（复用 `UiPopover` 的手机分支）。
+6. **输入队列弹层**：底部队列条收进弹层，从「输入 n/N」胶囊进入；手机版只留「输入队列 · n 张」标题 + 缩略图 + 加号并横滑浏览（`_Queue(compact:)`；桌面仍是 92 高的整条）。
+7. **结果列表弹层**：运行条上的「结果 n」胶囊打开独立的结果弹层（复用右栏结果列表 `ToolsDirectorResults`），不再把结果塞进参数弹层的滚动区、避免半截标题被裁。
+8. **结果操作**：`_ResultActions` 的窄屏换行逻辑保留；手机端还没有结果时整块不渲染（含「用作图生图底图」主按钮），把高度让给画布。
+9. **验证**：`tools_director_mobile_test.dart` 4 例（进入即有运行条 + 介绍、点工具只切换 / 有选项才给「选项」且点开/关闭弹层、输入胶囊开/关队列弹层、结果胶囊开/关结果弹层）；tools 全量测试（含 golden）通过；MuMu 360dp 实机确认画布、运行条、底部工具条、参数弹层、队列弹层、对比菜单、结果弹层均正常且无 overflow。
+
+### 8.8 画布工具面板（增强 / 放大）手机适配
+
+桌面上「增强」「放大」是画布工具条按钮下方落下的定宽卡片（620 / 520，带尖角、限高滚动）；358dp 宽的手机放不下，出现 `RIGHT/BOTTOM OVERFLOWED` 黄条。处理：
+
+1. **面板外框**（`ToolsSheetFrame`）：手机端铺满画布宽度、贴画布底部（`gen_canvas.dart` 手机分支改 `Positioned` + `Align(bottomCenter)`，不再对齐按钮、不画尖角）；头固定、内容区单独滚动（`tools-sheet-body-scroll`）、底栏常驻；取消按钮去掉 Esc 键帽。
+2. **行内字段**（`ToolsFieldRow`）新增 `stack` 参数（默认 false）：手机端标签单独一行、内容用 `Wrap` 折行，只给增强 / 放大两个面板的手机分支启用，桌面与其它页面行为不变。
+3. **放大设置**：后端卡手机端竖排；放大方式 / 模型 / 倍数三行改折行布局；高级设置每项标签在上、控件在下。
+4. **验证**：`tools_sheets_test.dart` 新增手机 3 例（增强、增强自定义强度、放大含高级设置），共 14 例通过；桌面「面板落在工具条下面、尖角指着按钮」用例仍通过。
+
+### 8.9 画布：同步上游 2.3.2「移除视觉通道导航尺 + 自动聚焦居中」
+
+上游 2.3.2 的画布组改动对手机是净收益（画布右缘那条装饰性刻度尺不再占地方），按 `docs/upstream-sync-2.3.2-2026-11-08.md` 的结论手工移植，不整包合并：
+
+1. **移除导航尺/进入提示**：删除 `lib/presentation/ui/channel/channel_overlay.dart` 与 `ChannelActions`、`canvasChannelEntryNoticeProvider`；`channel_contract/fixture/geometry`、`canvas_channel_provider`、`generation_canvas_view`、`generation_canvas_wiring` 按上游新版精简。440da91d 为窄屏把主题名从 4 个改成 2 个的那行随文件删除作废（该提示整体移除）。
+2. **自动聚焦居中**：`GenCanvas` 用 `_TopBar/_InfoBar/_ActionBar` 的 GlobalKey 实测悬浮条内侧边界，`focusPaddingOf` 取代固定留白 `40/50/40/70`；手机底部工具条更高，生成占位/结果不再被压。`_BottomBars` 增加 `infoOffset`，`<360` 时仍上下叠放。
+3. **保留手机分支**：`gen_canvas.dart` 里 8.8 的「工具面板贴底铺宽」`usesMobileLayout` 分支重新应用到上游新版之上。
+4. **验证**：`flutter analyze` 无问题；channel + 画布接线 183 例、`test/presentation/ui/gen` 374 例、生图接线核心 133 例全部通过；`dart format` 无改动；桌面 `scope.slots.canvas == null` 的测试舞台保留旧构图，golden 不变。
 
 ### 8.3 本阶段遗留（后续处理）
 
@@ -197,4 +255,6 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 3. 分类选择/批量元数据等次要桌面对话框未做手机重排；日期选择沿用现有日历（日期格 36dp）；
 4. 生成请求在代理链路上偶发 `HandshakeException`（代理节点对 image.novelai.net 不稳定），属环境网络问题，非 App 逻辑；首次冷启动自动登录失败时点"一键登录"可重试成功；
 5. 平板/横屏、Phase 2（浏览类页面）与 Phase 3（编辑器）尚未开始。
+
+> 生成页与桌面版的逐项差距、优先级和可复用工具，见 [mobile-gen-gaps.md](mobile-gen-gaps.md)。
 

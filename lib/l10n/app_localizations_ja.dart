@@ -14999,6 +14999,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gen_historyEmptySub => '生成した画像がバッチごとに並びます';
 
   @override
+  String get gen_recent => '最近の生成';
+
+  @override
+  String get gen_recentHint => '今回の実行分の結果。保存済み画像はギャラリーにあります';
+
+  @override
   String gen_batchCount(Object count) {
     return '$count 枚';
   }
@@ -15042,6 +15048,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get gen_scrollUnlock => 'スクロール固定を解除';
+
+  @override
+  String get gen_unlockCamera => 'キャンバスカメラのロックを解除';
 
   @override
   String get gen_saveAll => 'すべてギャラリーに保存';

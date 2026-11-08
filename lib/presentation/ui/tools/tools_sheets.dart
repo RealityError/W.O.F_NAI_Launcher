@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../gen/gen_parts.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -52,6 +53,7 @@ class _ToolsSheetFrameState extends State<ToolsSheetFrame> {
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
+    final mobile = usesMobileLayout;
     return ToolsSheetScope(
       openMenu: (anchor, builder) => setState(() {
         _anchor = anchor;
@@ -77,7 +79,8 @@ class _ToolsSheetFrameState extends State<ToolsSheetFrame> {
           child: Focus(
             autofocus: true,
             child: Container(
-              width: widget.width,
+              // 手机端铺满画布宽度，桌面端维持原型定宽。
+              width: mobile ? double.infinity : widget.width,
               clipBehavior: Clip.antiAlias,
               foregroundDecoration: BoxDecoration(
                 border: Border.all(color: c.line),
@@ -155,11 +158,20 @@ class _ToolsSheetFrameState extends State<ToolsSheetFrame> {
                         ],
                       ),
                     ),
-                    Padding(
-                      key: const Key('tools-sheet-body'),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-                      child: widget.body,
-                    ),
+                    if (mobile)
+                      Flexible(
+                        child: SingleChildScrollView(
+                          key: const Key('tools-sheet-body-scroll'),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                          child: widget.body,
+                        ),
+                      )
+                    else
+                      Padding(
+                        key: const Key('tools-sheet-body'),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                        child: widget.body,
+                      ),
                     Container(
                       key: const Key('tools-sheet-footer'),
                       padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
@@ -303,6 +315,7 @@ class ToolsEnhanceSheet extends StatelessWidget {
         ToolsFieldRow(
           key: const Key('tools-enhance-scale-row'),
           label: l.tools_enhanceScale,
+          stack: usesMobileLayout,
           children: [
             ToolsSeg<String>(
               key: const Key('tools-enhance-scale'),
@@ -337,6 +350,7 @@ class ToolsEnhanceSheet extends StatelessWidget {
           ToolsFieldRow(
             key: const Key('tools-enhance-magnitude-row'),
             label: l.tools_enhanceMagnitude,
+            stack: usesMobileLayout,
             children: [
               magSeg,
               if (d.custom) UiMini(l.tools_enhanceCustomTag),
@@ -353,7 +367,10 @@ class ToolsEnhanceSheet extends StatelessWidget {
           ),
           if (d.custom)
             Padding(
-              padding: const EdgeInsets.only(left: 68, top: 10),
+              padding: EdgeInsets.only(
+                left: usesMobileLayout ? 0 : 68,
+                top: 10,
+              ),
               child: Container(
                 key: const Key('tools-enhance-custom'),
                 padding: const EdgeInsets.all(12),
@@ -391,7 +408,7 @@ class ToolsEnhanceSheet extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.only(left: 68, top: 8),
+            padding: EdgeInsets.only(left: usesMobileLayout ? 0 : 68, top: 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: ToolsSwitchLabel(
@@ -422,7 +439,10 @@ class ToolsEnhanceSheet extends StatelessWidget {
           tone: ToolsButtonTone.ghost,
           small: true,
           onTap: actions.onClose,
-          children: [Text(l.tools_cancel), const UiKeycap('Esc')],
+          children: [
+            Text(l.tools_cancel),
+            if (!usesMobileLayout) const UiKeycap('Esc'),
+          ],
         ),
         ToolsButton(
           key: const Key('tools-enhance-run'),
@@ -573,28 +593,46 @@ class _ToolsUpscaleSheetState extends State<ToolsUpscaleSheet> {
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        IntrinsicHeight(
-          child: Row(
+        if (usesMobileLayout)
+          Column(
             key: const Key('tools-upscale-backends'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 8,
             children: [
               for (final b in d.backends)
-                Expanded(
-                  child: _BackendCard(
-                    backend: b,
-                    selected: b.id == d.backend,
-                    onTap: busy || !b.enabled ? null : () => a.onBackend(b.id),
-                  ),
+                _BackendCard(
+                  backend: b,
+                  selected: b.id == d.backend,
+                  onTap: busy || !b.enabled ? null : () => a.onBackend(b.id),
                 ),
             ],
+          )
+        else
+          IntrinsicHeight(
+            child: Row(
+              key: const Key('tools-upscale-backends'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 8,
+              children: [
+                for (final b in d.backends)
+                  Expanded(
+                    child: _BackendCard(
+                      backend: b,
+                      selected: b.id == d.backend,
+                      onTap: busy || !b.enabled
+                          ? null
+                          : () => a.onBackend(b.id),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
         if (d.methods.isNotEmpty) ...[
           const SizedBox(height: 14),
           ToolsFieldRow(
             key: const Key('tools-upscale-method-row'),
             label: l.tools_upscaleMethod,
+            stack: usesMobileLayout,
             children: [
               ToolsSeg<String>(
                 key: const Key('tools-upscale-method'),
@@ -613,6 +651,7 @@ class _ToolsUpscaleSheetState extends State<ToolsUpscaleSheet> {
           ToolsFieldRow(
             key: const Key('tools-upscale-model-row'),
             label: l.tools_upscaleModel,
+            stack: usesMobileLayout,
             children: [
               Builder(
                 builder: (ctx) => _ModelChip(
@@ -659,6 +698,7 @@ class _ToolsUpscaleSheetState extends State<ToolsUpscaleSheet> {
           ToolsFieldRow(
             key: const Key('tools-upscale-scale-row'),
             label: l.tools_upscaleScale,
+            stack: usesMobileLayout,
             children: [
               ToolsSlider(
                 key: const Key('tools-upscale-scale'),
@@ -954,26 +994,34 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ui;
     final f = field;
-    final label = SizedBox(
-      width: 96,
-      child: Text(
-        f.label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: UiText.sans(12, color: c.muted),
-      ),
+    final mobile = usesMobileLayout;
+    final label = Text(
+      f.label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: UiText.sans(12, color: c.muted),
     );
     final Widget control = switch (f.kind) {
-      ToolsFieldKind.number => Expanded(
-        child: ToolsSlider(
-          value: (f.value as num).toDouble(),
-          min: f.min,
-          max: f.max,
-          decimals: f.decimals,
-          enabled: onChanged != null,
-          onChanged: (v) => onChanged?.call(v),
-        ),
-      ),
+      ToolsFieldKind.number =>
+        mobile
+            ? ToolsSlider(
+                value: (f.value as num).toDouble(),
+                min: f.min,
+                max: f.max,
+                decimals: f.decimals,
+                enabled: onChanged != null,
+                onChanged: (v) => onChanged?.call(v),
+              )
+            : Expanded(
+                child: ToolsSlider(
+                  value: (f.value as num).toDouble(),
+                  min: f.min,
+                  max: f.max,
+                  decimals: f.decimals,
+                  enabled: onChanged != null,
+                  onChanged: (v) => onChanged?.call(v),
+                ),
+              ),
       ToolsFieldKind.toggle => ToolsSwitchLabel(
         value: f.value as bool,
         label: '',
@@ -988,10 +1036,30 @@ class _Field extends StatelessWidget {
             Text(f.options.firstWhere((o) => o.id == id).label),
       ),
     };
+    if (mobile) {
+      return Column(
+        key: Key('tools-field-${f.id}'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          label,
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 30,
+            child: Align(alignment: Alignment.centerLeft, child: control),
+          ),
+        ],
+      );
+    }
     final row = SizedBox(
       key: Key('tools-field-${f.id}'),
       height: 30,
-      child: Row(spacing: 10, children: [label, control]),
+      child: Row(
+        spacing: 10,
+        children: [
+          SizedBox(width: 96, child: label),
+          control,
+        ],
+      ),
     );
     return f.hint == null ? row : Tooltip(message: f.hint, child: row);
   }

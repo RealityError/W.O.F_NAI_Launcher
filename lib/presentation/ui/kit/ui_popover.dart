@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../mobile/mobile_breakpoints.dart';
 import 'ui_colors.dart';
 
 /// 弹层贴在哪：[point] 是全局坐标；[alignBottom] 为 true 时弹层底边对齐这一点（向上长）。
@@ -103,6 +104,13 @@ class _UiPopoverState extends State<UiPopover> {
       overlayChildBuilder: (context) {
         final anchor = widget.anchor;
         if (anchor == null) return const SizedBox.shrink();
+        if (usesMobileLayout) {
+          return _MobilePopoverSheet(
+            session: _session,
+            onDismiss: widget.onDismiss,
+            child: Builder(builder: widget.builder),
+          );
+        }
         final overlay = Overlay.of(context).context.findRenderObject();
         final point = overlay is RenderBox
             ? overlay.globalToLocal(anchor.point)
@@ -157,6 +165,77 @@ class _UiPopoverState extends State<UiPopover> {
         );
       },
       child: widget.child,
+    );
+  }
+}
+
+/// 手机端弹层：不再贴着锚点走，而是从底部升起一张通栏面板（桌面端仍按锚点定位）。
+///
+/// 手机屏幕窄、键盘又会顶起下半屏，贴锚点的下拉菜单容易被裁掉或压住编辑内容；
+/// 统一改成底部面板 + 半透明遮罩，点遮罩收起。内容超高时面板内部滚动。
+class _MobilePopoverSheet extends StatelessWidget {
+  const _MobilePopoverSheet({
+    required this.session,
+    required this.onDismiss,
+    required this.child,
+  });
+
+  final int session;
+  final VoidCallback onDismiss;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final media = MediaQuery.of(context);
+    final reduce = media.disableAnimations;
+    final keyboard = media.viewInsets.bottom;
+    return Positioned.fill(
+      // 弹层宿主的 Overlay 可能小于整屏（有底部导航的内嵌 Navigator），
+      // 高度必须按实际可用区域算，否则贴底后顶边会跑出屏幕。
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final area = constraints.biggest;
+          final bottom = keyboard > 0 ? keyboard + 8 : 8.0;
+          final maxHeight = math.max(120.0, area.height - bottom - 8);
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (_) => onDismiss(),
+                  onSecondaryTapDown: (_) => onDismiss(),
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: c.dark ? .46 : .28),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: bottom,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey(session),
+                    tween: Tween(begin: reduce ? 1 : 0, end: 1),
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, t, child) => Opacity(
+                      opacity: t,
+                      child: Transform.translate(
+                        offset: Offset(0, 24 * (1 - t)),
+                        child: child,
+                      ),
+                    ),
+                    child: SingleChildScrollView(child: child),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
