@@ -16,6 +16,7 @@ import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
 import '../kit/ui_text.dart';
 import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
 import 'gen_canvas.dart';
 import 'gen_character.dart';
 import 'gen_contract.dart';
@@ -28,6 +29,7 @@ import 'gen_parts.dart';
 import 'gen_prompt.dart';
 import 'gen_refs.dart';
 import 'gen_selection.dart';
+import '../kit/ui_resource_kind.dart';
 
 /// 页面级的界面状态和命令：菜单、弹层、弹窗、参数抽屉，各部件通过 [GenScope] 拿到。
 abstract class GenController {
@@ -455,6 +457,7 @@ class _GenMobileLayoutState extends State<_GenMobileLayout> {
               key: const Key('gen-mobile-editor-panel'),
               title: context.l10n.gen_edit,
               onClose: _closeOverlays,
+              actions: const [_MobileResourceLibraryAction()],
               child: const GenEditorColumn(collapsible: false),
             ),
           if (_historyOpen)
@@ -492,6 +495,51 @@ class _MobileCameraLockAction extends ConsumerWidget {
   }
 }
 
+/// 手机端资源库入口：编辑浮层标题栏放一个「库」按钮，点开列出图库 / 块库 /
+/// 风格库 / 精准参考库；前三者进入手机全屏库页，图库跳到现有图库页。
+class _MobileResourceLibraryAction extends StatelessWidget {
+  const _MobileResourceLibraryAction();
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = GenScope.of(context, GenAspect.prompt);
+    final open = scope.actions.onOpenResourceWindow;
+    if (open == null) return const SizedBox.shrink();
+    final l = context.l10n;
+    return IconButton(
+      key: const Key('gen-mobile-libraries'),
+      tooltip: l.floating_open,
+      icon: const Icon(Icons.library_books_outlined, size: 22),
+      onPressed: () => showMobileContextMenu(
+        context,
+        title: l.floating_open,
+        items: [
+          MobileMenuItem(
+            label: l.blocks_title,
+            icon: Icons.layers_outlined,
+            onTap: () => open(FloatingResourceKind.blocks),
+          ),
+          MobileMenuItem(
+            label: l.refs_vibeTitle,
+            icon: Icons.auto_awesome_outlined,
+            onTap: () => open(FloatingResourceKind.vibe),
+          ),
+          MobileMenuItem(
+            label: l.refs_preciseTitle,
+            icon: Icons.person_outline,
+            onTap: () => open(FloatingResourceKind.precise),
+          ),
+          MobileMenuItem(
+            label: l.localGallery_title,
+            icon: Icons.photo_library_outlined,
+            onTap: () => open(FloatingResourceKind.gallery),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 页面内全屏浮层：标题栏 + 关闭按钮 + 内容，保留在 GenScope 的子树里。
 class _MobileOverlayPanel extends StatelessWidget {
   const _MobileOverlayPanel({
@@ -500,12 +548,16 @@ class _MobileOverlayPanel extends StatelessWidget {
     this.subtitle,
     required this.child,
     required this.onClose,
+    this.actions = const <Widget>[],
   });
 
   final String title;
   final String? subtitle;
   final Widget child;
   final VoidCallback onClose;
+
+  /// 标题栏右侧附加操作（例如编辑浮层的「库」入口）。
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -557,6 +609,7 @@ class _MobileOverlayPanel extends StatelessWidget {
                     ],
                   ),
                 ),
+                ...actions,
                 const SizedBox(width: 12),
               ],
             ),

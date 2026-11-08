@@ -21500,6 +21500,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get floating_loadMore => '加载更多';
 
   @override
+  String get floating_mobileTapHint => '轻点条目即可插入提示词或加入生图页';
+
+  @override
   String set_stThumbQuotaTip(int count, String time) {
     return '$count 张缩略图 · 统计于$time';
   }
@@ -43171,6 +43174,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get floating_loadMore => '載入更多';
+
+  @override
+  String get floating_mobileTapHint => '輕點條目即可插入提示詞或加入生圖頁';
 
   @override
   String set_stThumbQuotaTip(int count, String time) {

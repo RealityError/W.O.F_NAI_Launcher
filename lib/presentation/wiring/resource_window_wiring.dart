@@ -13,6 +13,7 @@ import '../../core/services/resource_window_service.dart';
 import '../../core/storage/local_storage_service.dart';
 import '../../core/utils/desktop_platform.dart';
 import '../../data/services/gallery/unified_gallery_service.dart';
+import '../mobile/mobile_breakpoints.dart';
 import 'blocks_preferences.dart';
 import '../providers/collection_provider.dart';
 import '../providers/floating_resource_windows_provider.dart';
@@ -35,12 +36,13 @@ import '../widgets/common/image_detail/image_detail_data.dart';
 import '../widgets/common/save_vibe_dialog.dart';
 import '../utils/local_gallery_metadata_resolver.dart';
 import 'blocks_actions.dart';
+import 'floating_resource_drag.dart';
+import 'mobile_resource_library.dart';
 import 'image_viewer_actions.dart';
 import 'image_viewer_backend.dart';
 import 'image_viewer_session.dart';
 import 'refs_entry_drop_target.dart';
 import 'refs_preferences.dart';
-import 'floating_resource_drag.dart';
 import '../ui/refs/refs_contract.dart';
 import 'resource_window_backend.dart';
 
@@ -189,6 +191,42 @@ class ResourceWindowOpener {
   }
 
   Future<void> open(FloatingResourceKind kind, {bool newWindow = false}) async {
+    // 手机没有桌面浮窗：库改成全屏页（图库直接跳现有图库页），
+    // 同一时间只开一个；全屏页里点条目即可插入/加入，不必拖拽。
+    if (usesMobileLayout) {
+      if (kind == FloatingResourceKind.gallery) {
+        ref.read(appRouterProvider).go(AppRoutes.localGallery);
+        return;
+      }
+      final context = ref
+          .read(appRouterProvider)
+          .routerDelegate
+          .navigatorKey
+          .currentContext;
+      if (context == null) return;
+      final manager = ref.read(floatingResourceWindowsProvider.notifier);
+      for (final window in [...ref.read(floatingResourceWindowsProvider)]) {
+        manager.close(window.id);
+      }
+      // 临时窗口不落盘：退出全屏页即回收，重启不会残留。
+      final id = manager.open(kind, persist: false);
+      if (id == null) return;
+      await showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        transitionDuration: const Duration(milliseconds: 200),
+        pageBuilder: (_, _, _) => MobileResourceLibraryPage(windowId: id),
+        transitionBuilder: (_, animation, _, child) => SlideTransition(
+          position: Tween(begin: const Offset(0, .04), end: Offset.zero)
+              .animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
+          child: child,
+        ),
+      );
+      manager.close(id);
+      return;
+    }
     if (!ref.read(nativeResourceWindowsProvider)) {
       ref.read(floatingResourceWindowsProvider.notifier).open(kind);
       return;

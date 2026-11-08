@@ -111,6 +111,7 @@ class FloatingResourceWindows extends Notifier<List<FloatingWindowData>> {
   String? open(
     FloatingResourceKind kind, {
     FloatingResourceScope scope = const FloatingResourceScope(),
+    bool persist = true,
   }) {
     if (state.length >= maxWindows) return null;
     final previous = state.isEmpty ? null : state.last;
@@ -124,7 +125,7 @@ class FloatingResourceWindows extends Notifier<List<FloatingWindowData>> {
       z: state.length,
       scope: scope,
     );
-    _publish([...state, window]);
+    _publish([...state, window], persist: persist);
     return window.id;
   }
 

@@ -21751,6 +21751,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get floating_loadMore => 'さらに読み込む';
 
   @override
+  String get floating_mobileTapHint => 'タップで現在のプロンプトに挿入、または生成ページに追加';
+
+  @override
   String set_stThumbQuotaTip(int count, String time) {
     return 'サムネイル $count 枚 · $timeに集計';
   }

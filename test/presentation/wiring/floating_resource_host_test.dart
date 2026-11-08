@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
+import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
 import 'package:nai_launcher/presentation/providers/floating_resource_windows_provider.dart';
 import 'package:nai_launcher/presentation/wiring/floating_resource_windows_host.dart';
 import '../providers/floating_resource_windows_test.dart'
@@ -178,4 +179,18 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('mobile layout leaves windows to the full-screen library page', (
+    tester,
+  ) async {
+    debugForceMobileLayout = true;
+    addTearDown(() => debugForceMobileLayout = null);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final id = manager.open(FloatingResourceKind.blocks)!;
+    await tester.pump();
+    // 手机用 MobileResourceLibraryPage 全屏页渲染库，宿主不再画浮窗。
+    expect(find.byKey(ValueKey('window-$id')), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

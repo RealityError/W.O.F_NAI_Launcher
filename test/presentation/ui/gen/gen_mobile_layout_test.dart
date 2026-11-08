@@ -170,6 +170,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('editor overlay exposes the mobile resource library menu', (
+    tester,
+  ) async {
+    final recorder = GenRecorder();
+    await pumpGen(
+      tester,
+      data: GenFixture.view(),
+      actions: recorder.actions,
+      window: 360 + genRail,
+      height: 780,
+    );
+    await tester.pumpAndSettle();
+    // 库入口只在编辑浮层里出现，不在底栏占位。
+    expect(find.byKey(const Key('gen-mobile-libraries')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('gen-mobile-editor')));
+    await tester.pumpAndSettle();
+    final l = AppLocalizations.of(tester.element(find.byType(GenerationPage)))!;
+    await tester.tap(find.byKey(const Key('gen-mobile-libraries')));
+    await tester.pumpAndSettle();
+
+    // 四类资源都有手机入口；块库 / 风格库 / 精准参考库走全屏库页，
+    // 图库直接跳现有图库页（同一回调里决定）。
+    for (final label in [
+      l.blocks_title,
+      l.refs_vibeTitle,
+      l.refs_preciseTitle,
+      l.localGallery_title,
+    ]) {
+      expect(find.widgetWithText(ListTile, label), findsOneWidget);
+    }
+    await tester.tap(find.widgetWithText(ListTile, l.blocks_title));
+    await tester.pumpAndSettle();
+    expect(
+      recorder.calls,
+      contains('onOpenResourceWindow(FloatingResourceKind.blocks)'),
+    );
+
+    await tester.tap(find.byKey(const Key('gen-mobile-libraries')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, l.localGallery_title));
+    await tester.pumpAndSettle();
+    expect(
+      recorder.calls,
+      contains('onOpenResourceWindow(FloatingResourceKind.gallery)'),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('mobile layout never renders the desktop bridge indicator', (
     tester,
   ) async {

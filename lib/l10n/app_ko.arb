@@ -11512,6 +11512,7 @@
   "floating_empty": "항목 없음",
   "floating_loadFailed": "불러오지 못했습니다",
   "floating_loadMore": "더 불러오기",
+  "floating_mobileTapHint": "항목을 탭하면 현재 프롬프트에 삽입되거나 생성 페이지에 추가됩니다",
   "set_stThumbQuotaTip": "썸네일 {count}개 · {time} 집계",
   "@set_stThumbQuotaTip": {
     "placeholders": {

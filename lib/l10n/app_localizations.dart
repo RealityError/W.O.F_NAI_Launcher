@@ -39106,6 +39106,12 @@ abstract class AppLocalizations {
   /// **'Load more'**
   String get floating_loadMore;
 
+  /// No description provided for @floating_mobileTapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap an item to insert it into the prompt or add it to generation'**
+  String get floating_mobileTapHint;
+
   /// No description provided for @set_stThumbQuotaTip.
   ///
   /// In en, this message translates to:
