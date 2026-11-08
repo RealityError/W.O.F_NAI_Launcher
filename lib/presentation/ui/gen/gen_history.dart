@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -119,6 +121,64 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
           _setSelecting(false);
         },
       ),
+    );
+  }
+
+  /// 手机端：批次没有右键，长按弹同一套动作的底部菜单（不含桌面文件管理项）。
+  void _menuMobile(GenScope scope, GenBatch b) {
+    final l = context.l10n;
+    final a = scope.actions;
+    final cover = b.images.firstOrNull;
+    if (cover == null) return;
+    final ids = b.images.map((i) => i.id).toList();
+    final n = ids.length;
+    showMobileContextMenu(
+      context,
+      items: [
+        MobileMenuItem(
+          label: l.gen_openViewer,
+          icon: Icons.open_in_full,
+          onTap: () => a.onOpenViewer(cover.id),
+        ),
+        MobileMenuItem(
+          label: n > 1 ? l.gen_saveBatch(n) : l.gen_saveImage,
+          icon: Icons.save_alt,
+          onTap: () => a.onSaveImages(ids),
+        ),
+        MobileMenuItem(
+          label: l.gen_copyImage,
+          icon: Icons.copy,
+          onTap: () => a.onCopyImage(cover.id),
+        ),
+        MobileMenuItem(
+          label: cover.favorite ? l.gen_unfavorite : l.gen_favorite,
+          icon: Icons.favorite_border,
+          onTap: () => a.onFavorite(cover.id, !cover.favorite),
+        ),
+        MobileMenuItem(
+          label: l.gen_sendImg2Img,
+          icon: Icons.image_outlined,
+          onTap: () => a.onSendTo(cover.id, GenSendTarget.img2img),
+        ),
+        MobileMenuItem(
+          label: l.gen_sendVibe,
+          icon: Icons.palette_outlined,
+          enabled: scope.data.refs.vibes != null,
+          onTap: () => a.onSendTo(cover.id, GenSendTarget.vibe),
+        ),
+        MobileMenuItem(
+          label: l.gen_sendPrecise,
+          icon: Icons.person_outline,
+          enabled: scope.data.refs.precise != null,
+          onTap: () => a.onSendTo(cover.id, GenSendTarget.precise),
+        ),
+        MobileMenuItem(
+          label: n > 1 ? l.gen_removeBatch(n) : l.gen_removeImage,
+          icon: Icons.delete_outline,
+          destructive: true,
+          onTap: () => _confirmDelete(scope, ids),
+        ),
+      ],
     );
   }
 
@@ -358,6 +418,9 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
                             partial: selection.partial(b),
                             onTap: () => _tap(scope, b),
                             onMenu: (at) => _menu(scope, b, at),
+                            onLongPress: usesMobileLayout
+                                ? () => _menuMobile(scope, b)
+                                : null,
                           ),
                         );
                       },
@@ -499,6 +562,7 @@ class _BatchItem extends StatelessWidget {
     required this.partial,
     required this.onTap,
     required this.onMenu,
+    this.onLongPress,
   });
 
   final GenBatch batch;
@@ -511,6 +575,9 @@ class _BatchItem extends StatelessWidget {
   final bool partial;
   final VoidCallback onTap;
   final ValueChanged<Offset> onMenu;
+
+  /// 手机端长按：弹出与右键同源的底部菜单；桌面为 null，保持右键。
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -615,6 +682,7 @@ class _BatchItem extends StatelessWidget {
           ),
         GestureDetector(
           onSecondaryTapDown: (d) => onMenu(d.globalPosition),
+          onLongPress: onLongPress,
           child: UiPressable(
             key: Key('gen-batch-tile-${b.id}'),
             onTap: onTap,

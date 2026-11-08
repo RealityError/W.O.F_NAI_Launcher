@@ -457,17 +457,21 @@ class GenCanvasMenuScope extends InheritedWidget {
   const GenCanvasMenuScope({
     super.key,
     required this.onOpen,
+    this.onOpenMobile,
     required super.child,
   });
 
   final void Function(BuildContext context, String id, Offset position) onOpen;
+
+  /// 手机端长按入口：Android 没有右键，接线方在这里弹底部菜单。
+  final void Function(BuildContext context, String id)? onOpenMobile;
 
   static GenCanvasMenuScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<GenCanvasMenuScope>();
 
   @override
   bool updateShouldNotify(GenCanvasMenuScope oldWidget) =>
-      onOpen != oldWidget.onOpen;
+      onOpen != oldWidget.onOpen || onOpenMobile != oldWidget.onOpenMobile;
 }
 
 /// 画布引擎提供选中回调与可选的合成流式预览，图块视觉由新页面绘制。
@@ -742,6 +746,10 @@ class _GenCanvasTileState extends State<GenCanvasTile> {
       behavior: HitTestBehavior.opaque,
       onSecondaryTapDown: (details) =>
           menu.onOpen(context, t.id, details.globalPosition),
+      // 手机没有右键：长按走同一套图片菜单（底部弹层，接线方决定内容）。
+      onLongPress: usesMobileLayout && menu.onOpenMobile != null
+          ? () => menu.onOpenMobile!(context, t.id)
+          : null,
       child: tile,
     );
   }

@@ -49,18 +49,20 @@ Future<void> pumpGen(
   String locale = 'zh',
   bool dark = false,
   bool cameraLocked = false,
+  Widget Function(Widget child)? wrap,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(window - genRail, height);
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+  final page = GenerationPage(
+    data: data,
+    actions: actions ?? GenActions.logging((_) {}),
+    slots: slots ?? const GenSlots(editor: GenFixtureEditor.builder),
+  );
   await tester.pumpWidget(
     genApp(
-      GenerationPage(
-        data: data,
-        actions: actions ?? GenActions.logging((_) {}),
-        slots: slots ?? const GenSlots(editor: GenFixtureEditor.builder),
-      ),
+      wrap == null ? page : wrap(page),
       locale: locale,
       dark: dark,
       cameraLocked: cameraLocked,

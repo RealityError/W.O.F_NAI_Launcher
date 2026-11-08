@@ -248,6 +248,16 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 3. **保留手机分支**：`gen_canvas.dart` 里 8.8 的「工具面板贴底铺宽」`usesMobileLayout` 分支重新应用到上游新版之上。
 4. **验证**：`flutter analyze` 无问题；channel + 画布接线 183 例、`test/presentation/ui/gen` 374 例、生图接线核心 133 例全部通过；`dart format` 无改动；桌面 `scope.slots.canvas == null` 的测试舞台保留旧构图，golden 不变。
 
+### 8.10 生成页触屏入口第一批（长按菜单 / 隐藏桌面专属）
+
+按 [mobile-gen-gaps.md](mobile-gen-gaps.md) 第一批落地，桌面交互一行不改：
+
+1. **画布图片长按**（G1）：`GenCanvasMenuScope` 新增 `onOpenMobile`，手机布局下图块 `onLongPress` 触发；`openGenerationCanvasMenuMobile` 把右键菜单拍平成底部弹层（保存 / 复制 / 详情 / 删除 / 发送到图生图 / 风格参考 / 精准参考 / 保存到精准参考库），桌面右键路径与菜单内容不变。
+2. **历史批次长按**（G2）：`_BatchItem` 接收 `onLongPress`（仅手机布局传入），弹出与桌面右键同源的批次动作；不另加「…」悬浮按钮，避免遮挡封面。
+3. **放大面板**（G6）：`toolsUpscaleView` 在 Android 固定云端后端、隐藏「本地」卡片（纯函数 `toolsUpscaleBackends` 便于回归）；打开面板时把后端固定回 `novelai`，桌面残留的 `local` 设置不会再触发「平台不支持」。
+4. **Krita / 打开文件夹**（G9）：桥接图标只在桌面提示词模块出现（手机不渲染该模块），仍加 `usesMobileLayout` 守卫；桌面右键里的「在资源管理器中显示 / 发送到 Krita」不进手机长按菜单。
+5. **验证**：`flutter analyze` 干净；`gen_mobile_layout_test` 新增 3 例（画布长按入口、批次长按菜单、手机无桥接图标），`tools_upscale_mobile_test` 新增 3 例；`test/presentation/ui/gen` + `test/presentation/ui/tools` 541 例、生成接线核心回归 7 文件全过；桌面 golden 不变。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 复用桌面内容页后，个别行内小按钮（24–32dp）未达 44dp 触摸目标，需真机走查后统一包触摸区；
