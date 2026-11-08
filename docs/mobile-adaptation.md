@@ -247,3 +247,5 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 4. 生成请求在代理链路上偶发 `HandshakeException`（代理节点对 image.novelai.net 不稳定），属环境网络问题，非 App 逻辑；首次冷启动自动登录失败时点"一键登录"可重试成功；
 5. 平板/横屏、Phase 2（浏览类页面）与 Phase 3（编辑器）尚未开始。
 
+> 生成页与桌面版的逐项差距、优先级和可复用工具，见 [mobile-gen-gaps.md](mobile-gen-gaps.md)。
+
