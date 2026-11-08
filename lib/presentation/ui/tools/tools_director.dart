@@ -96,8 +96,9 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
   WidgetBuilder? _popover;
   Object? _tag;
 
-  /// 手机端：右栏（选项 / 运行 / 结果）改为浮层，避免固定 320 宽把舞台挤爆。
+  /// 手机端：参数（选项 / 运行 / 结果）与输入队列改为页面内底部弹层。
   var _mobileSideOpen = false;
+  var _mobileQueueOpen = false;
 
   @override
   ToolsCompare get compare => _compare;
@@ -170,15 +171,20 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
                 child: ColoredBox(
                   key: const Key('tools-director'),
                   color: c.bg,
-                  // 手机端：左工具条 + 舞台，右栏改为页面内浮层（选项/运行/结果）。
+                  // 手机端：画布优先 + 底部工具条，参数与输入队列为底部弹层。
                   // 桌面端保持原三栏结构不变。
                   child: usesMobileLayout
                       ? _MobileDirectorLayout(
                           sideOpen: _mobileSideOpen,
+                          queueOpen: _mobileQueueOpen,
                           onOpenSide: () =>
                               setState(() => _mobileSideOpen = true),
                           onCloseSide: () =>
                               setState(() => _mobileSideOpen = false),
+                          onOpenQueue: () =>
+                              setState(() => _mobileQueueOpen = true),
+                          onCloseQueue: () =>
+                              setState(() => _mobileQueueOpen = false),
                         )
                       : const Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -206,94 +212,148 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
   }
 }
 
-/// 手机端导演工具布局：左工具条 + 舞台；右栏（选项 / 运行 / 结果）改为页面内浮层，
-/// 通过右上角圆形按钮打开。桌面端三栏布局保持不变。
+/// 手机端导演工具布局（方案 A）：顶栏（返回 / 标题 / Anlas）│
+/// 画布（对比方式浮在右上角）│ 底部工具条（点工具选中并弹出参数面板）│
+/// 参数与输入队列都是页面内底部弹层。桌面端三栏布局保持不变。
 class _MobileDirectorLayout extends StatelessWidget {
   const _MobileDirectorLayout({
     required this.sideOpen,
+    required this.queueOpen,
     required this.onOpenSide,
     required this.onCloseSide,
+    required this.onOpenQueue,
+    required this.onCloseQueue,
   });
 
   final bool sideOpen;
+  final bool queueOpen;
   final VoidCallback onOpenSide;
   final VoidCallback onCloseSide;
+  final VoidCallback onOpenQueue;
+  final VoidCallback onCloseQueue;
 
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
-    final l = context.l10n;
-    final width = MediaQuery.sizeOf(context).width;
+    final sheet = sideOpen || queueOpen;
     return PopScope(
-      // 浮层打开时系统返回键先关浮层。
-      canPop: !sideOpen,
+      // 弹层打开时系统返回键先关弹层。
+      canPop: !sheet,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) onCloseSide();
+        if (didPop) return;
+        if (sideOpen) {
+          onCloseSide();
+        } else {
+          onCloseQueue();
+        }
       },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _MobileTopBar(onOpenSide: onOpenSide),
-              const Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _ToolList(),
-                    Expanded(child: _MobileStage()),
-                  ],
+      child: LayoutBuilder(
+        builder: (context, box) => Stack(
+          fit: StackFit.expand,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _MobileTopBar(),
+                Expanded(child: _MobileStage(onOpenQueue: onOpenQueue)),
+                _MobileToolBar(onOpenSide: onOpenSide),
+              ],
+            ),
+            if (sheet) ...[
+              Positioned.fill(
+                child: GestureDetector(
+                  key: const Key('tools-director-mobile-scrim'),
+                  onTap: sideOpen ? onCloseSide : onCloseQueue,
+                  child: ColoredBox(color: Colors.black.withValues(alpha: .42)),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: sideOpen ? box.maxHeight * .82 : 152,
+                child: Container(
+                  key: sideOpen
+                      ? const Key('tools-director-mobile-side-panel')
+                      : const Key('tools-director-mobile-queue-sheet'),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: c.bg,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x66000000),
+                        blurRadius: 32,
+                        offset: Offset(0, -8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _SheetHeader(
+                        closeKey: sideOpen
+                            ? const Key('tools-director-mobile-side-close')
+                            : const Key('tools-director-mobile-queue-close'),
+                        onClose: sideOpen ? onCloseSide : onCloseQueue,
+                      ),
+                      Expanded(
+                        child: sideOpen
+                            ? ToolsDirectorSide(
+                                width: MediaQuery.sizeOf(context).width,
+                                showBorder: false,
+                              )
+                            : const _Queue(compact: true),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
-          ),
-          if (sideOpen)
-            Positioned.fill(
-              child: Material(
-                key: const Key('tools-director-mobile-side-panel'),
-                color: c.bg,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      height: 48,
-                      padding: const EdgeInsets.only(left: 4),
-                      decoration: BoxDecoration(
-                        color: c.bg,
-                        border: Border(bottom: BorderSide(color: c.line)),
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            key: const Key('tools-director-mobile-side-close'),
-                            onPressed: onCloseSide,
-                            icon: const Icon(Icons.close_rounded, size: 22),
-                            tooltip: MaterialLocalizations.of(
-                              context,
-                            ).closeButtonTooltip,
-                          ),
-                          Expanded(
-                            child: Text(
-                              l.tools_director,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: UiText.sans(
-                                14.5,
-                                weight: FontWeight.w600,
-                                color: c.ink,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                      ),
-                    ),
-                    Expanded(child: ToolsDirectorSide(width: width)),
-                  ],
-                ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 弹层顶部：中间一条抓手 + 右上角关闭。手机上没有窗口按钮，留一个明确的关闭位。
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({required this.onClose, required this.closeKey});
+
+  final VoidCallback onClose;
+  final Key closeKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    return SizedBox(
+      height: 40,
+      child: Stack(
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: c.line,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
+          ),
+          Positioned(
+            right: 4,
+            top: 0,
+            bottom: 0,
+            child: IconButton(
+              key: closeKey,
+              onPressed: onClose,
+              icon: const Icon(Icons.close_rounded, size: 20),
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            ),
+          ),
         ],
       ),
     );
@@ -301,12 +361,9 @@ class _MobileDirectorLayout extends StatelessWidget {
 }
 
 /// 手机端顶栏：不经过 WindowHeader（否则会为窗口按钮预留 138px），内容精简。
-/// 右栏（选项 / 运行 / 结果）通过顶栏的「面板」按钮打开，避免画布上出现
-/// 无说明的浮动圆钮。
+/// 参数面板与输入队列都从画布/底部工具条进入，顶栏只留返回、标题和 Anlas。
 class _MobileTopBar extends StatelessWidget {
-  const _MobileTopBar({required this.onOpenSide});
-
-  final VoidCallback onOpenSide;
+  const _MobileTopBar();
 
   @override
   Widget build(BuildContext context) {
@@ -344,16 +401,6 @@ class _MobileTopBar extends StatelessWidget {
               style: UiText.sans(15, weight: FontWeight.w600, color: c.ink),
             ),
           ),
-          ToolsButton(
-            key: const Key('tools-director-mobile-side'),
-            tone: ToolsButtonTone.ghost,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            onTap: onOpenSide,
-            children: [
-              Icon(Icons.tune_rounded, size: 16, color: c.muted),
-              Text(l.tools_panel),
-            ],
-          ),
           if (d.anlas != null)
             ToolsChip(
               key: const Key('tools-director-anlas'),
@@ -370,21 +417,302 @@ class _MobileTopBar extends StatelessWidget {
   }
 }
 
-/// 手机端舞台：内部仍按桌面密度排布，给最小宽度后横向滚动，
-/// 避免输入队列 / 对比控件在 360dp 下被压到溢出。
+/// 手机端舞台：细条（输入 n/N · 适应）+ 画布（对比方式浮在右上角）+ 结果操作。
+/// 输入队列收进底部弹层，把高度让给画布。
 class _MobileStage extends StatelessWidget {
-  const _MobileStage();
+  const _MobileStage({required this.onOpenQueue});
 
-  static const double minWidth = 520;
+  final VoidCallback onOpenQueue;
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: width < minWidth ? minWidth : width,
-        child: const _Stage(),
+    final c = context.ui;
+    return ColoredBox(
+      key: const Key('tools-director-stage'),
+      color: c.panel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _MobileStageBar(onOpenQueue: onOpenQueue),
+          const Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _CompareArea(),
+                Positioned(right: 22, top: 10, child: _CompareCapsule()),
+              ],
+            ),
+          ),
+          const _ResultActions(),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端上条：左边是「输入 1/2 ▾」（点开输入队列弹层），右边是适应/原始大小。
+class _MobileStageBar extends StatelessWidget {
+  const _MobileStageBar({required this.onOpenQueue});
+
+  final VoidCallback onOpenQueue;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final d = ToolsDirectorScope.of(context).data;
+    final l = context.l10n;
+    final index = d.inputs.indexWhere((i) => i.id == d.input);
+    final label = d.inputs.isEmpty ? '—' : '${index + 1}/${d.inputs.length}';
+    return SizedBox(
+      key: const Key('tools-director-stagebar'),
+      height: 42,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          children: [
+            ToolsChip(
+              key: const Key('tools-input-chip'),
+              mono: true,
+              height: 30,
+              onTap: onOpenQueue,
+              children: [
+                Text('${l.tools_input} $label'),
+                UiGlyph(UiGlyphs.chevronDown, size: 12, color: c.muted),
+              ],
+            ),
+            const Spacer(),
+            const _FitChip(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 画布右上角的对比方式胶囊：并排 / 滑动对比 / 只看结果，点开底部弹层选。
+class _CompareCapsule extends StatelessWidget {
+  const _CompareCapsule();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final ctrl = ToolsDirectorScope.of(context).controller;
+    final l = context.l10n;
+    final current = ctrl.compare;
+    String labelOf(ToolsCompare v) => switch (v) {
+      ToolsCompare.side => l.tools_compareSide,
+      ToolsCompare.wipe => l.tools_compareWipe,
+      ToolsCompare.result => l.tools_compareResult,
+    };
+    final label = labelOf(current);
+    return Builder(
+      builder: (ctx) => ToolsChip(
+        key: const Key('tools-compare-mobile'),
+        height: 30,
+        onTap: () {
+          final items = [
+            for (final v in ToolsCompare.values)
+              UiMenuItem(
+                key: Key('tools-compare-${v.name}'),
+                label: labelOf(v),
+                checked: current == v,
+                onTap: () => ctrl.setCompare(v),
+              ),
+          ];
+          final box = ctx.findRenderObject()! as RenderBox;
+          ctrl.openPopover(
+            UiPopoverAnchor(
+              box.localToGlobal(
+                box.size.topRight(Offset(0, box.size.height + 6)),
+              ),
+              alignRight: true,
+            ),
+            (_) => UiMenu(width: 180, onClose: ctrl.closePopover, items: items),
+            tag: #compareMobile,
+          );
+        },
+        children: [
+          UiGlyph(
+            switch (current) {
+              ToolsCompare.side => ToolsGlyphs.side,
+              ToolsCompare.wipe => ToolsGlyphs.wipe,
+              ToolsCompare.result => ToolsGlyphs.one,
+            },
+            size: 14,
+            color: c.ink,
+          ),
+          Text(label),
+          UiGlyph(UiGlyphs.chevronDown, size: 12, color: c.muted),
+        ],
+      ),
+    );
+  }
+}
+
+/// 适应 / 原始大小胶囊（桌面舞台条与手机画布条共用）。
+class _FitChip extends StatelessWidget {
+  const _FitChip();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final ctrl = ToolsDirectorScope.of(context).controller;
+    final l = context.l10n;
+    return Builder(
+      builder: (ctx) => ToolsChip(
+        key: const Key('tools-director-fit'),
+        mono: true,
+        onTap: () {
+          final box = ctx.findRenderObject()! as RenderBox;
+          ctrl.openPopover(
+            UiPopoverAnchor(
+              box.localToGlobal(Offset(box.size.width, box.size.height + 6)),
+              alignRight: true,
+            ),
+            (_) => UiMenu(
+              width: 150,
+              onClose: ctrl.closePopover,
+              items: [
+                UiMenuItem(
+                  label: l.tools_fit,
+                  checked: !ctrl.actual,
+                  onTap: () => ctrl.setActual(false),
+                ),
+                UiMenuItem(
+                  key: const Key('tools-director-actual'),
+                  label: l.tools_actualSize,
+                  checked: ctrl.actual,
+                  onTap: () => ctrl.setActual(true),
+                ),
+              ],
+            ),
+            tag: #fit,
+          );
+        },
+        children: [
+          Text(ctrl.actual ? '100%' : l.tools_fit),
+          UiGlyph(UiGlyphs.chevronDown, size: 12, color: c.ink),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端底部工具条：7 个工具图标（清理 / 线条 / 上色 / 像素），点一下选中并弹出参数面板。
+class _MobileToolBar extends StatelessWidget {
+  const _MobileToolBar({required this.onOpenSide});
+
+  final VoidCallback onOpenSide;
+
+  static const tools = [
+    ToolsDirectorTool.removeBackground,
+    ToolsDirectorTool.declutter,
+    ToolsDirectorTool.lineArt,
+    ToolsDirectorTool.sketch,
+    ToolsDirectorTool.colorize,
+    ToolsDirectorTool.emotion,
+    ToolsDirectorTool.pixelSnap,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final scope = ToolsDirectorScope.of(context);
+    final d = scope.data;
+    return Container(
+      key: const Key('tools-director-mobile-toolbar'),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(top: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          for (final tool in tools)
+            _MobileToolButton(
+              tool: tool,
+              selected: d.tool == tool,
+              enabled: !d.running,
+              onTap: () {
+                if (d.tool != tool && !d.running) scope.actions.onTool(tool);
+                onOpenSide();
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileToolButton extends StatelessWidget {
+  const _MobileToolButton({
+    required this.tool,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final ToolsDirectorTool tool;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    return Tooltip(
+      richMessage: TextSpan(
+        text: ToolsFormat.toolName(l, tool),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+        children: [
+          TextSpan(
+            text: '\n${ToolsFormat.toolDesc(l, tool)}',
+            style: const TextStyle(fontWeight: FontWeight.w400),
+          ),
+        ],
+      ),
+      child: UiPressable(
+        key: Key('tools-mobile-${tool.name}'),
+        onTap: enabled || !selected ? onTap : null,
+        builder: (context, hover) => Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? c.accent.withValues(alpha: .1)
+                : (hover ? c.control : null),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected
+                  ? c.accent.withValues(alpha: .45)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 2,
+            children: [
+              ToolsIcon(
+                ToolsFormat.toolIcon(tool),
+                size: 18,
+                color: selected ? c.accent : c.ink,
+              ),
+              Text(
+                ToolsFormat.toolName(l, tool),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: UiText.sans(
+                  9,
+                  weight: FontWeight.w500,
+                  color: selected ? c.accent : c.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -731,49 +1059,8 @@ class _StageBar extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Builder(
-                  builder: (ctx) => ToolsChip(
-                    key: const Key('tools-director-fit'),
-                    mono: true,
-                    onTap: () {
-                      final box = ctx.findRenderObject()! as RenderBox;
-                      ctrl.openPopover(
-                        UiPopoverAnchor(
-                          box.localToGlobal(
-                            Offset(box.size.width, box.size.height + 6),
-                          ),
-                          alignRight: true,
-                        ),
-                        (_) => UiMenu(
-                          width: 150,
-                          onClose: ctrl.closePopover,
-                          items: [
-                            UiMenuItem(
-                              label: l.tools_fit,
-                              checked: !ctrl.actual,
-                              onTap: () => ctrl.setActual(false),
-                            ),
-                            UiMenuItem(
-                              key: const Key('tools-director-actual'),
-                              label: l.tools_actualSize,
-                              checked: ctrl.actual,
-                              onTap: () => ctrl.setActual(true),
-                            ),
-                          ],
-                        ),
-                        tag: #fit,
-                      );
-                    },
-                    children: [
-                      Text(ctrl.actual ? '100%' : l.tools_fit),
-                      UiGlyph(UiGlyphs.chevronDown, size: 12, color: c.ink),
-                    ],
-                  ),
-                ),
-              ),
+            const Expanded(
+              child: Align(alignment: Alignment.centerRight, child: _FitChip()),
             ),
           ],
         ),
@@ -1288,12 +1575,14 @@ class _ResultActions extends StatelessWidget {
         l.tools_upscale,
         a.onUpscale,
       ),
-      ToolsButton(
-        key: const Key('tools-act-init'),
-        tone: ToolsButtonTone.primary,
-        onTap: ok ? a.onUseAsInit : null,
-        children: [Text(l.tools_useAsInit)],
-      ),
+      // 手机上还没有结果时先不占这一整行，把高度让给画布。
+      if (run != null || !usesMobileLayout)
+        ToolsButton(
+          key: const Key('tools-act-init'),
+          tone: ToolsButtonTone.primary,
+          onTap: ok ? a.onUseAsInit : null,
+          children: [Text(l.tools_useAsInit)],
+        ),
     ];
     final variants =
         run != null &&
@@ -1402,8 +1691,11 @@ class _ResultActions extends StatelessWidget {
 }
 
 /// 输入队列（92 高、上分隔线、页面底）：标题 + 张数 │ 缩略图 52 × 68（选中强调色 2px 框，悬停出 ×）│ 加号 │ 说明。
+/// 手机端放进底部弹层（`compact`）：只留缩略图与加号，横滑浏览。
 class _Queue extends StatelessWidget {
-  const _Queue();
+  const _Queue({this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1412,6 +1704,89 @@ class _Queue extends StatelessWidget {
     final d = scope.data;
     final a = scope.actions;
     final l = context.l10n;
+    final thumbs = <Widget>[
+      for (final i in d.inputs)
+        _QueueThumb(input: i, on: i.id == d.input, enabled: !d.running),
+      Builder(
+        builder: (ctx) => UiPressable(
+          key: const Key('tools-queue-add'),
+          onTap: d.running
+              ? null
+              : () {
+                  final box = ctx.findRenderObject()! as RenderBox;
+                  scope.controller.openPopover(
+                    UiPopoverAnchor(
+                      box.localToGlobal(const Offset(0, -6)),
+                      alignBottom: true,
+                    ),
+                    (_) => UiMenu(
+                      width: 200,
+                      onClose: scope.controller.closePopover,
+                      items: [
+                        UiMenuItem(
+                          key: const Key('tools-queue-import'),
+                          label: l.tools_importFiles,
+                          glyph: UiGlyphs.upload,
+                          onTap: a.onImportFiles,
+                        ),
+                        UiMenuItem(
+                          key: const Key('tools-queue-history'),
+                          label: l.tools_fromHistory,
+                          glyph: UiGlyphs.clock,
+                          onTap: a.onPickHistory,
+                        ),
+                        UiMenuItem(
+                          label: l.tools_paste,
+                          glyph: UiGlyphs.clipboard,
+                          trailing: 'Ctrl+V',
+                          onTap: a.onPaste,
+                        ),
+                      ],
+                    ),
+                    tag: #add,
+                  );
+                },
+          builder: (context, hover) => SizedBox(
+            width: 52,
+            height: 68,
+            child: UiDashedBox(
+              radius: 7,
+              color: hover ? c.accent : c.strong,
+              child: Center(
+                child: UiGlyph(
+                  UiGlyphs.plus,
+                  size: 18,
+                  color: hover ? c.accent : c.muted,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
+    if (compact) {
+      final sheetQueue = Container(
+        key: const Key('tools-director-queue'),
+        height: 112,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            Text(
+              '${l.tools_queue} · ${l.tools_queueCount(d.inputs.length)}',
+              style: UiText.sans(12, weight: FontWeight.w600, color: c.ink),
+            ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(spacing: 8, children: thumbs),
+            ),
+          ],
+        ),
+      );
+      return scope.slots.drop?.call(context, sheetQueue) ?? sheetQueue;
+    }
     final queue = Container(
       key: const Key('tools-director-queue'),
       height: 92,
@@ -1445,73 +1820,7 @@ class _Queue extends StatelessWidget {
             flex: 4,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Row(
-                spacing: 8,
-                children: [
-                  for (final i in d.inputs)
-                    _QueueThumb(
-                      input: i,
-                      on: i.id == d.input,
-                      enabled: !d.running,
-                    ),
-                  Builder(
-                    builder: (ctx) => UiPressable(
-                      key: const Key('tools-queue-add'),
-                      onTap: d.running
-                          ? null
-                          : () {
-                              final box = ctx.findRenderObject()! as RenderBox;
-                              scope.controller.openPopover(
-                                UiPopoverAnchor(
-                                  box.localToGlobal(const Offset(0, -6)),
-                                  alignBottom: true,
-                                ),
-                                (_) => UiMenu(
-                                  width: 200,
-                                  onClose: scope.controller.closePopover,
-                                  items: [
-                                    UiMenuItem(
-                                      key: const Key('tools-queue-import'),
-                                      label: l.tools_importFiles,
-                                      glyph: UiGlyphs.upload,
-                                      onTap: a.onImportFiles,
-                                    ),
-                                    UiMenuItem(
-                                      key: const Key('tools-queue-history'),
-                                      label: l.tools_fromHistory,
-                                      glyph: UiGlyphs.clock,
-                                      onTap: a.onPickHistory,
-                                    ),
-                                    UiMenuItem(
-                                      label: l.tools_paste,
-                                      glyph: UiGlyphs.clipboard,
-                                      trailing: 'Ctrl+V',
-                                      onTap: a.onPaste,
-                                    ),
-                                  ],
-                                ),
-                                tag: #add,
-                              );
-                            },
-                      builder: (context, hover) => SizedBox(
-                        width: 52,
-                        height: 68,
-                        child: UiDashedBox(
-                          radius: 7,
-                          color: hover ? c.accent : c.strong,
-                          child: Center(
-                            child: UiGlyph(
-                              UiGlyphs.plus,
-                              size: 18,
-                              color: hover ? c.accent : c.muted,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: Row(spacing: 8, children: thumbs),
             ),
           ),
           const Spacer(),

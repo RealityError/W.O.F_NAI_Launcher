@@ -15,10 +15,13 @@ import 'tools_parts.dart';
 /// 导演工具右栏（320 宽）：当前工具（图标 + 名字 + 一句说明）│ 选项 │ 运行（工具名 + 价格，Ctrl+Enter）│
 /// 结果列表（缩略图、工具、时间、花费；点一行回看，悬停“沿用设置”）。
 class ToolsDirectorSide extends StatelessWidget {
-  const ToolsDirectorSide({super.key, this.width});
+  const ToolsDirectorSide({super.key, this.width, this.showBorder = true});
 
   /// 手机端浮层里铺满可用宽度；桌面端保持固定 320。
   final double? width;
+
+  /// 手机端作为底部弹层时不画桌面右栏的左侧分隔线。
+  final bool showBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +34,7 @@ class ToolsDirectorSide extends StatelessWidget {
       width: width ?? ToolsDirectorPage.sideWidth,
       decoration: BoxDecoration(
         color: c.bg,
-        border: Border(left: BorderSide(color: c.line)),
+        border: showBorder ? Border(left: BorderSide(color: c.line)) : null,
       ),
       child: LayoutBuilder(
         builder: (context, box) => Column(
