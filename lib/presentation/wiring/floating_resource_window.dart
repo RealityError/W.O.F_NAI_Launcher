@@ -4,18 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/localization_extension.dart';
+import '../mobile/mobile_breakpoints.dart';
 import '../providers/floating_resource_windows_provider.dart';
 import '../ui/kit/ui_block_pill.dart';
 import '../ui/kit/ui_colors.dart';
 import '../ui/kit/ui_glyph.dart';
 import '../ui/kit/ui_text.dart';
 import '../ui/refs/refs_contract.dart';
+import '../widgets/common/app_toast.dart';
 import '../widgets/gallery/local_image_card.dart';
 import '../widgets/prompt/blocks/prompt_block_colors.dart';
 import '../widgets/prompt/blocks/prompt_block_drag_data.dart';
+import 'blocks_actions.dart';
 import 'floating_resource_drag.dart';
 import 'floating_resource_sources.dart';
 import 'floating_resource_windows_host.dart';
+import 'refs_entry_drop_target.dart';
 
 /// D04 资源小窗的正式外观（原型 `.devin/mockups/d04-float/`）：
 /// 标题栏（拖动 / 收起 / 关闭）· 搜索框 · 网格或块列表 · 右下角缩放。
@@ -51,9 +55,13 @@ class FloatingResourceWindow extends ConsumerStatefulWidget {
     super.key,
     required this.window,
     required this.controller,
+    this.onClose,
   });
   final FloatingWindowData window;
   final FloatingWindowController controller;
+
+  /// 手机全屏页把「关闭」接到路由返回；桌面沿用控制器关闭浮窗。
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<FloatingResourceWindow> createState() =>
@@ -97,8 +105,81 @@ class _FloatingResourceWindowState
     return windows.isNotEmpty && windows.last.id == widget.window.id;
   }
 
+  void _close() => (widget.onClose ?? widget.controller.close)();
+
+  Future<void> _insertBlock(String id) async {
+    await BlocksActions(ref, context, () => mounted).insert([id]);
+    if (mounted) _close();
+  }
+
+  Future<void> _addRef(RefsKind kind, String key) async {
+    try {
+      final result = await ref
+          .read(refsEntryDropActionsProvider)
+          .drop(
+            kind,
+            RefsEntryDragData(kind: kind, keys: [key]),
+            alive: () => mounted,
+          );
+      if (mounted && result.count > 0) _close();
+    } catch (error) {
+      if (mounted) AppToast.error(context, '$error');
+    }
+  }
+
+  Widget _body({required bool mobile}) => switch (widget.window.kind) {
+    FloatingResourceKind.gallery => _GalleryBody(id: widget.window.id),
+    FloatingResourceKind.blocks => _BlocksBody(
+      id: widget.window.id,
+      mobile: mobile,
+      onTap: mobile ? _insertBlock : null,
+    ),
+    FloatingResourceKind.vibe => _RefsBody(
+      id: widget.window.id,
+      kind: RefsKind.vibe,
+      mobile: mobile,
+      onTap: mobile ? (key) => _addRef(RefsKind.vibe, key) : null,
+    ),
+    FloatingResourceKind.precise => _RefsBody(
+      id: widget.window.id,
+      kind: RefsKind.precise,
+      mobile: mobile,
+      onTap: mobile ? (key) => _addRef(RefsKind.precise, key) : null,
+    ),
+  };
+
+  /// 手机全屏库：标题即页面标题，左上角关闭，内容点按插入。
+  Widget _buildMobile(BuildContext context) {
+    final c = context.ui;
+    final w = widget.window;
+    return Material(
+      color: c.bg,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _MobileLibraryHeader(window: w, onClose: _close),
+            _SearchBox(
+              controller: _query,
+              onChanged: _changed,
+              onSubmitted: _submitted,
+              mobile: true,
+              hint: switch (w.kind) {
+                FloatingResourceKind.gallery =>
+                  context.l10n.floating_searchGallery,
+                _ => context.l10n.floating_searchName,
+              },
+            ),
+            Expanded(child: _body(mobile: true)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (usesMobileLayout) return _buildMobile(context);
     final c = context.ui;
     final w = widget.window;
     final ctl = widget.controller;
@@ -152,20 +233,7 @@ class _FloatingResourceWindowState
                         _ => context.l10n.floating_searchName,
                       },
                     ),
-                    Expanded(
-                      child: switch (w.kind) {
-                        FloatingResourceKind.gallery => _GalleryBody(id: w.id),
-                        FloatingResourceKind.blocks => _BlocksBody(id: w.id),
-                        FloatingResourceKind.vibe => _RefsBody(
-                          id: w.id,
-                          kind: RefsKind.vibe,
-                        ),
-                        FloatingResourceKind.precise => _RefsBody(
-                          id: w.id,
-                          kind: RefsKind.precise,
-                        ),
-                      },
-                    ),
+                    Expanded(child: _body(mobile: false)),
                   ],
                 ],
               ),
@@ -193,16 +261,8 @@ class _FloatingResourceWindowState
   }
 }
 
-class _TitleBar extends ConsumerWidget {
-  const _TitleBar({required this.window, required this.controller});
-  final FloatingWindowData window;
-  final FloatingWindowController controller;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.ui;
-    final l = context.l10n;
-    final count = switch (window.kind) {
+int? _windowCount(WidgetRef ref, FloatingWindowData window) =>
+    switch (window.kind) {
       FloatingResourceKind.gallery =>
         ref
             .watch(floatingGalleryPageProvider((id: window.id, page: 0)))
@@ -212,6 +272,86 @@ class _TitleBar extends ConsumerWidget {
         ref.watch(floatingBlocksProvider(window.id)).valueOrNull?.length,
       _ => ref.watch(floatingRefsProvider(window.id)).valueOrNull?.length,
     };
+
+/// 手机全屏库的标题栏：关闭 + 标题 + 数量，附带一行「点按即插入」提示。
+class _MobileLibraryHeader extends ConsumerWidget {
+  const _MobileLibraryHeader({required this.window, required this.onClose});
+  final FloatingWindowData window;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.ui;
+    final count = _windowCount(ref, window);
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.only(left: 4, right: 8),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            key: Key('floating-close-${window.id}'),
+            tooltip: context.l10n.common_close,
+            onPressed: onClose,
+            icon: const Icon(Icons.close_rounded, size: 22),
+          ),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  spacing: 7,
+                  children: [
+                    UiGlyph(
+                      floatingResourceGlyph(window.kind),
+                      size: 15,
+                      color: c.muted,
+                    ),
+                    Flexible(
+                      child: Text(
+                        floatingResourceTitle(context, window.kind),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: UiText.sans(
+                          15,
+                          weight: FontWeight.w600,
+                          color: c.ink,
+                        ),
+                      ),
+                    ),
+                    if (count != null)
+                      Text('· $count', style: UiText.sans(12, color: c.faint)),
+                  ],
+                ),
+                if (window.kind != FloatingResourceKind.gallery)
+                  Text(
+                    context.l10n.floating_mobileTapHint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: UiText.sans(11, color: c.faint),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TitleBar extends ConsumerWidget {
+  const _TitleBar({required this.window, required this.controller});
+  final FloatingWindowData window;
+  final FloatingWindowController controller;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.ui;
+    final l = context.l10n;
+    final count = _windowCount(ref, window);
     // 宿主收起时窗口高 32，标题栏同高。
     return SizedBox(
       height: 32,
@@ -341,35 +481,39 @@ class _SearchBox extends StatelessWidget {
     required this.onChanged,
     required this.onSubmitted,
     required this.hint,
+    this.mobile = false,
   });
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
   final String hint;
+  final bool mobile;
 
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
     return Container(
-      height: 28,
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: mobile ? 42 : 28,
+      margin: mobile
+          ? const EdgeInsets.fromLTRB(12, 8, 12, 12)
+          : const EdgeInsets.all(8),
+      padding: EdgeInsets.symmetric(horizontal: mobile ? 12 : 8),
       decoration: BoxDecoration(
         color: c.control,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(mobile ? 10 : 6),
       ),
       child: Row(
         spacing: 6,
         children: [
-          UiGlyph(UiGlyphs.search, size: 13, color: c.faint),
+          UiGlyph(UiGlyphs.search, size: mobile ? 16 : 13, color: c.faint),
           Expanded(
             child: TextField(
               key: const Key('floating-search'),
               controller: controller,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
-              style: UiText.sans(12, color: c.ink, height: 1.2),
-              cursorHeight: 14,
+              style: UiText.sans(mobile ? 14 : 12, color: c.ink, height: 1.2),
+              cursorHeight: mobile ? 16 : 14,
               decoration: InputDecoration(
                 isDense: true,
                 filled: false,
@@ -378,7 +522,11 @@ class _SearchBox extends StatelessWidget {
                 focusedBorder: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
                 hintText: hint,
-                hintStyle: UiText.sans(12, color: c.faint, height: 1.2),
+                hintStyle: UiText.sans(
+                  mobile ? 14 : 12,
+                  color: c.faint,
+                  height: 1.2,
+                ),
               ),
             ),
           ),
@@ -515,9 +663,12 @@ class _GalleryBodyState extends ConsumerState<_GalleryBody> {
 }
 
 /// 块库：块芯片列表，拖到提示词框（沿用积木浮窗的拖放数据）。
+/// 手机全屏页改为点按插入，不启用拖拽。
 class _BlocksBody extends ConsumerWidget {
-  const _BlocksBody({required this.id});
+  const _BlocksBody({required this.id, this.mobile = false, this.onTap});
   final String id;
+  final bool mobile;
+  final ValueChanged<String>? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -527,15 +678,15 @@ class _BlocksBody extends ConsumerWidget {
       ref.watch(floatingBlocksProvider(id)),
       (b) => b.isEmpty,
       (blocks) => ListView.separated(
-        padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+        padding: EdgeInsets.fromLTRB(mobile ? 12 : 8, 0, mobile ? 12 : 8, 10),
         itemCount: blocks.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 4),
+        separatorBuilder: (_, _) => SizedBox(height: mobile ? 6 : 4),
         itemBuilder: (context, i) {
           final b = blocks[i];
           final color = promptBlockColorFromString(b.color);
           final row = Container(
-            height: 30,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            height: mobile ? 44 : 30,
+            padding: EdgeInsets.symmetric(horizontal: mobile ? 12 : 8),
             decoration: BoxDecoration(
               color: c.card,
               border: Border.all(color: c.border),
@@ -544,18 +695,26 @@ class _BlocksBody extends ConsumerWidget {
             child: Row(
               spacing: 7,
               children: [
-                UiBlockIcon(b.iconName, size: 13, color: color),
+                UiBlockIcon(b.iconName, size: mobile ? 16 : 13, color: color),
                 Expanded(
                   child: Text(
                     b.displayTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: UiText.sans(12, color: c.ink),
+                    style: UiText.sans(mobile ? 14 : 12, color: c.ink),
                   ),
                 ),
               ],
             ),
           );
+          if (onTap case final tap?) {
+            return GestureDetector(
+              key: ValueKey('floating-block-${b.id}'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => tap(b.id),
+              child: row,
+            );
+          }
           return Draggable<PromptBlockDragData>(
             key: ValueKey('floating-block-${b.id}'),
             data: FloatingResourceDrag.block(b.id),
@@ -578,10 +737,18 @@ class _BlocksBody extends ConsumerWidget {
 }
 
 /// Vibe / 精准参考：缩略图网格，拖到生成页对应行。
+/// 手机全屏页改为点按加入生图页，不启用拖拽。
 class _RefsBody extends ConsumerWidget {
-  const _RefsBody({required this.id, required this.kind});
+  const _RefsBody({
+    required this.id,
+    required this.kind,
+    this.mobile = false,
+    this.onTap,
+  });
   final String id;
   final RefsKind kind;
+  final bool mobile;
+  final ValueChanged<String>? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -591,9 +758,9 @@ class _RefsBody extends ConsumerWidget {
       ref.watch(floatingRefsProvider(id)),
       (e) => e.isEmpty,
       (entries) => GridView.builder(
-        padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 96,
+        padding: EdgeInsets.fromLTRB(mobile ? 12 : 8, 0, mobile ? 12 : 8, 10),
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: mobile ? 120 : 96,
           mainAxisSpacing: 6,
           crossAxisSpacing: 6,
           childAspectRatio: 3 / 4,
@@ -660,6 +827,14 @@ class _RefsBody extends ConsumerWidget {
               ),
             ),
           );
+          if (onTap case final tap?) {
+            return GestureDetector(
+              key: ValueKey('floating-ref-${e.key}'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => tap(e.key),
+              child: tile(),
+            );
+          }
           return Draggable<RefsEntryDragData>(
             key: ValueKey('floating-ref-${e.key}'),
             data: FloatingResourceDrag.refs(kind, [e.key]),

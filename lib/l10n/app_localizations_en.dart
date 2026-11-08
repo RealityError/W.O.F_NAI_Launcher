@@ -22520,6 +22520,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get floating_loadMore => 'Load more';
 
   @override
+  String get floating_mobileTapHint =>
+      'Tap an item to insert it into the prompt or add it to generation';
+
+  @override
   String set_stThumbQuotaTip(int count, String time) {
     return '$count thumbnails · counted $time';
   }

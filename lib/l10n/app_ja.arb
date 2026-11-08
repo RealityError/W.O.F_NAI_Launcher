@@ -11512,6 +11512,7 @@
   "floating_empty": "何もありません",
   "floating_loadFailed": "読み込めませんでした",
   "floating_loadMore": "さらに読み込む",
+  "floating_mobileTapHint": "タップで現在のプロンプトに挿入、または生成ページに追加",
   "set_stThumbQuotaTip": "サムネイル {count} 枚 · {time}に集計",
   "@set_stThumbQuotaTip": {
     "placeholders": {

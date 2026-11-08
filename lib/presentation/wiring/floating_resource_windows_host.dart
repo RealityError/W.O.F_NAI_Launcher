@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/localization_extension.dart';
+import '../mobile/mobile_breakpoints.dart';
 import '../providers/floating_resource_windows_provider.dart';
 
 /// The main agent supplies all window chrome/content. These handles only wire
@@ -112,6 +113,9 @@ class _FloatingResourceLayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final windows = ref.watch(floatingResourceWindowsProvider);
     final manager = ref.read(floatingResourceWindowsProvider.notifier);
+    // 手机没有可拖拽的桌面浮窗：资源库走 MobileResourceLibraryPage 全屏页，
+    // 这里的窗口不会被渲染（打开时也只是临时窗口，不落盘）。
+    if (usesMobileLayout) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (context, constraints) {
         final padding = MediaQuery.paddingOf(context);

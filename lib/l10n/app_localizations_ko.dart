@@ -21821,6 +21821,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get floating_loadMore => '더 불러오기';
 
   @override
+  String get floating_mobileTapHint => '항목을 탭하면 현재 프롬프트에 삽입되거나 생성 페이지에 추가됩니다';
+
+  @override
   String set_stThumbQuotaTip(int count, String time) {
     return '썸네일 $count개 · $time 집계';
   }

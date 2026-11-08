@@ -58,6 +58,18 @@ void main() {
       expect(() => state.clear(), throwsUnsupportedError);
     },
   );
+  test('transient windows are not persisted', () async {
+    // 手机全屏库用临时窗口承载内容：不写布局存储，重启不会残留浮窗。
+    final id = windows.open(FloatingResourceKind.blocks, persist: false)!;
+    await windows.saved;
+    expect(settings.writes, isEmpty);
+    expect(settings.values[StorageKeys.floatingResourceWindows], isNull);
+
+    windows.close(id);
+    await windows.saved;
+    // 关闭后照常写回空布局，避免之后桌面端读到过期窗口。
+    expect(settings.writes, [StorageKeys.floatingResourceWindows]);
+  });
   test('focus, close, query, scope and minimized are independent', () async {
     final a = windows.open(FloatingResourceKind.gallery)!;
     final b = windows.open(FloatingResourceKind.blocks)!;

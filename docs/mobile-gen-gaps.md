@@ -41,7 +41,7 @@
 
 | ID | 事项 | 现状 | 目标 | 涉及文件 | 量级 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
-| G11 | 浮动资源小窗 | 块库 / 图库 / 风格库 / 精准参考库仍是桌面浮窗（默认 400×360，可拖拽缩放），360dp 上近似满屏但带桌面边框 | 手机端改全屏面板（复用 `_MobileOverlayPanel` 形式），桌面保留浮窗 | `floating_resource_windows_host.dart`、`floating_resource_window.dart` | M | ⬜ |
+| G11 | 资源库入口 + 全屏化（原「浮动资源小窗」） | 复核：手机端曾无独立入口，入口藏在编辑浮层里，点开是**桌面式浮窗**（可拖拽/缩放、桌面边框）。现已按方案 A 完成：编辑浮层标题栏新增「库」按钮（图库 / 块库 / 风格库 / 精准参考库），前三者推出手机全屏库页（搜索 + 44dp 点按行，点块插入当前提示词、点缩略图加入生图页），图库直接跳现有图库页；桌面浮窗路径完全未改动 | `resource_window_wiring.dart`、`mobile_resource_library.dart`、`floating_resource_window.dart`、`gen_page.dart` | A≈M | ✅ |
 | G12 | 图片查看器收尾 | 主界面已手机化，底部胶片条 / 更多菜单未适配（更多菜单可复用 `showMobileContextMenu`） | 胶片条横向可滑；更多菜单用底部弹层 | `viewer_page.dart`、`viewer_stage.dart`、`generation_viewer_wiring.dart` | M | ⬜ |
 | G13 | 编辑图片页 | `tools_editor.dart` 无手机分支（工具竖栏 + 快捷键提示被裁） | 画布优先 + 底部工具条 + 参数弹层（同导演工具方案 A） | `tools_editor.dart` | L | ⬜ |
 | G14 | 局部重绘 / 蒙版页 | 同上，桌面布局 | 同上 | 蒙版编辑页 | L | ⬜ |
@@ -64,7 +64,7 @@ Windows 剪贴板历史粘贴、随包本地超分可执行文件。
 
 1. **第一批（S，约 0.5–1 天，建议先做）**：G1 画布长按菜单、G2 历史批次菜单、G3 悬停按钮常显、
    G6 隐藏本地超分卡片、G9 隐藏 Krita 桥接 —— 把「触屏点不出来」和「死按钮」清掉。✅ 已完成（见 §8）
-2. **第二批（M，约 1–2 天）**：G11 资源小窗手机全屏化、G12 查看器收尾、G4 触控目标、G5 走查验收。
+2. **第二批（M，约 1–2 天）**：G12 查看器收尾、G4 触控目标、G5 走查验收（G11 已提前完成，见 §8）。
 3. **第三批（L）**：G13 编辑图片页手机化、G14 局部重绘页手机化、G10 后台生成、G15–G17 系统集成。
 4. **另立项**：G8 本地超分引擎（Android 推理，不是移植工作量级）。
 
@@ -98,3 +98,22 @@ Windows 剪贴板历史粘贴、随包本地超分可执行文件。
 （画布长按入口、批次长按菜单、手机不渲染桥接图标）与 `test/presentation/wiring/tools_upscale_mobile_test.dart`
 （后端卡片按平台取舍）；`test/presentation/ui/gen` + `test/presentation/ui/tools` 541 项全过；
 生成接线核心回归 7 个文件全过。
+
+### 2026-11-09 · G11 手机资源库（方案 A）
+
+- **入口**：编辑浮层标题栏（`_MobileOverlayPanel`）新增「库」按钮，底部菜单列四类资源；
+  桌面三栏没有该按钮，原有「资源窗口」工具栏按钮/快捷键照旧开桌面浮窗。
+- **全屏页**：`ResourceWindowOpener.open` 在 `usesMobileLayout` 下不再走浮窗——块库/风格库/精准参考库
+  开一个**不落盘**的临时窗口（`open(persist: false)`），用 `showGeneralDialog` 推出
+  `MobileResourceLibraryPage`（[mobile_resource_library.dart](../lib/presentation/wiring/mobile_resource_library.dart)）；
+  系统返回键/关闭按钮退出，退出即回收临时窗口。图库类直接 `go(localGallery)`。
+- **手机外观与操作**：`FloatingResourceWindow` 增加手机分支——关闭按钮 + 标题 + 数量 + 「轻点即插入」提示、
+  42dp 搜索框、块行 44dp、参考图网格 120dp；点块走 `BlocksActions.insert`（插入当前提示词），
+  点缩略图走 `refsEntryDropActionsProvider.drop`（加入生图页）。手机页不渲染拖拽源和右下缩放角。
+- **桌面不变**：浮窗宿主在手机布局下直接返回空（窗口只由全屏页渲染），桌面分支代码原样保留。
+- 新增文案 `floating_mobileTapHint`（zh/en/ja/ko，zh_TW 由 `tool/l10n` 重新生成）。
+
+验证：`flutter analyze --no-pub` 干净；`test/presentation/ui/gen`、浮窗宿主/数据源/资源窗口
+与生成接线回归共 600+ 项全过；新增 `test/presentation/wiring/mobile_resource_library_test.dart`
+（全屏外观、无缩放角/拖拽、44dp 点按行）、浮动窗口 provider 的「临时窗口不落盘」用例、
+`gen_mobile_layout_test.dart` 的「库入口 + 四类资源菜单」用例、宿主「手机不画浮窗」用例。

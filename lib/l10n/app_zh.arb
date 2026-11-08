@@ -11512,6 +11512,7 @@
   "floating_empty": "没有内容",
   "floating_loadFailed": "加载失败",
   "floating_loadMore": "加载更多",
+  "floating_mobileTapHint": "轻点条目即可插入提示词或加入生图页",
   "set_stThumbQuotaTip": "{count} 张缩略图 · 统计于{time}",
   "@set_stThumbQuotaTip": {
     "placeholders": {

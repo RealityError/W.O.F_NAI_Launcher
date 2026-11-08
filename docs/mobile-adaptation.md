@@ -258,6 +258,16 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 4. **Krita / 打开文件夹**（G9）：桥接图标只在桌面提示词模块出现（手机不渲染该模块），仍加 `usesMobileLayout` 守卫；桌面右键里的「在资源管理器中显示 / 发送到 Krita」不进手机长按菜单。
 5. **验证**：`flutter analyze` 干净；`gen_mobile_layout_test` 新增 3 例（画布长按入口、批次长按菜单、手机无桥接图标），`tools_upscale_mobile_test` 新增 3 例；`test/presentation/ui/gen` + `test/presentation/ui/tools` 541 例、生成接线核心回归 7 文件全过；桌面 golden 不变。
 
+### 8.11 生成页资源库手机化（G11 方案 A）
+
+把桌面「资源小窗」里的块库 / 风格库 / 精准参考库搬到手机上，改成全屏页 + 点按插入；桌面浮窗一行不动：
+
+1. **入口**：编辑提示词浮层标题栏新增「库」按钮（`gen-mobile-libraries`），底部弹层列图库 / 块库 / 风格库 / 精准参考库；桌面三栏没有这个按钮，原工具栏入口与快捷键照旧。
+2. **打开方式**：`ResourceWindowOpener.open` 在移动布局下分流——图库直接 `go(localGallery)`；其余三类开一个**不落盘**的临时窗口（`FloatingResourceWindows.open(persist: false)`），用 `showGeneralDialog` 推出 `MobileResourceLibraryPage`（220ms 上滑），关闭/返回键退出时回收临时窗口。手机不渲染桌面浮窗宿主（`FloatingResourceWindowsHost` 移动分支直接返回空），桌面渲染逻辑不变。
+3. **外观与操作**：`FloatingResourceWindow` 新增手机分支——关闭按钮 + 标题 + 数量 + 「轻点即插入」提示、42dp 搜索框、块行 44dp、参考图网格 120dp；点块走 `BlocksActions.insert` 插入当前提示词，点缩略图走 `refsEntryDropActionsProvider.drop` 加入生图页；手机页不启用拖拽、不画右下缩放角。
+4. **文案**：新增 `floating_mobileTapHint`（zh/en/ja/ko；zh_TW 由 `tool/l10n` 重新生成，不手改）。
+5. **验证**：`flutter analyze` 干净；`test/presentation/ui/gen`（390 例）、浮窗宿主 / 数据源 / 资源窗口页与生成接线回归（103 例）全过；新增 `mobile_resource_library_test`（手机全屏外观、无缩放角/拖拽、44dp 点按行）、provider「临时窗口不落盘」、`gen_mobile_layout_test`「库入口与四类资源菜单」、宿主「手机不画浮窗」用例。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 复用桌面内容页后，个别行内小按钮（24–32dp）未达 44dp 触摸目标，需真机走查后统一包触摸区；
