@@ -102,6 +102,14 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
   var _mobileResultsOpen = false;
 
   @override
+  void initState() {
+    super.initState();
+    // 手机端进来就直接展开当前工具的参数，和桌面右栏常驻一致，
+    // 不用先点一下工具才“进得去”；底部工具条仍露出一截，可原地换工具。
+    _mobileSideOpen = usesMobileLayout;
+  }
+
+  @override
   ToolsCompare get compare => _compare;
   @override
   void setCompare(ToolsCompare v) => setState(() => _compare = v);
@@ -273,11 +281,20 @@ class _MobileDirectorLayout extends StatelessWidget {
               children: [
                 const _MobileTopBar(),
                 Expanded(child: _MobileStage(onOpenQueue: onOpenQueue)),
-                _MobileToolBar(onOpenSide: onOpenSide),
+                _MobileToolBar(
+                  sideOpen: sideOpen,
+                  onOpenSide: onOpenSide,
+                  onCloseSide: onCloseSide,
+                ),
               ],
             ),
             if (sheet) ...[
-              Positioned.fill(
+              // 遮罩只盖画布区，底部工具条保持可点：面板开着也能直接换工具。
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: _MobileToolBar.height,
                 child: GestureDetector(
                   key: const Key('tools-director-mobile-scrim'),
                   onTap: closeSheet,
@@ -287,8 +304,11 @@ class _MobileDirectorLayout extends StatelessWidget {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
-                height: resultsOpen || sideOpen ? box.maxHeight * .9 : 152,
+                bottom: _MobileToolBar.height,
+                // 参数 / 结果面板尽量高，但顶上留一截画布，点一下遮罩就能收起。
+                height: resultsOpen || sideOpen
+                    ? (box.maxHeight - _MobileToolBar.height) * .92
+                    : 152,
                 child: Container(
                   key: resultsOpen
                       ? const Key('tools-director-mobile-results-panel')
@@ -652,9 +672,18 @@ class _FitChip extends StatelessWidget {
 
 /// 手机端底部工具条：7 个工具图标（清理 / 线条 / 上色 / 像素），点一下选中并弹出参数面板。
 class _MobileToolBar extends StatelessWidget {
-  const _MobileToolBar({required this.onOpenSide});
+  const _MobileToolBar({
+    required this.sideOpen,
+    required this.onOpenSide,
+    required this.onCloseSide,
+  });
 
+  final bool sideOpen;
   final VoidCallback onOpenSide;
+  final VoidCallback onCloseSide;
+
+  /// 工具条总高（6+48+6），参数弹层贴在它上面，保证工具按钮始终可点。
+  static const height = 60.0;
 
   static const tools = [
     ToolsDirectorTool.removeBackground,
@@ -673,6 +702,7 @@ class _MobileToolBar extends StatelessWidget {
     final d = scope.data;
     return Container(
       key: const Key('tools-director-mobile-toolbar'),
+      height: height,
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: c.bg,
@@ -687,8 +717,14 @@ class _MobileToolBar extends StatelessWidget {
               selected: d.tool == tool,
               enabled: !d.running,
               onTap: () {
-                if (d.tool != tool && !d.running) scope.actions.onTool(tool);
-                onOpenSide();
+                final same = d.tool == tool;
+                if (!same && !d.running) scope.actions.onTool(tool);
+                // 点别的工具原地切换；再点当前工具收起面板。
+                if (same && sideOpen) {
+                  onCloseSide();
+                } else {
+                  onOpenSide();
+                }
               },
             ),
         ],
