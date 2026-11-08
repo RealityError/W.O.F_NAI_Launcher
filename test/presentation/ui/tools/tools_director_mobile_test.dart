@@ -86,4 +86,33 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('参数面板里的「结果」打开结果弹层', (tester) async {
+    await pumpPhone(tester);
+
+    await tester.tap(
+      find.byKey(const Key('tools-mobile-colorize')),
+      warnIfMissed: false,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tools-director-mobile-results')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('tools-director-mobile-results-panel')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('tools-dt-results')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(
+      find.byKey(const Key('tools-director-mobile-results-close')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('tools-director-mobile-results-panel')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }

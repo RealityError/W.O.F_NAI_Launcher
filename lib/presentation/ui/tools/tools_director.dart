@@ -99,6 +99,7 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
   /// 手机端：参数（选项 / 运行 / 结果）与输入队列改为页面内底部弹层。
   var _mobileSideOpen = false;
   var _mobileQueueOpen = false;
+  var _mobileResultsOpen = false;
 
   @override
   ToolsCompare get compare => _compare;
@@ -177,6 +178,7 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
                       ? _MobileDirectorLayout(
                           sideOpen: _mobileSideOpen,
                           queueOpen: _mobileQueueOpen,
+                          resultsOpen: _mobileResultsOpen,
                           onOpenSide: () =>
                               setState(() => _mobileSideOpen = true),
                           onCloseSide: () =>
@@ -185,6 +187,12 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
                               setState(() => _mobileQueueOpen = true),
                           onCloseQueue: () =>
                               setState(() => _mobileQueueOpen = false),
+                          onOpenResults: () => setState(() {
+                            _mobileSideOpen = false;
+                            _mobileResultsOpen = true;
+                          }),
+                          onCloseResults: () =>
+                              setState(() => _mobileResultsOpen = false),
                         )
                       : const Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -219,33 +227,42 @@ class _MobileDirectorLayout extends StatelessWidget {
   const _MobileDirectorLayout({
     required this.sideOpen,
     required this.queueOpen,
+    required this.resultsOpen,
     required this.onOpenSide,
     required this.onCloseSide,
     required this.onOpenQueue,
     required this.onCloseQueue,
+    required this.onOpenResults,
+    required this.onCloseResults,
   });
 
   final bool sideOpen;
   final bool queueOpen;
+  final bool resultsOpen;
   final VoidCallback onOpenSide;
   final VoidCallback onCloseSide;
   final VoidCallback onOpenQueue;
   final VoidCallback onCloseQueue;
+  final VoidCallback onOpenResults;
+  final VoidCallback onCloseResults;
 
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
-    final sheet = sideOpen || queueOpen;
+    final scope = ToolsDirectorScope.of(context);
+    final d = scope.data;
+    final l = context.l10n;
+    final sheet = sideOpen || queueOpen || resultsOpen;
+    final VoidCallback closeSheet = resultsOpen
+        ? onCloseResults
+        : sideOpen
+        ? onCloseSide
+        : onCloseQueue;
     return PopScope(
       // 弹层打开时系统返回键先关弹层。
       canPop: !sheet,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        if (sideOpen) {
-          onCloseSide();
-        } else {
-          onCloseQueue();
-        }
+        if (!didPop) closeSheet();
       },
       child: LayoutBuilder(
         builder: (context, box) => Stack(
@@ -263,7 +280,7 @@ class _MobileDirectorLayout extends StatelessWidget {
               Positioned.fill(
                 child: GestureDetector(
                   key: const Key('tools-director-mobile-scrim'),
-                  onTap: sideOpen ? onCloseSide : onCloseQueue,
+                  onTap: closeSheet,
                   child: ColoredBox(color: Colors.black.withValues(alpha: .42)),
                 ),
               ),
@@ -271,9 +288,11 @@ class _MobileDirectorLayout extends StatelessWidget {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: sideOpen ? box.maxHeight * .82 : 152,
+                height: resultsOpen || sideOpen ? box.maxHeight * .9 : 152,
                 child: Container(
-                  key: sideOpen
+                  key: resultsOpen
+                      ? const Key('tools-director-mobile-results-panel')
+                      : sideOpen
                       ? const Key('tools-director-mobile-side-panel')
                       : const Key('tools-director-mobile-queue-sheet'),
                   clipBehavior: Clip.antiAlias,
@@ -294,16 +313,37 @@ class _MobileDirectorLayout extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _SheetHeader(
-                        closeKey: sideOpen
+                        closeKey: resultsOpen
+                            ? const Key('tools-director-mobile-results-close')
+                            : sideOpen
                             ? const Key('tools-director-mobile-side-close')
                             : const Key('tools-director-mobile-queue-close'),
-                        onClose: sideOpen ? onCloseSide : onCloseQueue,
+                        onClose: closeSheet,
+                        trailing: sideOpen
+                            ? [
+                                ToolsChip(
+                                  key: const Key(
+                                    'tools-director-mobile-results',
+                                  ),
+                                  height: 28,
+                                  mono: true,
+                                  onTap: onOpenResults,
+                                  children: [
+                                    Text(l.tools_results),
+                                    Text('${d.runs.length}'),
+                                  ],
+                                ),
+                              ]
+                            : null,
                       ),
                       Expanded(
-                        child: sideOpen
+                        child: resultsOpen
+                            ? const ToolsDirectorResults()
+                            : sideOpen
                             ? ToolsDirectorSide(
                                 width: MediaQuery.sizeOf(context).width,
                                 showBorder: false,
+                                mobileSheet: true,
                               )
                             : const _Queue(compact: true),
                       ),
@@ -319,12 +359,17 @@ class _MobileDirectorLayout extends StatelessWidget {
   }
 }
 
-/// 弹层顶部：中间一条抓手 + 右上角关闭。手机上没有窗口按钮，留一个明确的关闭位。
+/// 弹层顶部：中间一条抓手 + 右上角关闭（可带右侧附加操作）。手机上没有窗口按钮，留一个明确的关闭位。
 class _SheetHeader extends StatelessWidget {
-  const _SheetHeader({required this.onClose, required this.closeKey});
+  const _SheetHeader({
+    required this.onClose,
+    required this.closeKey,
+    this.trailing,
+  });
 
   final VoidCallback onClose;
   final Key closeKey;
+  final List<Widget>? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -347,11 +392,18 @@ class _SheetHeader extends StatelessWidget {
             right: 4,
             top: 0,
             bottom: 0,
-            child: IconButton(
-              key: closeKey,
-              onPressed: onClose,
-              icon: const Icon(Icons.close_rounded, size: 20),
-              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 2,
+              children: [
+                ...?trailing,
+                IconButton(
+                  key: closeKey,
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                ),
+              ],
             ),
           ),
         ],
@@ -1276,10 +1328,12 @@ class _EmptyNote extends StatelessWidget {
           ? l.tools_emptyEmotion
           : l.tools_emptyRun,
       body: l.tools_emptyBody,
-      extra: const Padding(
-        padding: EdgeInsets.only(top: 4),
-        child: UiKeycaps(['Ctrl', '↵']),
-      ),
+      extra: usesMobileLayout
+          ? null
+          : const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: UiKeycaps(['Ctrl', '↵']),
+            ),
     );
   }
 }
