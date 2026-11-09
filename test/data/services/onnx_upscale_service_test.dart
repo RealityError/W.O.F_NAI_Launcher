@@ -10,9 +10,7 @@ import 'package:nai_launcher/data/services/local_upscale_service.dart';
 import 'package:nai_launcher/data/services/onnx_upscale_engine.dart';
 
 class _FakeOnnxEngine extends OnnxUpscaleEngine {
-  _FakeOnnxEngine({this.onUpscale});
-
-  final Future<Uint8List> Function(Uint8List source)? onUpscale;
+  Future<Uint8List> Function(Uint8List source)? onUpscale;
   final List<double> reported = <double>[];
   int calls = 0;
 
