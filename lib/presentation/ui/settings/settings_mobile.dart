@@ -273,7 +273,8 @@ class _MobileSettingsViewState extends State<MobileSettingsView> {
       icon: _pageIcon(page),
       title: SettingsFormat.page(context, page),
       subtitle: _pageDescription(context, page),
-      trailing: _pageMeta(context, page),
+      // 读数与标题同一行：副标题换行时值不会插进句子中间（360dp 更明显）。
+      inlineTrailing: _pageMeta(context, page),
       onTap: () => _openPage(scope, page),
     );
   }
