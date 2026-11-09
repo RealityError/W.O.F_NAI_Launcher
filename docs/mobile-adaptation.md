@@ -475,13 +475,25 @@ Android 13+ 通知权限（首次生成时申请、拒绝后只引导一次、�
 2. **ONNX Runtime Mobile + 量化小 embedding 模型**（100–200 MB）：先只做提示词标签推荐与 Wiki/块文本检索，reranker 用轻量 cross-encoder 或「语义分 + 共现 + 词法」加权替代；图像通道（图库以图搜图）后置；
 3. 完整复刻 Python 链：不推荐。
 
+### 8.22 设备端本地放大与 NAI Agent（2.7.0）
+
+移动端不再只有「隐藏入口」，两项桌面能力在本轮补上设备端实现（桌面链路不变）：
+
+- **本地放大**：随包 animevideov3 ONNX 模型 + `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理，生成页画布与「本地放大」面板提供入口；`supportsOnnxUpscale` 只在 Android 为 true，桌面继续用随包可执行文件。
+- **NAI Agent**：`tool/nai_agent` 打包为 `assets/nai_agent/runtime.tar.gz`（约 23.6 MB），首用流式解压到 `<app support>/nai_agent/runtime`，由内嵌 libnode（Node 24.5）启动。
+  - 手机端 Agent 面板以全屏覆盖生成页（宽屏桌面才是并排侧栏），入口在生成页提示词区的 Agent 按钮与设置 → Agent；关闭面板时只发 `shutdown`，Node 进程保留，下次打开/切换会话复用同一进程重新初始化。
+  - 首次解压约 1.5 万个文件，app 启动后会在后台预热；打开 Agent 时通常已就绪。
+  - ChatGPT 登录、扩展/包管理、命令/技能清单需要额外 Node 进程或 OAuth 回环，手机端隐藏（`supportsNaiAgentExternalTools == false`）。
+  - 翻译微调需要第二个 Node 宿主，手机端菜单项禁用（`supportsTranslationAdjustment`）。
+  - 已知限制：Agent 运行在 app 进程内，进入后台后可能被系统回收；长时间任务建议保持前台。MCP 的 stdio 服务器（通过 `npx` 启动）在 Android 不可用。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 手机端生成页 / 全屏编辑器 / 翻译浮层 / 查看器 / 编辑器范围内的触控目标已统一到 ≥48dp；
    次级页面里个别次级图标仍是 32–40dp（如风格探索舞台内的小图标），未逐一抬到 48；
-2. "保存到相册"沿用现有 l10n `common_export`（"导出"）文案，精确文案需补 ARB key；
-3. 分类选择 / 日期选择 / 批量元数据对话框已做手机布局（2.6.0），但只有桌面回归测试，
-   没有 360dp 专用 widget 测试；批量元数据对话框内的英文硬编码文案属既有问题，未国际化；
+2. "保存到相册"已改为专用 ARB 文案 `localGallery_saveToAlbum`（2.7.0）；
+3. 分类选择 / 日期选择 / 批量元数据对话框已做手机布局（2.6.0），2.7.0 补了批量元数据
+   弹窗的 ARB 国际化与 360dp 测试（分类/日期弹窗仍只有桌面回归测试）；
 4. 生成请求在代理链路上偶发 `HandshakeException`（代理节点对 image.novelai.net 不稳定），属环境网络问题，非 App 逻辑；首次冷启动自动登录失败时点"一键登录"可重试成功；
 5. 平板/横屏与桌面端未适配的次要页面（如部分管理类对话框）仍未开始；手机竖屏为主场景；
 6. 鼠标/键盘修饰键在触屏的等价入口仍未覆盖（Alt 取色、Shift 约束角度、Ctrl 权重滚轮），

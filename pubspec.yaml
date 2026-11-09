@@ -1,7 +1,7 @@
 name: nai_launcher
 description: W.O.F NAI Studio - NovelAI Windows 与 macOS 桌面客户端（Aaalice_NAI_Launcher 分支）
 publish_to: "none"
-version: 2.6.0+92
+version: 2.7.0+93
 
 environment:
   sdk: ">=3.10.7 <4.0.0"
@@ -161,9 +161,11 @@ flutter:
     - assets/rag/windows/stdio_host.exe
     - assets/rag/model_manifest.json
     - assets/local_upscale/
+    - assets/local_upscale/onnx/
     - assets/local_upscale/windows/
     - assets/local_upscale/models/
     - assets/local_upscale/seedvr2/
+    - assets/nai_agent/
     - assets/images/
     - assets/icons/
     - assets/icons/providers/

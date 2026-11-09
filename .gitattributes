@@ -10,3 +10,6 @@ assets/local_upscale/models/*.bin filter=lfs diff=lfs merge=lfs -text
 assets/local_upscale/windows/*.exe filter=lfs diff=lfs merge=lfs -text
 assets/local_upscale/windows/*.dll filter=lfs diff=lfs merge=lfs -text
 assets/rag/windows/*.exe filter=lfs diff=lfs merge=lfs -text
+# Embedded NAI Agent runtime (nodejs-mobile libnode) and ONNX Runtime binaries.
+android/app/src/main/jniLibs/**/*.so filter=lfs diff=lfs merge=lfs -text
+assets/nai_agent/runtime.tar.gz filter=lfs diff=lfs merge=lfs -text

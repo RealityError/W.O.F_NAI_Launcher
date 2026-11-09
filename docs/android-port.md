@@ -65,6 +65,32 @@
 - 忽略规则：根 `.gitignore` 增加 `dist/android/`、`*.apk`、`*.aab`、`android/.kotlin/`（`android/.gitignore` 已覆盖 Gradle、`local.properties`、keystore 等，不重复）。
 - `analysis_options.yaml`：`flutter pub get` 自动在 `analyzer.exclude` 中加入 `android/**`（Flutter 工具行为）；构建日志里的 "Upgrading gradle.properties" 也只是工具升级提示，都是正常输出，不需要手动改回。
 
+### 1.4 设备端本地放大与 NAI Agent 运行时
+
+这两项是 Android 独有的实现，桌面端原有链路不变。
+
+- **设备端本地放大（ONNX Runtime）**：`lib/data/services/onnx_upscale_engine.dart` 通过
+  Dart FFI 调用 `libonnxruntime.so`（1.15.1，取自 Maven `com.microsoft.onnxruntime:onnxruntime-android`
+  的 arm64-v8a 库），模型 `assets/local_upscale/onnx/animevideov3-256.onnx`（2.4 MB）随包，
+  支持 2x/4x 分块推理；不下载外部运行时，也不需要可执行位。`supportsOnnxUpscale` 只在
+  Android 为 true，UI 入口见生成页画布与「本地放大」面板。
+- **NAI Agent 运行时**：`tool/nai_agent`（`host.mjs` + Pi SDK 1.5.0 + 内置 skills）由
+  `tool/pack_agent_runtime.ps1` 打包为 `assets/nai_agent/runtime.tar.gz`（约 23.6 MB）。
+  `android/app/src/main/cpp/node_runtime_jni.cpp` 把 nodejs-mobile 的 `libnode.so`
+  （Node 24.5.0）链进应用进程，`NodeRuntimeChannel.kt` 提供 `com.nailauncher/node_runtime`
+  通道（`start` / `writeStdin` / `stop`），Dart 侧 `PiHostClient` 通过 `PiHostProcess`
+  抽象在桌面子进程与内嵌运行时之间切换，桌面仍走 `Process.start`。
+  - 运行时首次使用解压到 `<app support>/nai_agent/runtime`（流式 gunzip + tar，约 1.5 万
+    个文件）。解压由 `AndroidNodeRuntimeBundle` 完成，`.runtime-version` 标记避免重复解压；
+    app 启动后会在后台预热，用户真正打开 Agent 面板时通常已就绪。
+  - libnode 在同一进程内只能启动一次，因此 Android 上 `host.mjs` 以 `NAI_HOST_REINIT=1`
+    运行：关闭 Agent 面板只发 `shutdown` 并保留进程，下次打开或切换会话时用 `init`
+    重新开始（桌面仍保持单次 init 语义，行为不变）。
+  - `jniLibs` 只随包 arm64-v8a（`libnode.so` / `libonnxruntime.so` / `libc++_shared.so`，
+    由 Git LFS 管理）；x86_64 仅用于本地模拟器调试，已在 `.gitignore` 排除。
+  - 翻译微调的「微调」宿主是第二个 Node 会话，嵌入式运行时只能常驻一个宿主，
+    因此 `supportsTranslationAdjustment` 在 Android 为 `false`，菜单项禁用。
+
 ## 2. 平台能力模型
 
 原则：
@@ -91,8 +117,10 @@
 | `supportsWindowsProxy` | Windows 注册表代理 | ✓ | ✗ | ✗ |
 | `supportsGpuProbe` | GPU 探测（`nvidia-smi`） | ✓ | ✓ | ✗ |
 | `supportsLocalRagRuntime` | 本地 RAG Python 运行时（uv + PyTorch） | ✓ | ✓ | ✗ |
-| `supportsLocalUpscale` | 随包可执行文件的本地/高级放大 | ✓ | ✓ | ✗ |
-| `supportsNaiAgentRuntime` | NAI Agent 的随包 Node 运行时 | ✓ | ✓ | ✗ |
+| `supportsLocalUpscale` | 随包可执行文件的本地/高级放大（realesrgan / SeedVR2 / RTX Video） | ✓ | ✓ | ✗ |
+| `supportsOnnxUpscale` | Android 设备端 ONNX Runtime 本地放大（随包 animevideov3 模型） | ✗ | ✗ | ✓ |
+| `supportsNaiAgentRuntime` | NAI Agent 的随包 Node 运行时与宿主脚本 | ✓ | ✓ | ✓ |
+| `supportsTranslationAdjustment` | 翻译微调（需要第二个 Node 宿主进程） | ✓ | ✓ | ✗ |
 | `supportsKritaBridge` | Krita 桥接服务与插件 | ✓ | ✓ | ✗ |
 | `supportsNativeTitleBarRegion` | Windows runner 原生标题栏命中区 | ✓ | ✗ | ✗ |
 | `supportsWindowBackdropMaterial` | Windows DWM 窗口材质 | ✓ | ✗ | ✗ |
@@ -102,7 +130,7 @@
 
 新增平台或功能时：先想清楚"这是能力还是平台"，能落到上面的 getter 就不要写死平台判断；桌面端已有行为用 Android 侧不进入的分支保留。
 
-Android 上的取值口径：`isSupportedDesktop == false`、`isMobilePlatform == true`，上表所有 `supports*` 能力都是 `false`（Android 没有“部分支持”的桌面能力）；`supportsExternalProcesses` 的实现是 `!isMobilePlatform`，所以 Windows/macOS 之外、未移植的桌面/Linux 环境仍按原有行为返回 `true`，不改变既有桌面代码。设置页和功能入口统一用这些 getter 隐藏/降级（例如 Android 隐藏设置里的 Agent、语义检索、放大、网络页，隐藏 Krita 桥接、托盘/多窗口入口），不要在 UI 里散落平台判断。Android 的应用内更新不占用 `supportsInAppUpdateInstall`，它由 `isAndroidPlatform` 分支提供（见上一段注意）。
+Android 上的取值口径：`isSupportedDesktop == false`、`isMobilePlatform == true`，上表绝大多数 `supports*` 能力是 `false`；例外是 Android 单独实现的 `supportsOnnxUpscale` 与 `supportsNaiAgentRuntime`（见 1.4），以及明确只属于桌面的 `supportsTranslationAdjustment`。`supportsExternalProcesses` 的实现是 `!isMobilePlatform`，所以 Windows/macOS 之外、未移植的桌面/Linux 环境仍按原有行为返回 `true`，不改变既有桌面代码。设置页和功能入口统一用这些 getter 隐藏/降级（例如 Android 隐藏设置里的语义检索、网络页，隐藏 Krita 桥接、托盘/多窗口入口），不要在 UI 里散落平台判断。Android 的应用内更新不占用 `supportsInAppUpdateInstall`，它由 `isAndroidPlatform` 分支提供（见上一段注意）。
 
 ## 3. 构建
 
@@ -115,7 +143,7 @@ Android 上的取值口径：`isSupportedDesktop == false`、`isMobilePlatform =
 - **JDK 17**（AGP 8.11 要求 17+，Gradle 8.14 支持到 24）。PATH 上的 `java` 可能是 11，不要用它；用 `flutter config --jdk-dir="<JDK 17 目录>"` 指定，`scripts/build_android.ps1` 会自动优先读这个配置。
 - **Android SDK**：API 36 平台、build-tools 36、**NDK 28.2.13676358**、CMake 3.22.1（部分原生组件需要）。`ANDROID_HOME` / `ANDROID_SDK_ROOT` 指向 SDK，或让 Flutter 生成 `android/local.properties`（该文件不入库）。
 - **已接受的 SDK 许可**：`sdkmanager --licenses`。未接受时 Gradle 无法自动补装平台、build-tools 或 NDK。
-- **Git LFS**：`assets/databases/`（约 419 MB）由 LFS 管理，必须先 `git lfs pull`，否则打包进去的是指针文件。
+- **Git LFS**：`assets/databases/`（约 419 MB）与 `android/app/src/main/jniLibs/arm64-v8a/`（libnode / libonnxruntime / libc++_shared，约 165 MB）由 LFS 管理，必须先 `git lfs pull`，否则打包进去的是指针文件或直接构建失败。
 - 足够磁盘空间：NDK、Gradle 缓存、Rust 构建产物和数百 MB 资产叠加，首次构建建议预留 10 GB 以上。
 
 ### 3.2 首次构建前
@@ -307,9 +335,10 @@ systemProp.https.proxyPort=7897
 | 视频播放 | ✓（media_kit） | ✓（系统原生播放器） | Android 没有 media_kit 原生库，使用 `video_player_android` |
 | 标签库 / 标签百科 / 翻译补全 | ✓ | ✓ | SQLite 随包资源 + `sqlite3_flutter_libs` |
 | 云端放大 | ✓ | ✓ | NovelAI 接口 |
-| 本地 / 高级放大（Real-ESRGAN、RTX Video、SeedVR2） | ✓ | ✗ | 依赖随包 `.exe` 和外部进程，Android 上入口隐藏/保持 inert；APK 里的 onnxruntime 只有 arm64 / armeabi-v7a 库，x86_64 模拟器没有 |
+| 本地 / 高级放大（Real-ESRGAN、RTX Video、SeedVR2） | ✓ | ✗ | 依赖随包 `.exe` 和外部进程，Android 上入口隐藏/保持 inert |
+| 设备端本地放大（ONNX Runtime，animevideov3） | — | ✓ | 随包 2.4 MB 模型 + `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理；入口在生成页画布与本地放大面板，见 1.4 |
 | 本地语义检索 RAG（Python 运行时） | ✓ | ✗ | 依赖 Python/uv/PyTorch 外部进程。2026-11-10 决定不在 Android 复刻：运行时数 GB + 模型约 3 GB + 首次建库长时间占满 CPU/GPU，与手机竖屏主场景成本不匹配；入口继续隐藏（见 [mobile-adaptation.md](mobile-adaptation.md) §8.21） |
-| NAI Agent（Node 运行时、MCP、Skill） | ✓ | ✗ | 依赖随包 Node 与进程管理 |
+| NAI Agent（Node 运行时、MCP、Skill） | ✓ | ✓ | 桌面由安装器放置 `tools/nai-agent`；Android 把同一运行时（约 23.6 MB tar.gz）打进 assets，首用解压后由内嵌 libnode 启动。手机端全屏覆盖生成页，关闭面板不销毁 Node，再次打开/切换会话复用同一进程重新 init（`NAI_HOST_REINIT`）；翻译微调需要第二个宿主，手机端不提供 |
 | Krita 桥接 | ✓ | ✗ | 本地 WebSocket 服务 + 桌面插件端 |
 | 外部桥接客户端（studio-bridge.exe） | ✓ | ✗ | 桌面可执行文件 |
 | 应用内更新检查/安装 | ✓ | ✓ | 桌面：Windows 更新脚本 / macOS 核验。Android（G17）：检查 GitHub Release → 按设备 ABI 选 APK → 下载到 cache 并做大小/SHA256 校验 → 系统安装器（`REQUEST_INSTALL_PACKAGES` + 现有 FileProvider cache 路径）；未授权「未知来源」时跳到本应用系统设置页，返回后重试。**Android 读取的是本 fork（`RealityError`）的 Release**，因为上游只发布 Windows/macOS 资产；桌面仍查上游。**Release 必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` 等），否则会提示有新版本但无包可装 |
