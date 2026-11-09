@@ -9881,6 +9881,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Upscale images locally without spending Anlas.';
 
   @override
+  String get localUpscale_onnxHelp =>
+      'Upscales on-device with the bundled model, fully offline. Higher resolution or scale takes longer; keep the app in the foreground while it runs.';
+
+  @override
   String get localUpscale_bundled => 'Included';
 
   @override
@@ -22792,4 +22796,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generation_notificationGoToSettings => 'Open settings';
+
+  @override
+  String get localGallery_saveToAlbum => 'Save to album';
+
+  @override
+  String bulkMetadata_title(int count) {
+    return 'Bulk Edit Metadata ($count images)';
+  }
+
+  @override
+  String get bulkMetadata_tagsToAdd => 'Tags to Add';
+
+  @override
+  String get bulkMetadata_tagsToAddHint => 'Enter tags to add...';
+
+  @override
+  String get bulkMetadata_tagsToRemove => 'Tags to Remove';
+
+  @override
+  String get bulkMetadata_tagsToRemoveHint => 'Enter tags to remove...';
+
+  @override
+  String get bulkMetadata_promptSection => 'Prompt (Not Implemented)';
+
+  @override
+  String get bulkMetadata_promptComingSoon =>
+      'Bulk prompt editing will be available in a future update';
 }

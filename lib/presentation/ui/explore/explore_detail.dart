@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -227,8 +228,9 @@ class _DetailInfoState extends State<_DetailInfo> {
                   const Spacer(),
                   if (widget.drawer)
                     UiIconBox(
+                      key: const Key('explore-detail-info-close'),
                       glyph: UiGlyphs.close,
-                      size: 28,
+                      size: usesMobileLayout ? 48 : 28,
                       tooltip: l.explore_hideInspector,
                       onTap: () => _closeDrawer(context),
                     ),

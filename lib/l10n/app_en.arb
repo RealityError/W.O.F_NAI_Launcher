@@ -5274,6 +5274,7 @@
   "localUpscale_local": "Local",
   "localUpscale_manage": "Manage models",
   "localUpscale_description": "Upscale images locally without spending Anlas.",
+    "localUpscale_onnxHelp": "Upscales on-device with the bundled model, fully offline. Higher resolution or scale takes longer; keep the app in the foreground while it runs.",
   "localUpscale_bundled": "Included",
   "localUpscale_download": "Download",
   "localUpscale_importHelp": "Import a matching .param and .bin pair from a 4× Real-ESRGAN NCNN model (data/output blobs). PyTorch and safetensors models are not supported.",
@@ -11668,5 +11669,20 @@
   "set_agMcpPending": "Applies next turn",
   "ag_tool_agent_manage": "Manage Agent",
   "generation_notificationPermissionDenied": "Notifications are off, so background generation progress and completion alerts will not be visible.",
-  "generation_notificationGoToSettings": "Open settings"
+  "generation_notificationGoToSettings": "Open settings",
+  "localGallery_saveToAlbum": "Save to album",
+  "bulkMetadata_title": "Bulk Edit Metadata ({count} images)",
+  "@bulkMetadata_title": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bulkMetadata_tagsToAdd": "Tags to Add",
+  "bulkMetadata_tagsToAddHint": "Enter tags to add...",
+  "bulkMetadata_tagsToRemove": "Tags to Remove",
+  "bulkMetadata_tagsToRemoveHint": "Enter tags to remove...",
+  "bulkMetadata_promptSection": "Prompt (Not Implemented)",
+  "bulkMetadata_promptComingSoon": "Bulk prompt editing will be available in a future update"
 }

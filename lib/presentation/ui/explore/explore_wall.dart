@@ -188,20 +188,34 @@ class _RoundHeader extends StatelessWidget {
               ),
             Expanded(child: Container(height: 1, color: c.line)),
             if (!ctrl.selecting)
-              UiBtn(
-                key: Key('explore-pick-${round.id}'),
-                tone: UiBtnTone.ghost,
-                size: UiBtnSize.small,
-                tooltip: l.explore_pickTip,
-                onTap: () => ctrl.setSelected([
-                  for (final x in cands)
-                    if (x.favorite && x.done) x.key,
-                ]),
-                children: [
-                  UiGlyph(UiGlyphs.evo, size: 13, color: c.evo),
-                  if (!usesMobileLayout) Text(l.explore_pick),
-                ],
-              ),
+              if (usesMobileLayout)
+                UiIconBox(
+                  key: Key('explore-pick-${round.id}'),
+                  glyph: UiGlyphs.evo,
+                  size: 48,
+                  glyphSize: 13,
+                  color: c.evo,
+                  tooltip: l.explore_pickTip,
+                  onTap: () => ctrl.setSelected([
+                    for (final x in cands)
+                      if (x.favorite && x.done) x.key,
+                  ]),
+                )
+              else
+                UiBtn(
+                  key: Key('explore-pick-${round.id}'),
+                  tone: UiBtnTone.ghost,
+                  size: UiBtnSize.small,
+                  tooltip: l.explore_pickTip,
+                  onTap: () => ctrl.setSelected([
+                    for (final x in cands)
+                      if (x.favorite && x.done) x.key,
+                  ]),
+                  children: [
+                    UiGlyph(UiGlyphs.evo, size: 13, color: c.evo),
+                    Text(l.explore_pick),
+                  ],
+                ),
           ],
         ),
       ),
@@ -394,14 +408,15 @@ class _ExploreCardState extends State<ExploreCard> {
                           ColoredBox(color: c.accent.withValues(alpha: .14)),
                         if (x.done && (x.favorite || showHover))
                           Positioned(
-                            top: 6,
-                            right: 6,
+                            // 手机端命中区抬到 48 后贴角放，视觉中心只向内移 5dp。
+                            top: usesMobileLayout ? 0 : 6,
+                            right: usesMobileLayout ? 0 : 6,
                             child: _Heart(candidate: x),
                           ),
                         if (x.done && (ctrl.selecting || showHover || selected))
                           Positioned(
-                            top: 6,
-                            left: 6,
+                            top: usesMobileLayout ? 0 : 6,
+                            left: usesMobileLayout ? 0 : 6,
                             child: _Check(
                               key: Key('explore-check-${x.key}'),
                               on: selected,
@@ -621,20 +636,22 @@ class _Heart extends StatelessWidget {
       child: UiPressable(
         key: Key('explore-heart-${candidate.key}'),
         onTap: () => scope.actions.onSetFavorite([candidate.key], !on),
-        builder: (context, hover) => Container(
-          width: 26,
-          height: 26,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: on
-                ? Colors.white
-                : Colors.black.withValues(alpha: hover ? .6 : .42),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            on ? StudioIcons.galleryHeartFilled : StudioIcons.galleryHeart,
-            size: 14,
-            color: on ? c.fav : Colors.white,
+        builder: (context, hover) => ExploreTouchTarget(
+          child: Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on
+                  ? Colors.white
+                  : Colors.black.withValues(alpha: hover ? .6 : .42),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              on ? StudioIcons.galleryHeartFilled : StudioIcons.galleryHeart,
+              size: 14,
+              color: on ? c.fav : Colors.white,
+            ),
           ),
         ),
       ),
@@ -653,32 +670,34 @@ class _Check extends StatelessWidget {
     final c = context.ui;
     return UiPressable(
       onTap: onTap,
-      builder: (context, hover) => Container(
-        width: 22,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: on
-              ? c.accent
-              : Colors.black.withValues(alpha: hover ? .4 : .25),
-          shape: BoxShape.circle,
-          border: Border.all(color: on ? c.accent : Colors.white, width: 2),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x33000000),
-              blurRadius: 3,
-              offset: Offset(0, 1),
-            ),
-          ],
+      builder: (context, hover) => ExploreTouchTarget(
+        child: Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on
+                ? c.accent
+                : Colors.black.withValues(alpha: hover ? .4 : .25),
+            shape: BoxShape.circle,
+            border: Border.all(color: on ? c.accent : Colors.white, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 3,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: on
+              ? const UiGlyph(
+                  UiGlyphs.check,
+                  size: 12,
+                  strokeWidth: 3,
+                  color: Colors.white,
+                )
+              : null,
         ),
-        child: on
-            ? const UiGlyph(
-                UiGlyphs.check,
-                size: 12,
-                strokeWidth: 3,
-                color: Colors.white,
-              )
-            : null,
       ),
     );
   }
@@ -856,27 +875,29 @@ class ExploreSelectionBar extends StatelessWidget {
         onTap: any ? onTap : null,
         builder: (context, hover) => Opacity(
           opacity: any ? 1 : .45,
-          child: Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 11),
-            decoration: BoxDecoration(
-              color: bg != null
-                  ? (hover ? Color.lerp(bg, Colors.black, .08) : bg)
-                  : (hover ? fg.withValues(alpha: .14) : null),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: IconTheme.merge(
-              data: IconThemeData(color: ink ?? fg),
-              child: DefaultTextStyle.merge(
-                style: UiText.sans(
-                  12.5,
-                  weight: FontWeight.w500,
-                  color: ink ?? fg,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 6,
-                  children: children,
+          child: ExploreTouchTarget(
+            child: Container(
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 11),
+              decoration: BoxDecoration(
+                color: bg != null
+                    ? (hover ? Color.lerp(bg, Colors.black, .08) : bg)
+                    : (hover ? fg.withValues(alpha: .14) : null),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: IconTheme.merge(
+                data: IconThemeData(color: ink ?? fg),
+                child: DefaultTextStyle.merge(
+                  style: UiText.sans(
+                    12.5,
+                    weight: FontWeight.w500,
+                    color: ink ?? fg,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 6,
+                    children: children,
+                  ),
                 ),
               ),
             ),
@@ -886,7 +907,7 @@ class ExploreSelectionBar extends StatelessWidget {
       return tip == null ? w : Tooltip(message: tip, child: w);
     }
 
-    return Container(
+    final bar = Container(
       key: const Key('explore-selection-bar'),
       padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
       decoration: BoxDecoration(
@@ -987,19 +1008,31 @@ class ExploreSelectionBar extends StatelessWidget {
             onTap: () => ctrl.setSelecting(false),
             builder: (context, hover) => Tooltip(
               message: l.explore_selectExit,
-              child: Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: hover ? fg.withValues(alpha: .14) : null,
-                  borderRadius: BorderRadius.circular(7),
+              child: ExploreTouchTarget(
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: hover ? fg.withValues(alpha: .14) : null,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: UiGlyph(UiGlyphs.close, size: 14, color: fg),
                 ),
-                child: UiGlyph(UiGlyphs.close, size: 14, color: fg),
               ),
             ),
           ),
         ],
+      ),
+    );
+    if (!usesMobileLayout) return bar;
+    // 手机端 360dp 放不下整条操作条：整宽 + 横向滚动，按钮仍可逐个点到。
+    return SizedBox(
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: bar,
       ),
     );
   }

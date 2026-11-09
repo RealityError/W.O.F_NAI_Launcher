@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../blocks/blocks_contract.dart' show blockPalette;
 import '../blocks/blocks_parts.dart' show BlockColorDots;
 import '../kit/ui_block_pill.dart';
@@ -95,6 +96,7 @@ class _Header extends StatelessWidget {
           UiIconBox(
             key: const Key('explore-dialog-close'),
             glyph: UiGlyphs.close,
+            size: usesMobileLayout ? 48 : 30,
             glyphSize: 16,
             tooltip: context.l10n.explore_close,
             onTap: onClose,

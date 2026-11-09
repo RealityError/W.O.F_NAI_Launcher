@@ -68,7 +68,10 @@ class _BulkMetadataEditDialogState
 
     if (tagsToAdd.isEmpty && tagsToRemove.isEmpty) {
       // Show error dialog if no changes
-      AppToast.warning(context, 'Please add tags to add or remove');
+      AppToast.warning(
+        context,
+        context.l10n.bulkProgress_errorNoMetadataChanges,
+      );
       return;
     }
 
@@ -195,6 +198,7 @@ class _BulkMetadataEditDialogState
           ? const EdgeInsets.symmetric(horizontal: 12, vertical: 24)
           : null,
       content: Container(
+        key: const Key('bulk-metadata-content'),
         width: usesMobileLayout ? double.infinity : 500,
         constraints: BoxConstraints(
           maxHeight: usesMobileLayout
@@ -226,7 +230,7 @@ class _BulkMetadataEditDialogState
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Bulk Edit Metadata ($selectedCount images)',
+                    l10n.bulkMetadata_title(selectedCount),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -252,14 +256,14 @@ class _BulkMetadataEditDialogState
                     // Tags to Add section
                     _buildEditSection(
                       theme,
-                      'Tags to Add',
+                      l10n.bulkMetadata_tagsToAdd,
                       Icons.add_circle_outline,
                       [
                         _buildTagInputField(
                           theme,
                           _tagsToAddController,
                           _tagsToAddFocus,
-                          'Enter tags to add...',
+                          l10n.bulkMetadata_tagsToAddHint,
                           _addTagToAdd,
                         ),
                         const SizedBox(height: 8),
@@ -276,14 +280,14 @@ class _BulkMetadataEditDialogState
                     // Tags to Remove section
                     _buildEditSection(
                       theme,
-                      'Tags to Remove',
+                      l10n.bulkMetadata_tagsToRemove,
                       Icons.remove_circle_outline,
                       [
                         _buildTagInputField(
                           theme,
                           _tagsToRemoveController,
                           _tagsToRemoveFocus,
-                          'Enter tags to remove...',
+                          l10n.bulkMetadata_tagsToRemoveHint,
                           _addTagToRemove,
                         ),
                         const SizedBox(height: 8),
@@ -300,7 +304,7 @@ class _BulkMetadataEditDialogState
                     // Prompt section (disabled for now)
                     _buildEditSection(
                       theme,
-                      'Prompt (Not Implemented)',
+                      l10n.bulkMetadata_promptSection,
                       Icons.edit_note_outlined,
                       [
                         Container(
@@ -323,7 +327,7 @@ class _BulkMetadataEditDialogState
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Bulk prompt editing will be available in a future update',
+                                  l10n.bulkMetadata_promptComingSoon,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.outline,
                                     fontStyle: FontStyle.italic,
@@ -396,11 +400,13 @@ class _BulkMetadataEditDialogState
           children: [
             Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],

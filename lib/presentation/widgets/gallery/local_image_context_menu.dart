@@ -303,7 +303,7 @@ class LocalImageContextMenu {
           ),
           item(
             LocalImageContextAction.saveToAlbum,
-            l.common_export,
+            l.localGallery_saveToAlbum,
             Icons.save_alt_rounded,
           ),
         ],

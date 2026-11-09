@@ -9576,6 +9576,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get localUpscale_description => '로컬에서 이미지를 확대하며 Anlas를 사용하지 않습니다.';
 
   @override
+  String get localUpscale_onnxHelp =>
+      '내장 모델로 기기에서 확대하며 완전히 오프라인입니다. 해상도와 배율이 높을수록 오래 걸리므로 처리 중에는 앱을 앞에 두세요.';
+
+  @override
   String get localUpscale_bundled => '내장';
 
   @override
@@ -22078,4 +22082,30 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get generation_notificationGoToSettings => '설정 열기';
+
+  @override
+  String get localGallery_saveToAlbum => '앨범에 저장';
+
+  @override
+  String bulkMetadata_title(int count) {
+    return '메타데이터 일괄 편집($count장)';
+  }
+
+  @override
+  String get bulkMetadata_tagsToAdd => '추가할 태그';
+
+  @override
+  String get bulkMetadata_tagsToAddHint => '추가할 태그 입력...';
+
+  @override
+  String get bulkMetadata_tagsToRemove => '제거할 태그';
+
+  @override
+  String get bulkMetadata_tagsToRemoveHint => '제거할 태그 입력...';
+
+  @override
+  String get bulkMetadata_promptSection => '프롬프트(미구현)';
+
+  @override
+  String get bulkMetadata_promptComingSoon => '프롬프트 일괄 편집은 향후 업데이트에서 제공됩니다';
 }

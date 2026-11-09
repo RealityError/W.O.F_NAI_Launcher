@@ -5256,6 +5256,7 @@
   "localUpscale_local": "ローカル",
   "localUpscale_manage": "モデル管理",
   "localUpscale_description": "ローカルで画像を拡大します。Anlas は消費しません。",
+    "localUpscale_onnxHelp": "同梱モデルで端末内で拡大します（完全オフライン）。解像度や倍率が高いほど時間がかかるため、処理中はアプリを前面に保ってください。",
   "localUpscale_bundled": "内蔵",
   "localUpscale_download": "ダウンロード",
   "localUpscale_importHelp": "4倍 Real-ESRGAN NCNN モデルの .param と .bin の組をインポートします（data/output ノード）。PyTorch と safetensors は非対応です。",
@@ -11656,5 +11657,20 @@
   "set_agMcpPending": "次のターンで適用",
   "ag_tool_agent_manage": "Agent を管理",
   "generation_notificationPermissionDenied": "通知が許可されていないため、バックグラウンド生成の進捗と完了通知は表示されません。",
-  "generation_notificationGoToSettings": "設定を開く"
+  "generation_notificationGoToSettings": "設定を開く",
+  "localGallery_saveToAlbum": "アルバムに保存",
+  "bulkMetadata_title": "メタデータを一括編集（{count} 枚）",
+  "@bulkMetadata_title": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bulkMetadata_tagsToAdd": "追加するタグ",
+  "bulkMetadata_tagsToAddHint": "追加するタグを入力…",
+  "bulkMetadata_tagsToRemove": "削除するタグ",
+  "bulkMetadata_tagsToRemoveHint": "削除するタグを入力…",
+  "bulkMetadata_promptSection": "プロンプト（未実装）",
+  "bulkMetadata_promptComingSoon": "プロンプトの一括編集は今後のアップデートで提供予定です"
 }

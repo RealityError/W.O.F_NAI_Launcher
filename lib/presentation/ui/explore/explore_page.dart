@@ -20,6 +20,7 @@ import 'explore_dialogs.dart';
 import 'explore_editor.dart';
 import 'explore_evolution.dart';
 import 'explore_inspector.dart';
+import 'explore_parts.dart';
 import 'explore_popovers.dart';
 import 'explore_stage.dart';
 import 'explore_wall.dart';
@@ -1057,29 +1058,32 @@ class _ExploreMobileSwitch extends StatelessWidget {
       return UiPressable(
         key: key,
         onTap: !enabled || on ? null : () => onChanged(value),
-        builder: (context, hover) => Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: on ? c.raised : (hover && enabled ? c.hover : null),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: on
-                ? [
-                    BoxShadow(
-                      color: c.accent.withValues(alpha: .14),
-                      spreadRadius: 3,
-                    ),
-                    BoxShadow(color: c.accent, spreadRadius: 1),
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: UiText.sans(
-              13,
-              weight: on ? FontWeight.w700 : FontWeight.w500,
-              color: on ? c.ink : (enabled ? c.muted : c.faint),
+        builder: (context, hover) => ExploreTouchTarget(
+          minWidth: 0,
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? c.raised : (hover && enabled ? c.hover : null),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: on
+                  ? [
+                      BoxShadow(
+                        color: c.accent.withValues(alpha: .14),
+                        spreadRadius: 3,
+                      ),
+                      BoxShadow(color: c.accent, spreadRadius: 1),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              label,
+              style: UiText.sans(
+                13,
+                weight: on ? FontWeight.w700 : FontWeight.w500,
+                color: on ? c.ink : (enabled ? c.muted : c.faint),
+              ),
             ),
           ),
         ),
@@ -1088,8 +1092,8 @@ class _ExploreMobileSwitch extends StatelessWidget {
 
     return Container(
       key: const Key('explore-mobile-switch'),
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      height: 49,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: c.bg,
         border: Border(bottom: BorderSide(color: c.line)),

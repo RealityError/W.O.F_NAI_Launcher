@@ -9372,6 +9372,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localUpscale_description => '在本机放大图片，不消耗 Anlas。';
 
   @override
+  String get localUpscale_onnxHelp =>
+      '使用随包模型在设备上放大，完全离线；分辨率和倍率越高耗时越长，处理期间请保持应用在前台。';
+
+  @override
   String get localUpscale_bundled => '内置';
 
   @override
@@ -21752,6 +21756,32 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get generation_notificationGoToSettings => '去设置';
+
+  @override
+  String get localGallery_saveToAlbum => '保存到相册';
+
+  @override
+  String bulkMetadata_title(int count) {
+    return '批量编辑元数据（$count 张图片）';
+  }
+
+  @override
+  String get bulkMetadata_tagsToAdd => '要添加的标签';
+
+  @override
+  String get bulkMetadata_tagsToAddHint => '输入要添加的标签…';
+
+  @override
+  String get bulkMetadata_tagsToRemove => '要移除的标签';
+
+  @override
+  String get bulkMetadata_tagsToRemoveHint => '输入要移除的标签…';
+
+  @override
+  String get bulkMetadata_promptSection => '提示词（未实现）';
+
+  @override
+  String get bulkMetadata_promptComingSoon => '批量编辑提示词将在后续版本提供';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -31120,6 +31150,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get localUpscale_description => '在本機放大圖片，不消耗 Anlas。';
+
+  @override
+  String get localUpscale_onnxHelp =>
+      '使用隨包模型在裝置上放大，完全離線；解析度和倍率越高耗時越長，處理期間請保持應用在前臺。';
 
   @override
   String get localUpscale_bundled => '內建';
@@ -43502,4 +43536,30 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get generation_notificationGoToSettings => '去設定';
+
+  @override
+  String get localGallery_saveToAlbum => '儲存到相簿';
+
+  @override
+  String bulkMetadata_title(int count) {
+    return '批次編輯後設資料（$count 張圖片）';
+  }
+
+  @override
+  String get bulkMetadata_tagsToAdd => '要新增的標籤';
+
+  @override
+  String get bulkMetadata_tagsToAddHint => '輸入要新增的標籤…';
+
+  @override
+  String get bulkMetadata_tagsToRemove => '要移除的標籤';
+
+  @override
+  String get bulkMetadata_tagsToRemoveHint => '輸入要移除的標籤…';
+
+  @override
+  String get bulkMetadata_promptSection => '提示詞（未實現）';
+
+  @override
+  String get bulkMetadata_promptComingSoon => '批次編輯提示詞將在後續版本提供';
 }

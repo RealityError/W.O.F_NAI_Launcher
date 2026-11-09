@@ -5256,6 +5256,7 @@
   "localUpscale_local": "로컬",
   "localUpscale_manage": "모델 관리",
   "localUpscale_description": "로컬에서 이미지를 확대하며 Anlas를 사용하지 않습니다.",
+    "localUpscale_onnxHelp": "내장 모델로 기기에서 확대하며 완전히 오프라인입니다. 해상도와 배율이 높을수록 오래 걸리므로 처리 중에는 앱을 앞에 두세요.",
   "localUpscale_bundled": "내장",
   "localUpscale_download": "다운로드",
   "localUpscale_importHelp": "4배 Real-ESRGAN NCNN 모델의 .param 및 .bin 파일 쌍을 가져옵니다(data/output 노드). PyTorch 및 safetensors는 지원하지 않습니다.",
@@ -11656,5 +11657,20 @@
   "set_agMcpPending": "다음 턴에 적용",
   "ag_tool_agent_manage": "Agent 관리",
   "generation_notificationPermissionDenied": "알림이 허용되지 않아 백그라운드 생성 진행 상황과 완료 알림이 표시되지 않습니다.",
-  "generation_notificationGoToSettings": "설정 열기"
+  "generation_notificationGoToSettings": "설정 열기",
+  "localGallery_saveToAlbum": "앨범에 저장",
+  "bulkMetadata_title": "메타데이터 일괄 편집({count}장)",
+  "@bulkMetadata_title": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bulkMetadata_tagsToAdd": "추가할 태그",
+  "bulkMetadata_tagsToAddHint": "추가할 태그 입력...",
+  "bulkMetadata_tagsToRemove": "제거할 태그",
+  "bulkMetadata_tagsToRemoveHint": "제거할 태그 입력...",
+  "bulkMetadata_promptSection": "프롬프트(미구현)",
+  "bulkMetadata_promptComingSoon": "프롬프트 일괄 편집은 향후 업데이트에서 제공됩니다"
 }

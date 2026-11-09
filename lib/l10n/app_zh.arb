@@ -5256,6 +5256,7 @@
   "localUpscale_local": "本地",
   "localUpscale_manage": "管理模型",
   "localUpscale_description": "在本机放大图片，不消耗 Anlas。",
+    "localUpscale_onnxHelp": "使用随包模型在设备上放大，完全离线；分辨率和倍率越高耗时越长，处理期间请保持应用在前台。",
   "localUpscale_bundled": "内置",
   "localUpscale_download": "下载",
   "localUpscale_importHelp": "导入配套的 4 倍 Real-ESRGAN NCNN 模型 .param 和 .bin 文件（data/output 节点）。不支持 PyTorch 或 safetensors 模型。",
@@ -11656,5 +11657,20 @@
   "set_agMcpPending": "下轮生效",
   "ag_tool_agent_manage": "管理 Agent",
   "generation_notificationPermissionDenied": "通知权限未开启，后台生成的进度和完成提醒将不可见。",
-  "generation_notificationGoToSettings": "去设置"
+  "generation_notificationGoToSettings": "去设置",
+  "localGallery_saveToAlbum": "保存到相册",
+  "bulkMetadata_title": "批量编辑元数据（{count} 张图片）",
+  "@bulkMetadata_title": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bulkMetadata_tagsToAdd": "要添加的标签",
+  "bulkMetadata_tagsToAddHint": "输入要添加的标签…",
+  "bulkMetadata_tagsToRemove": "要移除的标签",
+  "bulkMetadata_tagsToRemoveHint": "输入要移除的标签…",
+  "bulkMetadata_promptSection": "提示词（未实现）",
+  "bulkMetadata_promptComingSoon": "批量编辑提示词将在后续版本提供"
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
@@ -122,7 +123,7 @@ class ExploreInspector extends StatelessWidget {
                       UiIconBox(
                         key: const Key('explore-drawer-close'),
                         glyph: UiGlyphs.close,
-                        size: 28,
+                        size: usesMobileLayout ? 48 : 28,
                         tooltip: l.explore_hideInspector,
                         onTap: ctrl.closeDrawer,
                       ),
@@ -192,18 +193,20 @@ class _Image extends StatelessWidget {
           child: UiPressable(
             key: Key(key),
             onTap: onTap,
-            builder: (context, hover) => Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: hover ? .62 : .45),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: UiGlyph(
-                glyph,
-                size: 15,
-                color: onTap == null ? Colors.white38 : Colors.white,
+            builder: (context, hover) => ExploreTouchTarget(
+              child: Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: hover ? .62 : .45),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: UiGlyph(
+                  glyph,
+                  size: 15,
+                  color: onTap == null ? Colors.white38 : Colors.white,
+                ),
               ),
             ),
           ),

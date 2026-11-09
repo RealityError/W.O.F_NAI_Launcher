@@ -9554,6 +9554,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get localUpscale_description => 'ローカルで画像を拡大します。Anlas は消費しません。';
 
   @override
+  String get localUpscale_onnxHelp =>
+      '同梱モデルで端末内で拡大します（完全オフライン）。解像度や倍率が高いほど時間がかかるため、処理中はアプリを前面に保ってください。';
+
+  @override
   String get localUpscale_bundled => '内蔵';
 
   @override
@@ -22008,4 +22012,30 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get generation_notificationGoToSettings => '設定を開く';
+
+  @override
+  String get localGallery_saveToAlbum => 'アルバムに保存';
+
+  @override
+  String bulkMetadata_title(int count) {
+    return 'メタデータを一括編集（$count 枚）';
+  }
+
+  @override
+  String get bulkMetadata_tagsToAdd => '追加するタグ';
+
+  @override
+  String get bulkMetadata_tagsToAddHint => '追加するタグを入力…';
+
+  @override
+  String get bulkMetadata_tagsToRemove => '削除するタグ';
+
+  @override
+  String get bulkMetadata_tagsToRemoveHint => '削除するタグを入力…';
+
+  @override
+  String get bulkMetadata_promptSection => 'プロンプト（未実装）';
+
+  @override
+  String get bulkMetadata_promptComingSoon => 'プロンプトの一括編集は今後のアップデートで提供予定です';
 }

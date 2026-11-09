@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_touch.dart';
 import '../kit/ui_block_pill.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -729,12 +731,14 @@ class ExploreChip extends StatelessWidget {
               ],
             ),
           );
-          return dashed
-              ? CustomPaint(
-                  foregroundPainter: _DashPainter(c.strong),
-                  child: chip,
-                )
-              : chip;
+          return ExploreTouchTarget(
+            child: dashed
+                ? CustomPaint(
+                    foregroundPainter: _DashPainter(c.strong),
+                    child: chip,
+                  )
+                : chip,
+          );
         },
       ),
     );
@@ -878,6 +882,32 @@ class _ExploreInlineInputState extends State<ExploreInlineInput> {
           onSubmitted: _finish,
         ),
       ),
+    );
+  }
+}
+
+/// 手机端触控命中区：命中 ≥48dp，视觉尺寸不变；桌面端原样返回 [child]。
+///
+/// 必须包在 `UiPressable.builder` 返回的 child 外层（命中判定来自 UiPressable
+/// 自己的 GestureDetector），这样图标 / 胶囊的视觉尺寸不变、可点区域抬高。
+class ExploreTouchTarget extends StatelessWidget {
+  const ExploreTouchTarget({
+    super.key,
+    required this.child,
+    this.minWidth = kMobileMinTouchTarget,
+    this.minHeight = kMobileMinTouchTarget,
+  });
+
+  final Widget child;
+  final double minWidth;
+  final double minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!usesMobileLayout) return child;
+    return ConstrainedBox(
+      constraints: BoxConstraints(minWidth: minWidth, minHeight: minHeight),
+      child: Align(widthFactor: 1, heightFactor: 1, child: child),
     );
   }
 }

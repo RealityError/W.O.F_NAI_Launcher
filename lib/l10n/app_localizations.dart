@@ -17126,6 +17126,12 @@ abstract class AppLocalizations {
   /// **'Upscale images locally without spending Anlas.'**
   String get localUpscale_description;
 
+  /// No description provided for @localUpscale_onnxHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Upscales on-device with the bundled model, fully offline. Higher resolution or scale takes longer; keep the app in the foreground while it runs.'**
+  String get localUpscale_onnxHelp;
+
   /// No description provided for @localUpscale_bundled.
   ///
   /// In en, this message translates to:
@@ -39567,6 +39573,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open settings'**
   String get generation_notificationGoToSettings;
+
+  /// No description provided for @localGallery_saveToAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to album'**
+  String get localGallery_saveToAlbum;
+
+  /// No description provided for @bulkMetadata_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk Edit Metadata ({count} images)'**
+  String bulkMetadata_title(int count);
+
+  /// No description provided for @bulkMetadata_tagsToAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags to Add'**
+  String get bulkMetadata_tagsToAdd;
+
+  /// No description provided for @bulkMetadata_tagsToAddHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter tags to add...'**
+  String get bulkMetadata_tagsToAddHint;
+
+  /// No description provided for @bulkMetadata_tagsToRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags to Remove'**
+  String get bulkMetadata_tagsToRemove;
+
+  /// No description provided for @bulkMetadata_tagsToRemoveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter tags to remove...'**
+  String get bulkMetadata_tagsToRemoveHint;
+
+  /// No description provided for @bulkMetadata_promptSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt (Not Implemented)'**
+  String get bulkMetadata_promptSection;
+
+  /// No description provided for @bulkMetadata_promptComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk prompt editing will be available in a future update'**
+  String get bulkMetadata_promptComingSoon;
 }
 
 class _AppLocalizationsDelegate

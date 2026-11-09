@@ -103,7 +103,7 @@ class ExploreStageHeader extends StatelessWidget {
             UiIconBox(
               key: const Key('explore-inspector-toggle'),
               glyph: UiGlyphs.panel,
-              size: usesMobileLayout ? 44 : 28,
+              size: usesMobileLayout ? 48 : 28,
               glyphSize: 16,
               tone: ctrl.inspectorVisible
                   ? UiIconBoxTone.on
@@ -175,57 +175,59 @@ class _RunButton extends StatelessWidget {
               ),
             );
           },
-          builder: (context, hover) => Container(
-            height: 34,
-            constraints: const BoxConstraints(maxWidth: 300),
-            padding: const EdgeInsets.only(left: 10, right: 8),
-            decoration: BoxDecoration(
-              color: hover ? c.hover : c.raised,
-              border: Border.all(color: open ? c.accent : c.line),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: open
-                  ? [
-                      BoxShadow(
-                        color: c.accent.withValues(alpha: .15),
-                        spreadRadius: 3,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 8,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: dotColor,
-                    shape: BoxShape.circle,
-                    boxShadow: p != null && !p.paused
-                        ? [
-                            BoxShadow(
-                              color: c.accent.withValues(alpha: .2),
-                              spreadRadius: 3,
-                            ),
-                          ]
-                        : null,
-                  ),
-                ),
-                Flexible(
-                  child: Text(
-                    run.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: UiText.sans(
-                      14,
-                      weight: FontWeight.w700,
-                      color: c.ink,
+          builder: (context, hover) => ExploreTouchTarget(
+            child: Container(
+              height: 34,
+              constraints: const BoxConstraints(maxWidth: 300),
+              padding: const EdgeInsets.only(left: 10, right: 8),
+              decoration: BoxDecoration(
+                color: hover ? c.hover : c.raised,
+                border: Border.all(color: open ? c.accent : c.line),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: open
+                    ? [
+                        BoxShadow(
+                          color: c.accent.withValues(alpha: .15),
+                          spreadRadius: 3,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 8,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                      boxShadow: p != null && !p.paused
+                          ? [
+                              BoxShadow(
+                                color: c.accent.withValues(alpha: .2),
+                                spreadRadius: 3,
+                              ),
+                            ]
+                          : null,
                     ),
                   ),
-                ),
-                UiGlyph(UiGlyphs.chevronDown, size: 15, color: c.muted),
-              ],
+                  Flexible(
+                    child: Text(
+                      run.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: UiText.sans(
+                        14,
+                        weight: FontWeight.w700,
+                        color: c.ink,
+                      ),
+                    ),
+                  ),
+                  UiGlyph(UiGlyphs.chevronDown, size: 15, color: c.muted),
+                ],
+              ),
             ),
           ),
         ),
@@ -624,7 +626,7 @@ class ExploreTabsRow extends StatelessWidget {
         UiIconBox(
           key: const Key('explore-sort'),
           glyph: UiGlyphs.sort,
-          size: usesMobileLayout ? 44 : 28,
+          size: usesMobileLayout ? 48 : 28,
           tooltip: ctrl.newestFirst
               ? l.explore_sortNewest
               : l.explore_sortOldest,
@@ -643,7 +645,7 @@ class ExploreTabsRow extends StatelessWidget {
     ];
 
     return Container(
-      height: 46,
+      height: usesMobileLayout ? 49 : 46,
       padding: const EdgeInsets.only(left: 14, right: 12),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: c.line)),
@@ -766,46 +768,49 @@ class _BigTab extends StatelessWidget {
       padding: const EdgeInsets.only(right: 10),
       child: UiPressable(
         onTap: on ? null : onTap,
-        builder: (context, hover) => SizedBox(
-          height: 45,
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 6,
-                  children: [
-                    icon,
-                    Text(
-                      label,
-                      style: UiText.sans(
-                        14,
-                        weight: FontWeight.w600,
-                        color: hover && !on ? c.ink : ink,
+        builder: (context, hover) => ExploreTouchTarget(
+          minWidth: 0,
+          child: SizedBox(
+            height: 45,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 6,
+                    children: [
+                      icon,
+                      Text(
+                        label,
+                        style: UiText.sans(
+                          14,
+                          weight: FontWeight.w600,
+                          color: hover && !on ? c.ink : ink,
+                        ),
                       ),
-                    ),
-                    ExploreCount(count),
-                  ],
-                ),
-              ),
-              // 选中下划线压在页签栏底边线上（原型 `.bigtab.on::after` bottom:-1），一律墨色。
-              if (on)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: -1,
-                  child: Container(
-                    height: 2,
-                    decoration: BoxDecoration(
-                      color: c.ink,
-                      borderRadius: BorderRadius.circular(1),
-                    ),
+                      ExploreCount(count),
+                    ],
                   ),
                 ),
-            ],
+                // 选中下划线压在页签栏底边线上（原型 `.bigtab.on::after` bottom:-1），一律墨色。
+                if (on)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: -1,
+                    child: Container(
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color: c.ink,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1205,7 +1210,7 @@ class ExploreUndoToast extends StatelessWidget {
     final actions = ExploreScope.of(context).actions;
     return Container(
       key: const Key('explore-undo'),
-      height: 40,
+      height: usesMobileLayout ? 48 : 40,
       padding: const EdgeInsets.only(left: 14, right: 6),
       decoration: BoxDecoration(
         color: c.tipBg,
@@ -1230,34 +1235,38 @@ class ExploreUndoToast extends StatelessWidget {
           UiPressable(
             key: const Key('explore-undo-button'),
             onTap: actions.onUndoDelete,
-            builder: (context, hover) => Container(
-              height: 28,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.tipInk.withValues(alpha: hover ? .2 : .12),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Text(
-                l.explore_undo,
-                style: UiText.sans(
-                  12.5,
-                  weight: FontWeight.w600,
-                  color: c.tipInk,
+            builder: (context, hover) => ExploreTouchTarget(
+              child: Container(
+                height: 28,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.tipInk.withValues(alpha: hover ? .2 : .12),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  l.explore_undo,
+                  style: UiText.sans(
+                    12.5,
+                    weight: FontWeight.w600,
+                    color: c.tipInk,
+                  ),
                 ),
               ),
             ),
           ),
           UiPressable(
             onTap: actions.onDismissUndo,
-            builder: (context, hover) => SizedBox(
-              width: 28,
-              height: 28,
-              child: Center(
-                child: UiGlyph(
-                  UiGlyphs.close,
-                  size: 13,
-                  color: c.tipInk.withValues(alpha: hover ? .9 : .6),
+            builder: (context, hover) => ExploreTouchTarget(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: Center(
+                  child: UiGlyph(
+                    UiGlyphs.close,
+                    size: 13,
+                    color: c.tipInk.withValues(alpha: hover ? .9 : .6),
+                  ),
                 ),
               ),
             ),

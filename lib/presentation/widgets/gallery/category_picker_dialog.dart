@@ -258,7 +258,12 @@ class _CategoryPickerDialogState extends ConsumerState<CategoryPickerDialog> {
     return AlertDialog(
       title: Text(widget.title),
       contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      content: SizedBox(width: 560, height: 700, child: body),
+      content: SizedBox(
+        key: const Key('category-picker-body'),
+        width: 560,
+        height: 700,
+        child: body,
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(null),
@@ -352,9 +357,9 @@ class _CategoryPickerDialogState extends ConsumerState<CategoryPickerDialog> {
                 child: Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: SizedBox(
-                    // 手机端展开按钮也要 44dp 触控区。
-                    width: usesMobileLayout ? 44 : 18,
-                    height: usesMobileLayout ? 44 : 18,
+                    // 手机端展开按钮也要 48dp 触控区。
+                    width: usesMobileLayout ? 48 : 18,
+                    height: usesMobileLayout ? 48 : 18,
                     child: Center(
                       child: Icon(
                         CategoryPickerDialog._sessionExpandedIds.contains(

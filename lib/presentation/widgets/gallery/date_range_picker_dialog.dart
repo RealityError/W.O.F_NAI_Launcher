@@ -149,6 +149,23 @@ class _GalleryDateRangePickerState extends State<GalleryDateRangePicker> {
     );
     final days = List.generate(42, (i) => gridStart.add(Duration(days: i)));
 
+    // 清除：仅当进入对话框时已有日期范围（initialStart/initialEnd 任一非空）才可用；
+    // 点击清空选择并关闭，调用方写入空范围。
+    final clearButton = TextButton(
+      onPressed: widget.initialStart != null || widget.initialEnd != null
+          ? () => _complete(const DateRangeSelectionState())
+          : null,
+      child: Text(l10n.localGallery_dateRangeClear),
+    );
+    final cancelButton = TextButton(
+      onPressed: _complete,
+      child: Text(l10n.common_cancel),
+    );
+    final confirmButton = FilledButton(
+      onPressed: _selection.hasSelection ? () => _complete(_selection) : null,
+      child: Text(l10n.common_confirm),
+    );
+
     final calendar = SizedBox(
       // 手机端对话框左右只留 8：7 列各 48，正好铺满 360dp。
       width: usesMobileLayout ? double.infinity : 336,
@@ -235,33 +252,26 @@ class _GalleryDateRangePickerState extends State<GalleryDateRangePicker> {
                 ),
               ),
               const SizedBox(height: 8),
-              // 清除 / 取消 / 确定
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // 清除：仅当进入对话框时已有日期范围（initialStart/initialEnd
-                  // 任一非空）才可用；点击清空选择并关闭，调用方写入空范围
-                  TextButton(
-                    onPressed:
-                        widget.initialStart != null || widget.initialEnd != null
-                        ? () => _complete(const DateRangeSelectionState())
-                        : null,
-                    child: Text(l10n.localGallery_dateRangeClear),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _complete,
-                    child: Text(l10n.common_cancel),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _selection.hasSelection
-                        ? () => _complete(_selection)
-                        : null,
-                    child: Text(l10n.common_confirm),
-                  ),
-                ],
-              ),
+              // 清除 / 取消 / 确定。手机端英文等长文案放不下时用 Wrap 换行，避免横向溢出；
+              // 桌面端保持原 Row 布局。
+              if (usesMobileLayout)
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [clearButton, cancelButton, confirmButton],
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    clearButton,
+                    const SizedBox(width: 8),
+                    cancelButton,
+                    const SizedBox(width: 8),
+                    confirmButton,
+                  ],
+                ),
             ],
           ),
         ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -529,8 +530,8 @@ class _KidState extends State<_Kid> with ExploreQuickOpen {
                             ColoredBox(color: c.evo.withValues(alpha: .16)),
                           if (widget.selectable && x.done)
                             Positioned(
-                              top: 5,
-                              left: 5,
+                              top: usesMobileLayout ? 0 : 5,
+                              left: usesMobileLayout ? 0 : 5,
                               child: _KidCheck(
                                 key: Key('explore-kid-check-${x.key}'),
                                 on: selected,
@@ -611,18 +612,27 @@ class _KidCheck extends StatelessWidget {
     final c = context.ui;
     return UiPressable(
       onTap: onTap,
-      builder: (context, hover) => Container(
-        width: 20,
-        height: 20,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: on ? c.evo : Colors.black.withValues(alpha: hover ? .4 : .25),
-          shape: BoxShape.circle,
-          border: Border.all(color: on ? c.evo : Colors.white, width: 2),
+      builder: (context, hover) => ExploreTouchTarget(
+        child: Container(
+          width: 20,
+          height: 20,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on
+                ? c.evo
+                : Colors.black.withValues(alpha: hover ? .4 : .25),
+            shape: BoxShape.circle,
+            border: Border.all(color: on ? c.evo : Colors.white, width: 2),
+          ),
+          child: on
+              ? UiGlyph(
+                  UiGlyphs.check,
+                  size: 11,
+                  strokeWidth: 3,
+                  color: c.onEvo,
+                )
+              : null,
         ),
-        child: on
-            ? UiGlyph(UiGlyphs.check, size: 11, strokeWidth: 3, color: c.onEvo)
-            : null,
       ),
     );
   }
