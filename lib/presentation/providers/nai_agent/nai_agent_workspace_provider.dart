@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/utils/app_bundle_paths.dart';
+import '../../../core/nai_agent/android_nai_agent_runtime.dart';
 import '../../../data/services/nai_agent/agent_workspace_store.dart';
 import 'nai_agent_session_provider.dart';
 import 'nai_agent_workspace_controller.dart';
@@ -77,7 +78,12 @@ final naiAgentUiPreferencesProvider =
 final naiAgentClientFactoryProvider = Provider<AgentClientFactory>(
   (ref) => (workspace, chat, settings, prompt, resume) async {
     final paths = ref.read(naiAgentRuntimePathsProvider);
-    await paths.check();
+    final androidRuntime = ref.read(androidNaiAgentRuntimeProvider);
+    if (androidRuntime != null) {
+      await androidRuntime.ensure();
+    } else {
+      await paths.check();
+    }
     final servers = <String, dynamic>{};
     final secure = ref.read(secureStorageServiceProvider);
     for (final server in settings.mcpServers) {
@@ -109,7 +115,8 @@ final naiAgentClientFactoryProvider = Provider<AgentClientFactory>(
       cacheWarming: settings.cacheWarming,
       nextSuggestion: settings.nextSuggestion,
       nodeExecutable: paths.node,
-      hostScript: paths.host,
+      hostScript: androidRuntime?.hostScript ?? paths.host,
+      launcher: androidRuntime?.start,
       systemPrompt: prompt,
       extraToolNames: const ['ask_user'],
       extensionPaths: settings.enabledExtensionPaths,

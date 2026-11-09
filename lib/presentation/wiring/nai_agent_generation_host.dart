@@ -9,6 +9,7 @@ import '../providers/nai_agent/nai_agent_workspace_provider.dart';
 import '../widgets/nai_agent/nai_agent_dock.dart';
 import '../widgets/common/drag_preview_divider.dart';
 import '../widgets/navigation/window_chrome_layout.dart';
+import 'nai_agent/agent_wiring.dart';
 
 /// The application enables its existing runtime around the router. Standalone
 /// page adapters remain usable without initializing a personal Agent store.
@@ -64,6 +65,24 @@ class _GenerationHostState extends ConsumerState<NaiAgentGenerationHost>
     final window = ref.watch(naiAgentWindowControllerProvider);
     final settings = ref.watch(naiAgentUiPreferencesProvider).settings;
     final expanded = window.presentationExpanded ?? settings.panelExpanded;
+    // 手机没有桌面窗口可以并排扩展：Agent 展开时以全屏覆盖整个生成页。
+    if (isMobilePlatform) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          widget.child,
+          if (expanded)
+            Positioned.fill(
+              child: Material(
+                color: Theme.of(context).colorScheme.surface,
+                child: const SafeArea(
+                  child: RepaintBoundary(child: AgentWiring()),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
     final chrome = context
         .dependOnInheritedWidgetOfExactType<WindowChromeScope>();
     final reduced = MediaQuery.disableAnimationsOf(context);

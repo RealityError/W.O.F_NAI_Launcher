@@ -62,9 +62,9 @@ SettingsModelsData settingsModelsData(BuildContext context, WidgetRef ref) {
       workbench,
       health,
       context.l10n,
-      // ChatGPT 套餐靠随包 Node 运行时登录；移动端没有该运行时，
-      // 传 null 让预设列表不出现「点了必然失败」的入口。
-      chatGpt: supportsNaiAgentRuntime
+      // ChatGPT 套餐靠随包 Node 运行时登录；手机端的内嵌运行时没有 OAuth
+      // 回环进程，传 null 让预设列表不出现「点了必然失败」的入口。
+      chatGpt: supportsNaiAgentExternalTools
           ? ref.watch(naiAgentChatGptProvider)
           : null,
     ),

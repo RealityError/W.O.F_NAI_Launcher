@@ -74,7 +74,7 @@ Future<Map<String, dynamic>> readNaiAgentInventory({
   required Map<String, dynamic> config,
   required Duration timeout,
 }) async {
-  if (!supportsNaiAgentRuntime) {
+  if (!supportsNaiAgentExternalTools) {
     throw StateError('NAI Agent runtime is not available on this platform');
   }
   final process = await Process.start(

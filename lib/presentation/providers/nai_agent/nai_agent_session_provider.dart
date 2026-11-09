@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/nai_agent/pi_host_client.dart';
+import '../../../core/nai_agent/pi_host_process.dart';
 import '../../../core/nai_agent/agent_tool.dart';
 import '../../../core/nai_agent/generation_tools.dart';
 import '../../../core/utils/localization_extension.dart';
@@ -17,8 +18,9 @@ typedef NaiAgentSessionStarter =
       String? chatId,
       required Directory workspace,
       required Directory data,
-      required String nodeExecutable,
-      required String hostScript,
+      String? nodeExecutable,
+      String? hostScript,
+      PiHostProcessLauncher? launcher,
       required String systemPrompt,
       Directory? sessionDirectory,
       File? sessionFile,
@@ -54,8 +56,9 @@ final naiAgentSessionStarterProvider = Provider<NaiAgentSessionStarter>((ref) {
     chatId,
     required workspace,
     required data,
-    required nodeExecutable,
-    required hostScript,
+    nodeExecutable,
+    hostScript,
+    launcher,
     required systemPrompt,
     sessionDirectory,
     sessionFile,
@@ -117,6 +120,7 @@ final naiAgentSessionStarterProvider = Provider<NaiAgentSessionStarter>((ref) {
     final client = await PiHostClient.start(
       nodeExecutable: nodeExecutable,
       hostScript: hostScript,
+      launcher: launcher,
       workspaceId: workspaceId,
       workspaceDirectory: workspace,
       agentDirectory: data,

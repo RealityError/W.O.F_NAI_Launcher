@@ -4,10 +4,12 @@ import 'dart:io';
 import 'agent_tool.dart';
 import 'node_runtime_environment.dart';
 import 'model_request_gate.dart';
+import 'pi_host_process.dart';
 import 'vision_access.dart';
 
-/// Owns one official Pi child. It transports events/tools; Pi owns the loop.
-/// Node/script paths are explicit until runtime packaging in stage F.
+/// Owns one official Pi session. It transports events/tools; Pi owns the loop.
+/// Desktop starts the bundled Node host as a child process; Android reuses the
+/// single embedded libnode runtime.
 class PiHostClient {
   PiHostClient._(
     this._process,
@@ -24,9 +26,11 @@ class PiHostClient {
         .listen(_receive, onError: (_) => _lost());
     // Dependency diagnostics may include provider data. Never log raw stderr.
     _stderr = _process.stderr.listen((_) {});
-    unawaited(_process.exitCode.then((_) => _lost()));
+    if (!_process.persistent) {
+      unawaited(_process.exitCode.then((_) => _lost()));
+    }
   }
-  final Process _process;
+  final PiHostProcess _process;
   final String workspaceId;
   final NaiAgentToolExecutor executeTool;
   final String _providerId;
@@ -64,8 +68,9 @@ class PiHostClient {
   Future<void> get whenClosed => _process.exitCode.then((_) {});
 
   static Future<PiHostClient> start({
-    required String nodeExecutable,
-    required String hostScript,
+    String? nodeExecutable,
+    String? hostScript,
+    PiHostProcessLauncher? launcher,
     required String workspaceId,
     required Directory workspaceDirectory,
     required Directory agentDirectory,
@@ -91,13 +96,26 @@ class PiHostClient {
     if (providerId is! String || providerId.trim().isEmpty) {
       throw const FormatException('Pi provider identity missing');
     }
-    final process = await Process.start(
-      nodeExecutable,
-      [hostScript],
-      workingDirectory: File(hostScript).parent.path,
-      environment: nodeRuntimeEnvironment(nodeExecutable),
-      runInShell: false,
-    );
+    final PiHostProcess process;
+    if (launcher != null) {
+      if (hostScript == null) {
+        throw ArgumentError('hostScript is required with a launcher');
+      }
+      process = await launcher(hostScript: hostScript);
+    } else {
+      if (nodeExecutable == null || hostScript == null) {
+        throw ArgumentError('nodeExecutable and hostScript are required');
+      }
+      process = NativePiHostProcess(
+        await Process.start(
+          nodeExecutable,
+          [hostScript],
+          workingDirectory: File(hostScript).parent.path,
+          environment: nodeRuntimeEnvironment(nodeExecutable),
+          runInShell: false,
+        ),
+      );
+    }
     final client = PiHostClient._(
       process,
       workspaceId,
@@ -226,13 +244,13 @@ class PiHostClient {
   void _send(Map<String, dynamic> message) {
     if (_closed) return;
     try {
-      _process.stdin.writeln(
-        jsonEncode({
+      _process.write(
+        '${jsonEncode({
           'protocol': 1,
           'workspaceId': workspaceId,
           'sessionId': _sessionId,
           ...message,
-        }),
+        })}\n',
       );
     } catch (_) {
       _lost();
@@ -417,7 +435,7 @@ class PiHostClient {
         'sessionId': _sessionId,
       });
     }
-    _process.kill(); // Only this client's owned child.
+    unawaited(_process.kill()); // Desktop kills its child; embedded detaches.
   }
 
   Future<void> close() async {
@@ -435,15 +453,19 @@ class PiHostClient {
           'type': 'shutdown',
         }).timeout(const Duration(seconds: 5));
       } catch (_) {
-        _process.kill();
+        await _process.kill();
       }
     } else {
-      _process.kill();
+      await _process.kill();
     }
-    try {
-      await _process.exitCode.timeout(const Duration(seconds: 5));
-    } catch (_) {
-      _process.kill();
+    // The embedded runtime stays alive for the next session; only the child
+    // process has a meaningful exit code.
+    if (!_process.persistent) {
+      try {
+        await _process.exitCode.timeout(const Duration(seconds: 5));
+      } catch (_) {
+        await _process.kill();
+      }
     }
     _lost();
     await _stdout.cancel();

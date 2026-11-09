@@ -84,6 +84,8 @@ class MainActivity : FlutterActivity() {
         ApkInstallHelper.register(flutterEngine, this)
         // G18: Android 13+ notification runtime permission channel.
         NotificationPermissionHelper.register(flutterEngine, this)
+        // NAI Agent: embedded Node.js runtime (libnode.so) bridge.
+        NodeRuntimeChannel.register(flutterEngine)
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         channel.setMethodCallHandler { call, result ->
             when (call.method) {

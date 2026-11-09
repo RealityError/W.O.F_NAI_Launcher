@@ -179,7 +179,7 @@ class NaiAgentChatGpt extends ChangeNotifier {
     NaiAgentCancellation? cancel,
   }) async {
     cancel?.check();
-    if (!supportsNaiAgentRuntime) {
+    if (!supportsNaiAgentExternalTools) {
       throw StateError('ChatGPT sign-in is not available on this platform');
     }
     final script = p.join(p.dirname(_paths.host), 'manage-resources.mjs');

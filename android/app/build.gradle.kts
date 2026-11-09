@@ -50,6 +50,19 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            // NAI Agent embeds nodejs-mobile's libnode.so and the local upscale
+            // model needs libonnxruntime.so; both ship for arm64-v8a only.
+            abiFilters.clear()
+            abiFilters.add("arm64-v8a")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            // JNI glue for the embedded Node.js runtime (NAI Agent).
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 
     signingConfigs {

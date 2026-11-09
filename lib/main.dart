@@ -45,6 +45,7 @@ import 'core/utils/hive_storage_helper.dart';
 import 'core/utils/app_support_directory.dart';
 import 'core/utils/app_bundle_paths.dart';
 import 'core/utils/desktop_platform.dart';
+import 'core/nai_agent/android_nai_agent_runtime.dart';
 import 'core/utils/file_explorer_utils.dart';
 import 'presentation/utils/control_click.dart';
 import 'core/utils/studio_sandbox.dart';
@@ -891,6 +892,24 @@ Future<void> _bootstrapPreparedApplication() async {
       AppLogger.w('Online gallery blacklist auto-sync failed: $e', 'Main');
     }
   });
+
+  // 后台准备 NAI Agent 的随包运行时。首次使用要解压约 1.5 万个文件，提前
+  // 准备可以让用户真正打开 Agent 面板时几乎立即就绪。桌面端运行时由安装器
+  // 放置，不需要这一步。
+  if (supportsNaiAgentRuntime && !isSupportedDesktop) {
+    Future.delayed(const Duration(seconds: 3), () async {
+      await servicesReady;
+      if (DesktopAppShutdownService.isShuttingDown) return;
+      try {
+        final runtime = container.read(androidNaiAgentRuntimeProvider);
+        if (runtime == null) return;
+        await runtime.ensure();
+        AppLogger.i('NAI Agent runtime is ready', 'Main');
+      } catch (e) {
+        AppLogger.w('NAI Agent runtime preparation failed: $e', 'Main');
+      }
+    });
+  }
 
   _runDeferredStartupStep(
     'Retired ffdkj dictionary cleanup',

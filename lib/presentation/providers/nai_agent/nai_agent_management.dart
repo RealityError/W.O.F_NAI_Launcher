@@ -173,7 +173,7 @@ class NaiAgentManagement {
   }) async {
     cancellation?.check();
     // 随包 Node 宿主只在桌面端存在；移动端给出可读错误，不触发 ProcessException。
-    if (!supportsNaiAgentRuntime) {
+    if (!supportsNaiAgentExternalTools) {
       throw StateError('NAI Agent runtime is not available on this platform');
     }
     final paths = ref.read(naiAgentRuntimePathsProvider);

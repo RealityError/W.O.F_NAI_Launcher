@@ -98,7 +98,22 @@ async function handle(message) {
   if (message.protocol !== 1) throw new Error('Unsupported protocol');
   if (closing) return;
   if (type === 'init') {
-    if (session || initializing || !message.workspaceId) throw new Error('Invalid initialization');
+    if (initializing || !message.workspaceId) throw new Error('Invalid initialization');
+    // Android embeds one long-lived Node.js process (libnode cannot be started
+    // twice in the same process), so a second init recycles the session in
+    // place instead of failing. Desktop keeps the original single-init rule.
+    if (session) {
+      if (process.env.NAI_HOST_REINIT !== '1') throw new Error('Invalid initialization');
+      closing = true;
+      suggestions?.invalidate();
+      stopEpoch++;
+      await created.close();
+      session = null;
+      created = null;
+      suggestions = null;
+      closing = false;
+      redact = value => value;
+    }
     initializing = true;
     workspaceId = message.workspaceId;
     redact = mcpRedactor(message.config, message.mcp);
@@ -292,9 +307,18 @@ async function handle(message) {
       session.clearQueue(); queued = [];
       await created.close();
       send({ type: 'response', id });
-      process.exitCode = 0;
-      input.close();
-      process.stdin.destroy();
+      if (process.env.NAI_HOST_REINIT === '1') {
+        // Keep the embedded Node process alive for the next init.
+        session = null;
+        created = null;
+        suggestions = null;
+        closing = false;
+        redact = value => value;
+      } else {
+        process.exitCode = 0;
+        input.close();
+        process.stdin.destroy();
+      }
       break;
     default: throw new Error('Unsupported command');
   }
