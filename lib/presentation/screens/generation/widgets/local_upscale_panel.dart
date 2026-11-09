@@ -7,7 +7,6 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/services/anlas_calculator.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../../../../data/models/upscale/local_upscale_models.dart';
-import '../../../../data/services/local_upscale_service.dart';
 import '../../../providers/generation/image_workflow_controller.dart';
 import '../../../providers/generation/local_upscale_provider.dart';
 import '../../../providers/image_generation_provider.dart';
@@ -48,6 +47,8 @@ class LocalUpscalePanel extends ConsumerWidget {
     final installing = ref.watch(advancedUpscaleInstallProvider).running;
     final cloud =
         !localOnly && workflow.upscale.backend == UpscaleBackend.novelai;
+    // Android 只有随包 ONNX 模型：隐藏桌面专用方法页签与模型管理入口。
+    final deviceOnnx = supportsOnnxUpscale && !supportsLocalUpscale;
     final busy =
         workflow.isToolRunning ||
         task.running ||
@@ -72,21 +73,21 @@ class LocalUpscalePanel extends ConsumerWidget {
         : ref.watch(localUpscaleModelsProvider);
     final available =
         models.valueOrNull ??
-        [...localUpscaleCatalog, ...advancedUpscaleCatalog];
+        (deviceOnnx
+            ? onnxUpscaleCatalog
+            : [...localUpscaleCatalog, ...advancedUpscaleCatalog]);
     final installed = available.where((m) => m.installed).toList();
+    final requestedModel = effectiveLocalUpscaleModel(
+      workflow.upscale.localModel,
+    );
     final selected = available
         .where(
           (m) =>
-              m.id == workflow.upscale.localModel &&
+              m.id == requestedModel &&
               (m.installed || m.method != LocalUpscaleMethod.standard),
         )
         .firstOrNull;
-    final method =
-        advancedUpscaleCatalog
-            .where((m) => m.id == workflow.upscale.localModel)
-            .firstOrNull
-            ?.method ??
-        LocalUpscaleMethod.standard;
+    final method = selected?.method ?? LocalUpscaleMethod.standard;
     final methodModels =
         (method == LocalUpscaleMethod.standard ? installed : available)
             .where((m) => m.method == method)
@@ -120,12 +121,14 @@ class LocalUpscalePanel extends ConsumerWidget {
                 height *
                 selected.inferenceScale(scale) *
                 selected.inferenceScale(scale) <=
-            LocalUpscaleService.maxNativeOutputPixels;
+            localUpscaleMaxNativePixels;
     final canStart =
         hasSource &&
         !busy &&
         !generating &&
-        (cloud ? cloudSupported : isSupportedDesktop && localSupported);
+        (cloud
+            ? cloudSupported
+            : (isSupportedDesktop || supportsOnnxUpscale) && localSupported);
     final progress = task.progress;
     final status = task.cancelling
         ? l.localUpscale_cancelling
@@ -195,102 +198,131 @@ class LocalUpscalePanel extends ConsumerWidget {
               child: LinearProgressIndicator(),
             ),
         ] else ...[
-          UpscaleChoiceBar<LocalUpscaleMethod>(
-            choices: [
-              (
-                value: LocalUpscaleMethod.standard,
-                label: l.img2img_upscaleRegularModel,
-                icon: null,
-              ),
-              (value: LocalUpscaleMethod.seedvr2, label: 'SeedVR2', icon: null),
-              (value: LocalUpscaleMethod.rtx, label: 'RTX', icon: null),
-            ],
-            selected: method,
-            onSelected: busy
-                ? null
-                : (next) {
-                    controller.updateLocalUpscaleModel(
-                      next == LocalUpscaleMethod.standard
-                          ? localUpscaleDefaultModel
-                          : next == LocalUpscaleMethod.seedvr2
-                          ? workflow.upscale.localSeedvr2Model
-                          : advancedUpscaleCatalog
-                                .firstWhere((m) => m.method == next)
-                                .id,
-                    );
-                  },
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: Text(l.img2img_upscaleModel, style: labelStyle)),
-              TextButton(
-                onPressed: busy
-                    ? null
-                    : () => context.go('/settings?section=local-upscale'),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  minimumSize: const Size(0, 24),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: labelStyle,
+          if (!deviceOnnx) ...[
+            UpscaleChoiceBar<LocalUpscaleMethod>(
+              choices: [
+                (
+                  value: LocalUpscaleMethod.standard,
+                  label: l.img2img_upscaleRegularModel,
+                  icon: null,
                 ),
-                child: Text(l.localUpscale_manage),
-              ),
-            ],
-          ),
-          DropdownButtonFormField<String>(
-            key: ValueKey('local-upscale-model-${selected?.id}'),
-            initialValue: selected?.id,
-            isExpanded: true,
-            style: labelStyle,
-            iconSize: 16,
-            borderRadius: BorderRadius.circular(4),
-            dropdownColor: UpscaleControlStyle.selected(theme),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
-              filled: true,
-              fillColor: UpscaleControlStyle.selected(theme),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
-              ),
+                (
+                  value: LocalUpscaleMethod.seedvr2,
+                  label: 'SeedVR2',
+                  icon: null,
+                ),
+                (value: LocalUpscaleMethod.rtx, label: 'RTX', icon: null),
+              ],
+              selected: method,
+              onSelected: busy
+                  ? null
+                  : (next) {
+                      controller.updateLocalUpscaleModel(
+                        next == LocalUpscaleMethod.standard
+                            ? localUpscaleDefaultModel
+                            : next == LocalUpscaleMethod.seedvr2
+                            ? workflow.upscale.localSeedvr2Model
+                            : advancedUpscaleCatalog
+                                  .firstWhere((m) => m.method == next)
+                                  .id,
+                      );
+                    },
             ),
-            hint: Text(
-              method == LocalUpscaleMethod.standard
-                  ? l.localUpscale_modelMissing
-                  : l.localUpscale_notInstalled,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: captionStyle,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(l.img2img_upscaleModel, style: labelStyle),
+                ),
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => context.go('/settings?section=local-upscale'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    minimumSize: const Size(0, 24),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: labelStyle,
+                  ),
+                  child: Text(l.localUpscale_manage),
+                ),
+              ],
             ),
-            items: methodModels
-                .map(
-                  (model) => DropdownMenuItem(
-                    value: model.id,
+            DropdownButtonFormField<String>(
+              key: ValueKey('local-upscale-model-${selected?.id}'),
+              initialValue: selected?.id,
+              isExpanded: true,
+              style: labelStyle,
+              iconSize: 16,
+              borderRadius: BorderRadius.circular(4),
+              dropdownColor: UpscaleControlStyle.selected(theme),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                filled: true,
+                fillColor: UpscaleControlStyle.selected(theme),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
+                ),
+              ),
+              hint: Text(
+                method == LocalUpscaleMethod.standard
+                    ? l.localUpscale_modelMissing
+                    : l.localUpscale_notInstalled,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: captionStyle,
+              ),
+              items: methodModels
+                  .map(
+                    (model) => DropdownMenuItem(
+                      value: model.id,
+                      child: Text(
+                        '${localUpscaleModelName(context, model)}${model.installed ? '' : ' · ${l.localUpscale_notInstalled}'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: labelStyle,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: busy
+                  ? null
+                  : (id) {
+                      if (id != null) controller.updateLocalUpscaleModel(id);
+                    },
+            ),
+            const SizedBox(height: 12),
+          ] else if (selected != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.memory, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
                     child: Text(
-                      '${localUpscaleModelName(context, model)}${model.installed ? '' : ' · ${l.localUpscale_notInstalled}'}',
+                      localUpscaleModelName(context, selected),
+                      style: labelStyle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: labelStyle,
                     ),
                   ),
-                )
-                .toList(),
-            onChanged: busy
-                ? null
-                : (id) {
-                    if (id != null) controller.updateLocalUpscaleModel(id);
-                  },
-          ),
-          const SizedBox(height: 12),
+                  Text(
+                    '${selected.inferenceScale(scale)}×',
+                    style: captionStyle,
+                  ),
+                ],
+              ),
+            ),
           Row(
             children: [
               Expanded(child: Text(l.upscale_scale, style: labelStyle)),
@@ -346,8 +378,9 @@ class LocalUpscalePanel extends ConsumerWidget {
                   ? l.localUpscale_seedvr2SevenHelp
                   : l.localUpscale_seedvr2Help,
             LocalUpscaleMethod.rtx => l.localUpscale_rtxHelp,
+            LocalUpscaleMethod.onnx => l.localUpscale_onnxHelp,
           }, style: captionStyle),
-          if (!isSupportedDesktop)
+          if (!isSupportedDesktop && !supportsOnnxUpscale)
             Text(
               l.localUpscale_unsupportedPlatform,
               style: TextStyle(color: theme.colorScheme.error),

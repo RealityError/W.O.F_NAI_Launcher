@@ -52,8 +52,11 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
   final settings = workflow.enhance;
   final models = ref.watch(localUpscaleModelsProvider).valueOrNull ?? [];
   final model = models
-      .where((m) => m.id == workflow.upscale.localModel)
+      .where((m) => m.id == effectiveLocalUpscaleModel(workflow.upscale.localModel))
       .firstOrNull;
+  // Android 用随包 ONNX 模型也能做生成后本地增强；iOS 没有任何本地引擎。
+  final deviceLocal = supportsOnnxUpscale;
+  final supportsLocalEnhance = !isMobilePlatform || deviceLocal;
   return ToolsEnhanceData(
     sourceWidth: image.width,
     sourceHeight: image.height,
@@ -61,10 +64,9 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
       for (final factor in controller.availableEnhanceFactors)
         ToolsEnhanceScale.factor(factor),
       if (controller.isEnhanceMaxUpscaleEligible) ToolsEnhanceScale.max,
-      // 本地放大依赖随包可执行文件，Android 不提供入口。
-      if (!isMobilePlatform) ToolsEnhanceScale.local,
+      if (supportsLocalEnhance) ToolsEnhanceScale.local,
     ],
-    scale: isMobilePlatform
+    scale: !supportsLocalEnhance
         ? ToolsEnhanceScale.factor(settings.upscaleFactor)
         : settings.localUpscale
         ? ToolsEnhanceScale.local
@@ -88,7 +90,9 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
     local: ToolsLocalUpscale(
       label: model?.name ?? workflow.upscale.localModel,
       factor: workflow.upscale.localScale,
-      ready: ref.watch(toolsWindowsProvider) && model?.installed == true,
+      ready:
+          (ref.watch(toolsWindowsProvider) || supportsOnnxUpscale) &&
+          model?.installed == true,
     ),
     model: ModelDisplay.shortNameOf(draft.model),
     steps: draft.steps,
@@ -100,7 +104,8 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
   );
 }
 
-/// 放大面板的后端卡片：Android/iOS 不随包本地引擎，隐藏「本地」只留云端。
+/// 放大面板的后端卡片：桌面显示「本地」；Android 有随包 ONNX 模型时也显示
+/// 「本地」，只有 iOS 这类既没有可执行文件也没有 ONNX 模型的平台才隐藏。
 ///
 /// 抽成纯函数是为了让手机端隐藏行为有独立回归测试（平台判断无法在测试里伪造）。
 @visibleForTesting
@@ -109,8 +114,9 @@ List<ToolsUpscaleBackend> toolsUpscaleBackends(
   required bool mobile,
   required bool localEnabled,
   required int? cloudCost,
+  bool deviceLocal = false,
 }) => [
-  if (!mobile)
+  if (!mobile || deviceLocal)
     ToolsUpscaleBackend(
       id: 'local',
       title: l.localUpscale_local,
@@ -130,12 +136,15 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
   final workflow = ref.watch(imageWorkflowControllerProvider);
   final settings = workflow.upscale;
   final models = ref.watch(localUpscaleModelsProvider).valueOrNull ?? [];
-  final model = models.where((m) => m.id == settings.localModel).firstOrNull;
+  final modelId = effectiveLocalUpscaleModel(settings.localModel);
+  final model = models.where((m) => m.id == modelId).firstOrNull;
   final method = model?.method ?? LocalUpscaleMethod.standard;
-  // 本地超分依赖随包可执行文件，Android 不提供：手机端固定走 NovelAI 云端，
-  // 面板里也不再出现「本地」死卡片。
-  final cloud = isMobilePlatform || settings.backend == UpscaleBackend.novelai;
+  // Android 用随包 ONNX 模型做设备端放大；桌面沿用 ncnn/SeedVR2/RTX 可执行文件；
+  // iOS 两者都没有，只能走 NovelAI 云端。
+  final deviceOnnx = supportsOnnxUpscale;
+  final cloud = settings.backend == UpscaleBackend.novelai;
   final windows = ref.watch(toolsWindowsProvider);
+  final localAvailable = windows || deviceOnnx;
   final install = ref.watch(advancedUpscaleInstallProvider);
   final localTask = ref.watch(localUpscaleTaskProvider);
   final cloudTask = ref.watch(cloudUpscaleTaskProvider);
@@ -147,7 +156,7 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
       ? cloudCost < 0
             ? l.localUpscale_sizeLimit
             : null
-      : !windows
+      : !localAvailable
       ? l.localUpscale_unsupportedPlatform
       : model?.installed != true
       ? l.localUpscale_modelMissing
@@ -173,13 +182,14 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
     backends: toolsUpscaleBackends(
       l,
       mobile: isMobilePlatform,
-      localEnabled: windows,
+      deviceLocal: deviceOnnx,
+      localEnabled: localAvailable,
       cloudCost: cloudCost < 0 ? null : cloudCost,
     ),
     backend: cloud ? 'novelai' : 'local',
     sourceWidth: image.width,
     sourceHeight: image.height,
-    methods: cloud
+    methods: cloud || deviceOnnx
         ? []
         : [
             const ToolsOption(id: 'standard', label: 'NCNN'),
@@ -201,7 +211,7 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
                     : ToolsModelState.missing,
               ),
           ],
-    model: cloud ? null : settings.localModel,
+    model: cloud ? null : modelId,
     scale: cloud ? null : settings.localScale,
     minScale: 1,
     maxScale: 4,
@@ -303,9 +313,9 @@ class ToolsGenerationSheetWiring extends ConsumerWidget {
           image.bytes,
           ImageWorkflowMode.enhance,
         );
-      } else if (isMobilePlatform) {
-        // Android 没有本地超分：打开面板时把后端固定回云端，
-        // 否则沿用桌面留下的本地后端会直接命中「平台不支持」。
+      } else if (isMobilePlatform && !supportsOnnxUpscale) {
+        // 既没有桌面可执行文件也没有随包 ONNX 模型的移动平台：打开面板时
+        // 把后端固定回云端，避免沿用桌面留下的本地后端命中「平台不支持」。
         ref
             .read(imageWorkflowControllerProvider.notifier)
             .updateUpscaleBackend(UpscaleBackend.novelai);

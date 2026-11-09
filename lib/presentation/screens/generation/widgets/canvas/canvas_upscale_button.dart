@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../../core/services/anlas_calculator.dart';
 import '../../../../../core/utils/localization_extension.dart';
+import '../../../../../data/models/upscale/local_upscale_models.dart';
 import '../../../../providers/generation/cloud_upscale_provider.dart';
 import '../../../../providers/generation/image_workflow_controller.dart';
 import '../../../../providers/generation/local_upscale_provider.dart';
@@ -45,13 +46,15 @@ class CanvasUpscaleButton extends ConsumerWidget {
     final models = isCloud
         ? null
         : ref.watch(localUpscaleModelsProvider).valueOrNull;
+    final requestedLocalModel = effectiveLocalUpscaleModel(
+      workflow.upscale.localModel,
+    );
     final supported = isCloud
         ? cost >= 0
-        : isSupportedDesktop &&
+        : (isSupportedDesktop || supportsOnnxUpscale) &&
               (models?.any(
                     (model) =>
-                        model.installed &&
-                        model.id == workflow.upscale.localModel,
+                        model.installed && model.id == requestedLocalModel,
                   ) ??
                   false);
     final locked =

@@ -10,6 +10,8 @@ import '../../../data/models/upscale/local_upscale_models.dart';
 import '../../../data/services/local_upscale_model_manager.dart';
 import '../../../data/services/advanced_upscale_component_manager.dart';
 import '../../../data/services/local_upscale_service.dart';
+import '../../../data/services/onnx_upscale_engine.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../image_generation_provider.dart';
 import '../auth_provider.dart';
 import '../image_save_settings_provider.dart';
@@ -32,10 +34,12 @@ final localUpscaleModelManagerProvider = Provider((ref) {
   ref.onDispose(manager.dispose);
   return manager;
 });
+final onnxUpscaleEngineProvider = Provider((ref) => OnnxUpscaleEngine());
 final localUpscaleServiceProvider = Provider(
   (ref) => LocalUpscaleService(
     ref.watch(localUpscaleModelManagerProvider),
     advanced: ref.watch(advancedUpscaleComponentManagerProvider),
+    onnx: ref.watch(onnxUpscaleEngineProvider),
     beforeInference: () =>
         ref.read(ragControllerProvider.notifier).suspendForGpu(),
     afterInference: () => ref.read(ragControllerProvider.notifier).releaseGpu(),
@@ -48,13 +52,15 @@ final advancedUpscaleComponentManagerProvider = Provider((ref) {
   ref.onDispose(manager.dispose);
   return manager;
 });
-final localUpscaleModelsProvider = FutureProvider(
-  (ref) async => [
+final localUpscaleModelsProvider = FutureProvider((ref) async {
+  // Android 只随包 ONNX 模型：没有可写出的 Windows 可执行文件，也无需下载。
+  if (supportsOnnxUpscale) return onnxUpscaleCatalog;
+  return [
     ...await ref.watch(localUpscaleModelManagerProvider).models(),
     if (Platform.isWindows)
       ...await ref.watch(advancedUpscaleComponentManagerProvider).models(),
-  ],
-);
+  ];
+});
 
 class AdvancedUpscaleInstallState {
   const AdvancedUpscaleInstallState({

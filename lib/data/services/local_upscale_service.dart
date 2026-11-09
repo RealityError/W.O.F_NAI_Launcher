@@ -13,6 +13,7 @@ import '../../core/utils/desktop_platform.dart';
 import '../models/upscale/local_upscale_models.dart';
 import 'local_upscale_model_manager.dart';
 import 'advanced_upscale_component_manager.dart';
+import 'onnx_upscale_engine.dart';
 import 'owned_upscale_process.dart';
 
 typedef UpscaleProcessStarter = Future<Process> Function(String, List<String>);
@@ -28,12 +29,16 @@ class LocalUpscaleService {
     this.advanced,
     this.beforeInference,
     this.afterInference,
+    this.onnx,
   }) : _startProcess =
            startProcess ?? ((exe, args) => Process.start(exe, args)),
-       _supportedPlatform = supportedPlatform ?? supportsLocalUpscale;
+       _supportedPlatform =
+           supportedPlatform ??
+           (supportsLocalUpscale || supportsOnnxUpscale);
 
   final LocalUpscaleModelManager models;
   final AdvancedUpscaleComponentManager? advanced;
+  final OnnxUpscaleEngine? onnx;
   final Future<void> Function()? beforeInference, afterInference;
   final UpscaleProcessStarter _startProcess;
   final bool _supportedPlatform;
@@ -57,7 +62,10 @@ class LocalUpscaleService {
       throw const LocalUpscaleException(LocalUpscaleError.sizeLimit);
     }
     cancellation.check();
-    models.claimInference(modelId);
+    // 桌面存档里的模型 id 在 Android 上回退到随包 ONNX 模型，其他调用方
+    // （面板、自动增强、工具任务）不需要各自再判断平台。
+    final resolvedModelId = effectiveLocalUpscaleModel(modelId);
+    models.claimInference(resolvedModelId);
     try {
       advanced?.claimInference();
     } catch (_) {
@@ -76,7 +84,10 @@ class LocalUpscaleService {
       await beforeInference?.call();
       progress(LocalUpscalePhase.preparing);
       final optional = advancedUpscaleCatalog
-          .where((m) => m.id == modelId)
+          .where((m) => m.id == resolvedModelId)
+          .firstOrNull;
+      final onnxModel = onnxUpscaleCatalog
+          .where((m) => m.id == resolvedModelId)
           .firstOrNull;
       if (optional != null &&
           Platform.isMacOS &&
@@ -85,45 +96,71 @@ class LocalUpscaleService {
           LocalUpscaleError.unsupportedPlatform,
         );
       }
-      final (executable, modelPath, model) = optional == null
-          ? await models.resolve(modelId)
-          : ('', '', optional);
-      await models.initialize();
-      cancellation.check();
-      // The pinned native engine builds model paths into a 256-character buffer.
-      final enginePath = modelPath + model.engineName;
-      if ((Platform.isWindows
-                  ? enginePath.length
-                  : utf8.encode(enginePath).length) +
-              12 >
-          245) {
-        throw const LocalUpscaleException(LocalUpscaleError.modelMissing);
+      if (onnxModel != null && onnx == null) {
+        throw const LocalUpscaleException(
+          LocalUpscaleError.unsupportedPlatform,
+        );
       }
-      final nativeScale = model.inferenceScale(scale);
+      final (executable, modelPath, model) = onnxModel != null
+          ? ('', '', onnxModel)
+          : optional == null
+          ? await models.resolve(resolvedModelId)
+          : ('', '', optional);
+      if (onnxModel == null) {
+        await models.initialize();
+        cancellation.check();
+        // The pinned native engine builds model paths into a 256-character buffer.
+        final enginePath = modelPath + model.engineName;
+        if ((Platform.isWindows
+                    ? enginePath.length
+                    : utf8.encode(enginePath).length) +
+                12 >
+            245) {
+          throw const LocalUpscaleException(LocalUpscaleError.modelMissing);
+        }
+      }
+      final nativeScale = onnxModel != null
+          ? OnnxUpscaleEngine.nativeScale
+          : model.inferenceScale(scale);
+      final maxNativePixels = onnxModel != null
+          ? onnxUpscaleMaxInputPixels * nativeScale * nativeScale
+          : LocalUpscaleService.maxNativeOutputPixels;
       final frozen = Uint8List.fromList(source);
       final prepared = await _imageWorker({
         'source': frozen,
         'scale': scale,
         'nativeScale': nativeScale,
         'advanced': optional != null,
+        'maxPixels': maxNativePixels,
       }, cancellation);
       final width = prepared['width'] as int;
       final height = prepared['height'] as int;
       final targetWidth = (width * scale).round();
       final targetHeight = (height * scale).round();
-      job = Directory(p.join(models.directory.path, 'jobs', const Uuid().v4()));
-      await job.create(recursive: true);
-      final input = File(p.join(job.path, 'input.png'));
-      final output = File(p.join(job.path, 'output.png'));
-      await input.writeAsBytes(prepared['bytes'] as Uint8List, flush: true);
-      cancellation.check();
-      progress(LocalUpscalePhase.inference);
-      if (optional != null) {
+      final Uint8List upscaledBytes;
+      if (onnxModel != null) {
+        progress(LocalUpscalePhase.inference);
+        upscaledBytes = await onnx!.upscale(
+          prepared['bytes'] as Uint8List,
+          cancellation: cancellation,
+          onProgress: (fraction) =>
+              progress(LocalUpscalePhase.inference, fraction),
+        );
+        cancellation.check();
+      } else {
+        job = Directory(p.join(models.directory.path, 'jobs', const Uuid().v4()));
+        await job.create(recursive: true);
+        final input = File(p.join(job.path, 'input.png'));
+        final output = File(p.join(job.path, 'output.png'));
+        await input.writeAsBytes(prepared['bytes'] as Uint8List, flush: true);
+        cancellation.check();
+        progress(LocalUpscalePhase.inference);
+        if (optional != null) {
         if (advanced == null) {
           throw const LocalUpscaleException(LocalUpscaleError.modelMissing);
         }
         final spec = await advanced!.command(
-          modelId,
+          resolvedModelId,
           input.path,
           output.path,
           targetWidth,
@@ -257,12 +294,14 @@ class LocalUpscaleService {
                 : LocalUpscaleError.processFailed,
           );
         }
+        }
+        cancellation.check();
+        upscaledBytes = await output.readAsBytes();
       }
-      cancellation.check();
       progress(LocalUpscalePhase.resizing);
       final result = await _imageWorker({
         'source': frozen,
-        'output': await output.readAsBytes(),
+        'output': upscaledBytes,
         'width': width,
         'height': height,
         'nativeScale': nativeScale,
@@ -379,10 +418,11 @@ void _imageWorkerEntry((SendPort, Map<String, Object>) args) {
     }
     final nativeScale = input['nativeScale'] as int;
     final advanced = input['advanced'] == true;
+    final maxPixels =
+        input['maxPixels'] as int? ?? LocalUpscaleService.maxNativeOutputPixels;
     if (info.width <= 0 ||
         info.height <= 0 ||
-        info.width * info.height * nativeScale * nativeScale >
-            LocalUpscaleService.maxNativeOutputPixels) {
+        info.width * info.height * nativeScale * nativeScale > maxPixels) {
       throw const LocalUpscaleException(LocalUpscaleError.sizeLimit);
     }
     final original = decoder!.decodeFrame(0);
@@ -403,8 +443,7 @@ void _imageWorkerEntry((SendPort, Map<String, Object>) args) {
     final targetHeight = input['targetHeight'] as int;
     final padding = input['padding'] as int? ?? 0;
     if (outputInfo == null ||
-        outputInfo.width * outputInfo.height >
-            LocalUpscaleService.maxNativeOutputPixels ||
+        outputInfo.width * outputInfo.height > maxPixels ||
         (advanced &&
             ((outputInfo.width - targetWidth).abs() > padding ||
                 (outputInfo.height - targetHeight).abs() > padding))) {

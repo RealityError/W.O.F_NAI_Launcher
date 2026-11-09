@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import '../../../core/utils/desktop_platform.dart';
+
 enum LocalUpscaleError {
   unsupportedPlatform,
   engineMissing,
@@ -37,7 +39,7 @@ enum LocalUpscalePhase {
   complete,
 }
 
-enum LocalUpscaleMethod { standard, seedvr2, rtx }
+enum LocalUpscaleMethod { standard, seedvr2, rtx, onnx }
 
 class LocalUpscaleProgress {
   const LocalUpscaleProgress(this.phase, [this.fraction]);
@@ -104,6 +106,43 @@ class LocalUpscaleModel {
 }
 
 const localUpscaleDefaultModel = 'anime';
+
+/// 设备端 ONNX 模型。固定 256×256 输入、4 倍输出，随包分发（无需下载）。
+///
+/// 与桌面端 `anime-fast` 同属 `realesr-animevideov3` 模型族，只换了推理后端。
+const onnxUpscaleCatalog = [
+  LocalUpscaleModel(
+    id: 'onnx-anime-videov3',
+    name: 'RealESR AnimeVideo v3',
+    engineName: 'animevideov3-256',
+    scales: [4],
+    bundled: true,
+    installed: true,
+    method: LocalUpscaleMethod.onnx,
+    modelBytes: 2494775,
+  ),
+];
+
+/// 设备端 ONNX 推理单个 4 倍中间图允许的最大输入像素数（约 19.2MP 输出）。
+const int onnxUpscaleMaxInputPixels = 1200000;
+
+bool isOnnxUpscaleModel(String id) =>
+    onnxUpscaleCatalog.any((model) => model.id == id);
+
+/// 当前平台实际可用的本地模型 id。
+///
+/// 桌面端工作流默认 `anime`；Android 只随包 ONNX 模型，沿用桌面存档里的
+/// 模型 id 会直接命中「模型缺失」，因此统一在这里做一次回退。
+String effectiveLocalUpscaleModel(String id) =>
+    supportsOnnxUpscale && !isOnnxUpscaleModel(id)
+    ? onnxUpscaleCatalog.first.id
+    : id;
+
+/// 本地放大的 4 倍中间图上限：桌面沿用 64MP，Android 按 ONNX 预算收紧。
+int get localUpscaleMaxNativePixels => supportsOnnxUpscale
+    ? onnxUpscaleMaxInputPixels * 16
+    : 64000000;
+
 const localUpscaleCatalog = [
   LocalUpscaleModel(
     id: 'anime',

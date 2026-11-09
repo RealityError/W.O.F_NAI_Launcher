@@ -999,9 +999,12 @@ class ImageGenerationNotifier extends _$ImageGenerationNotifier {
       try {
         final models = await ref.read(localUpscaleModelsProvider.future);
         if (_shouldAbortGenerationRun(generationRunId)) return;
+        // Android 的桌面存档模型 id 会回退到随包 ONNX 模型。
+        final targetModel = effectiveLocalUpscaleModel(
+          _activeLocalEnhance!.localModel,
+        );
         if (!models.any(
-          (model) =>
-              model.installed && model.id == _activeLocalEnhance!.localModel,
+          (model) => model.installed && model.id == targetModel,
         )) {
           state = state.copyWith(
             status: GenerationStatus.error,

@@ -61,8 +61,28 @@ bool get supportsLocalRagRuntime => isSupportedDesktop;
 /// 基于随包可执行文件的本地/高级放大（realesrgan / SeedVR2 / RTX Video）。
 bool get supportsLocalUpscale => isSupportedDesktop;
 
+/// Android 设备端的 ONNX Runtime 本地放大（随包 animevideov3 模型）。
+///
+/// 与桌面端的 ncnn Vulkan 可执行文件是两条独立链路：安卓没有可执行位，
+/// 只能把模型加载进进程内推理。
+bool get supportsOnnxUpscale => isAndroidPlatform;
+
 /// NAI Agent 的随包 Node 运行时与宿主脚本。
-bool get supportsNaiAgentRuntime => isSupportedDesktop;
+///
+/// 桌面端由安装器放置 `tools/nai-agent`；Android 把同一运行时打进 assets，
+/// 首次使用时解压到应用目录，再由内嵌 libnode 启动（见
+/// `AndroidNaiAgentRuntime`）。两侧共用 Pi 的 JSONL 协议。
+bool get supportsNaiAgentRuntime => isSupportedDesktop || isAndroidPlatform;
+
+/// 翻译微调需要第二个 Node 宿主进程；Android 的内嵌 libnode 在应用进程内
+/// 只能常驻一个宿主，因此手机端暂不提供该入口。
+bool get supportsTranslationAdjustment => !isAndroidPlatform;
+
+/// NAI Agent 的一次性 Node 工具（扩展/包管理、命令与技能清单、ChatGPT OAuth
+/// 回环）需要另起外部 Node 进程；Android 的内嵌 libnode 只能常驻会话宿主，
+/// 这些入口在手机端隐藏或直接给出可读错误。
+bool get supportsNaiAgentExternalTools =>
+    supportsNaiAgentRuntime && supportsExternalProcesses;
 
 /// Krita 桥接（本地 WebSocket 服务 + 桌面插件端）。
 bool get supportsKritaBridge => isSupportedDesktop;
