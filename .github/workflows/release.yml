@@ -260,9 +260,9 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      # 所有分发出去的 APK 必须是同一把密钥签的，否则应用内更新会在安装阶段被系统
-      # 以 INSTALL_FAILED_UPDATE_INCOMPATIBLE 拒绝。密钥来自 GitHub Secrets，
-      # 还原成 android/app/wof-release.jks 并写 android/key.properties（都不入库）。
+      # 鎵€鏈夊垎鍙戝嚭鍘荤殑 APK 蹇呴』鏄悓涓€鎶婂瘑閽ョ鐨勶紝鍚﹀垯搴旂敤鍐呮洿鏂颁細鍦ㄥ畨瑁呴樁娈佃绯荤粺
+      # 浠?INSTALL_FAILED_UPDATE_INCOMPATIBLE 鎷掔粷銆傚瘑閽ユ潵鑷?GitHub Secrets锛?
+      # 杩樺師鎴?android/app/wof-release.jks 骞跺啓 android/key.properties锛堥兘涓嶅叆搴擄級銆?
       - name: Restore signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -271,7 +271,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 未配置：构建会退回临时 debug 签名，装不上已发布版本"
+            echo "::error::ANDROID_KEYSTORE_BASE64 鏈厤缃細鏋勫缓浼氶€€鍥炰复鏃?debug 绛惧悕锛岃涓嶄笂宸插彂甯冪増鏈?
             exit 1
           fi
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/app/wof-release.jks
@@ -281,7 +281,7 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
             echo "storeFile=app/wof-release.jks"
           } > android/key.properties
-          echo "签名密钥已还原（$KEY_ALIAS）"
+          echo "绛惧悕瀵嗛挜宸茶繕鍘燂紙$KEY_ALIAS锛?
 
       - name: Generate localizations and code
         run: |
@@ -289,7 +289,7 @@ jobs:
           dart run tool/generate.dart
 
       - name: Build release APKs
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64
 
       - name: Verify APK signature
         run: |
@@ -302,8 +302,8 @@ jobs:
       - name: List artifacts
         run: ls -lh build/app/outputs/flutter-apk/
 
-      # 与 Windows 产物一起进入同一个 Release；文件名保留 ABI 字样，
-      # AndroidUpdateLogic.selectApkAsset 按它匹配设备 ABI，不能改名。
+      # 涓?Windows 浜х墿涓€璧疯繘鍏ュ悓涓€涓?Release锛涙枃浠跺悕淇濈暀 ABI 瀛楁牱锛?
+      # AndroidUpdateLogic.selectApkAsset 鎸夊畠鍖归厤璁惧 ABI锛屼笉鑳芥敼鍚嶃€?
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:

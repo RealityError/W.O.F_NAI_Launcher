@@ -30,8 +30,9 @@
     Use android-x64 for x86_64 emulators such as the MuMu emulator.
 
 .PARAMETER SplitAbi
-    Build one APK per ABI (armeabi-v7a, arm64-v8a, x86_64). When it is set
-    and -TargetPlatform is not passed explicitly, all three ABIs are built.
+    Build one APK per ABI. The bundled NAI Agent runtime and ONNX Runtime are
+    arm64-v8a only, so only arm64-v8a is produced (pass -TargetPlatform
+    android-x64 for an emulator debug build after staging x86_64 jniLibs).
 
 .PARAMETER OutputDir
     Directory that receives the built APKs, relative to the repository root
@@ -88,7 +89,7 @@ $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Pa
 # $PSBoundParameters is only meaningful in this script scope; capture it before
 # calling helper functions (inside a function it describes that function).
 $script:TargetPlatformExplicit = $PSBoundParameters.ContainsKey('TargetPlatform')
-$script:SupportedAbis = @('android-arm', 'android-arm64', 'android-x64')
+$script:SupportedAbis = @('android-arm64')
 $script:AbiApkNames = @{
     'android-arm'   = 'armeabi-v7a'
     'android-arm64' = 'arm64-v8a'
