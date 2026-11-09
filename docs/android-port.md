@@ -483,6 +483,34 @@ android {
 4. 校验：`keytool -list -v -keystore <jks>`，以及 `apksigner verify --print-certs <apk>`。
 5. 密钥、口令只放在本机或 CI Secret 中，不写进仓库、提交信息或日志。
 
+## 7.5 发布 Android APK（应用内更新的前提）
+
+Android 客户端只认 fork `RealityError/W.O.F_NAI_Launcher` 的 Release（见第 5 节第 10 条），
+而 `.github/workflows/release.yml` 只构建 Windows/macOS，**不会自动产出 APK**。每次要发新版时手动走一遍：
+
+1. 改 `pubspec.yaml` 的 `version`。**必须动 semver 段**（如 `2.3.1` → `2.4.0`），
+   只加 `+build` 号不会触发更新——更新检查比较的是 `versionName`；`+build` 只影响
+   `versionCode`（Android 覆盖安装要求递增）。
+2. 构建：`flutter build apk --release --split-per-abi`，产物在
+   `build/app/outputs/flutter-apk/app-<abi>-release.apk`。
+3. 生成校验和（应用内下载会核对大小与 SHA256）：
+
+```powershell
+Get-ChildItem *.apk | ForEach-Object {
+  "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+} | Set-Content -Encoding ascii checksums.txt
+```
+
+4. 建 Release 并上传三个 APK：`gh release create v2.4.0 -R RealityError/W.O.F_NAI_Launcher --notes-file <notes>.md app-*.apk checksums.txt`。
+   **文件名必须保留 ABI 字样**（`arm64-v8a` / `armeabi-v7a` / `x86_64`），
+   `AndroidUpdateLogic.selectApkAsset` 靠文件名匹配设备 ABI。
+5. 核对 GitHub 的 `digest` 与本地 SHA256 一致（`gh api repos/<owner>/<repo>/releases/latest --jq '.assets[] | {name,size,digest}'`）。
+   GitHub 会自动给上传资产算 digest，客户端优先用它做校验；manifest 不是必需的。
+
+> 2026-11-09 已按此流程发布 `v2.4.0`，并用应用自身的更新逻辑对线上 Release 做了端到端确认：
+> 三个 APK 均识别为 `android-apk`、`supportsInAppInstall` 为 true、arm64 与 x86_64 分别选到对应包，
+> 桌面分支仍选中上游的 Windows 包。
+
 ## 8. 相关文件与后续
 
 新增/相关文件：
@@ -503,7 +531,7 @@ android {
 
 后续工作（按优先级）：
 
-1. 正式签名 + 发布流程（第 7 节），并决定分发渠道（GitHub Release APK / 应用商店 AAB）；**Release 必须同时上传 Android APK 资产**（G17 应用内更新的前提，命名按 split-per-abi），且 Android 客户端读的是本 fork 的 Release。
+1. 正式签名 + 发布流程（第 7 节），并决定分发渠道（GitHub Release APK / 应用商店 AAB）；**Release 必须同时上传 Android APK 资产**（G17 应用内更新的前提，命名按 split-per-abi），具体上传步骤见第 7.5 节；Android 客户端读的是本 fork 的 Release。
 2. 资源瘦身与按需资产（AAB + Asset Delivery；数据库/语言包按需下载），控制 APK 体积。
 3. Android 端真实设备/模拟器回归：先按 3.9 手测应用内更新、分享出站/入站、后台生成通知、手机端布局；再在**有网络且提供 NovelAI 凭据**的环境补做登录、生图、图片保存/MediaStore 相册镜像的端到端验证，最后覆盖图库导入、ComfyUI 连接、3D 编辑器 WebView、剪贴板/拖放。
 4. 移动端交互收尾：生成页范围内的触控目标已统一到 ≥48dp，画布工具条已合并为单条；剩余分类选择 / 批量元数据等次要桌面对话框未做手机重排。`update_androidUnknownSources` 提示文案与 ARB key 一起补。
