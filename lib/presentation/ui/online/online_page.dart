@@ -2,6 +2,9 @@ import 'package:nai_launcher/core/utils/primary_activator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_sheet.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_popover.dart';
 import 'online_contract.dart';
@@ -322,61 +325,103 @@ class _OnlineGalleryPageState extends State<OnlineGalleryPage>
             onWorkChanged: openViewer,
             child: ColoredBox(
               color: c.bg,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final w = constraints.maxWidth;
-                  var sidebar = data.sidebarOpen;
-                  var inspector = data.inspectorOpen && !_picking && !login;
-                  if (inspector &&
-                      w -
-                              (sidebar ? OnlineGalleryPage.sidebarWidth : 0) -
-                              OnlineGalleryPage.inspectorWidth <
-                          OnlineGalleryPage.minWall) {
-                    inspector = false;
-                  }
-                  if (sidebar &&
-                      w - OnlineGalleryPage.sidebarWidth <
-                          OnlineGalleryPage.minWall) {
-                    sidebar = false;
-                  }
-                  // 用 Listener：子控件赢下手势时也能把键盘焦点收回页面（Esc / 方向键）。
-                  return Listener(
-                    behavior: HitTestBehavior.translucent,
-                    onPointerDown: (_) {
-                      if (!_typing()) _focus.requestFocus();
-                    },
-                    child: Row(
+              child: usesMobileLayout
+                  // 手机端：单列。左栏收进底部弹层，检查器挂在查看器里。
+                  ? Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (sidebar) const OnlineSidebar(),
-                        Expanded(
-                          child: Column(
+                        OnlineMobileToolbar(login: login),
+                        if (login)
+                          const Expanded(child: OnlineLoginState())
+                        else ...[
+                          const OnlineFilterRow(),
+                          const Expanded(child: OnlineWallArea()),
+                        ],
+                      ],
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final w = constraints.maxWidth;
+                        var sidebar = data.sidebarOpen;
+                        var inspector =
+                            data.inspectorOpen && !_picking && !login;
+                        if (inspector &&
+                            w -
+                                    (sidebar
+                                        ? OnlineGalleryPage.sidebarWidth
+                                        : 0) -
+                                    OnlineGalleryPage.inspectorWidth <
+                                OnlineGalleryPage.minWall) {
+                          inspector = false;
+                        }
+                        if (sidebar &&
+                            w - OnlineGalleryPage.sidebarWidth <
+                                OnlineGalleryPage.minWall) {
+                          sidebar = false;
+                        }
+                        // 用 Listener：子控件赢下手势时也能把键盘焦点收回页面（Esc / 方向键）。
+                        return Listener(
+                          behavior: HitTestBehavior.translucent,
+                          onPointerDown: (_) {
+                            if (!_typing()) _focus.requestFocus();
+                          },
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              OnlineToolbar(
-                                inspectorShown: inspector,
-                                sidebarShown: sidebar,
-                                login: login,
+                              if (sidebar) const OnlineSidebar(),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    OnlineToolbar(
+                                      inspectorShown: inspector,
+                                      sidebarShown: sidebar,
+                                      login: login,
+                                    ),
+                                    if (login)
+                                      const Expanded(child: OnlineLoginState())
+                                    else ...[
+                                      const OnlineFilterRow(),
+                                      const Expanded(child: OnlineWallArea()),
+                                    ],
+                                  ],
+                                ),
                               ),
-                              if (login)
-                                const Expanded(child: OnlineLoginState())
-                              else ...[
-                                const OnlineFilterRow(),
-                                const Expanded(child: OnlineWallArea()),
-                              ],
+                              if (inspector) const OnlineInspector(),
                             ],
                           ),
-                        ),
-                        if (inspector) const OnlineInspector(),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// 手机端左栏（来源 / 浏览方式 / 收藏子集 / 黑名单）：放进底部弹层整宽展示。
+///
+/// 弹层是独立路由，拿不到页面里的 [OnlineScope]，所以要显式把同一份
+/// data / actions / controller 再包一层；桌面左栏与收起逻辑不受影响。
+Future<void> showOnlineMobileSidebar(BuildContext context) {
+  final scope = OnlineScope.of(context);
+  final l10n = context.l10n;
+  final height = MediaQuery.sizeOf(context).height * 0.78;
+  return showMobileSheet<void>(
+    context: context,
+    title: l10n.online_title,
+    heightFactor: 0.9,
+    builder: (_) => SizedBox(
+      height: height,
+      child: OnlineScope(
+        data: scope.data,
+        actions: scope.actions,
+        controller: scope.controller,
+        child: const OnlineSidebar(width: double.infinity, inSheet: true),
+      ),
+    ),
+  );
 }

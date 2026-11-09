@@ -33,7 +33,13 @@ UiPopoverAnchor _below(BuildContext ctx, {bool right = false}) {
 /// 单选：预览图 · 药丸 + 改名 · 插入 / 收藏 / 复制 / 编辑 · 内容 · 附带参数 · 外观 · 归类 · 使用与来源。
 /// 多选：选中的药丸 · 合计 · 批量操作 · 拖放提示。
 class BlocksInspector extends StatelessWidget {
-  const BlocksInspector({super.key});
+  const BlocksInspector({
+    super.key,
+    this.width = BlocksLibraryPage.inspectorWidth,
+  });
+
+  /// 手机端底部弹层里传 `double.infinity` 整宽展示。
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +53,7 @@ class BlocksInspector extends StatelessWidget {
 
     return Container(
       key: const Key('blocks-inspector'),
-      width: BlocksLibraryPage.inspectorWidth,
+      width: width,
       decoration: BoxDecoration(
         color: c.panel,
         border: Border(left: BorderSide(color: c.line)),

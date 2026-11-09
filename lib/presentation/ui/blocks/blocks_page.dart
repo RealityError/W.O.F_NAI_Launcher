@@ -3,17 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
+import '../../mobile/mobile_sheet.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_dialog.dart';
 import '../kit/ui_glyph.dart';
+import '../kit/ui_inputs.dart';
 import '../kit/ui_lib_controls.dart';
 import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
 import '../kit/ui_text.dart';
 import 'blocks_contract.dart';
 import 'blocks_edit.dart';
+import 'blocks_format.dart';
 import 'blocks_inspector.dart';
 import 'blocks_nav.dart';
+import 'blocks_rag_badge.dart';
 import 'blocks_wall.dart';
 
 /// 页面内共享：数据、回调、页面控制器（多选、菜单、弹窗、卡片大小拖动中的值）。
@@ -342,6 +348,42 @@ class BlocksLibraryPageState extends State<BlocksLibraryPage> {
               child: LayoutBuilder(
                 builder: (context, box) {
                   final w = box.maxWidth;
+                  if (usesMobileLayout) {
+                    // 手机端：单列。左栏、详情都收进底部弹层；卡片 / 行单击开详情。
+                    return Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (_) {
+                        if (!_typing()) _focus.requestFocus();
+                      },
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: Stack(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const BlocksMobileToolbar(),
+                                if (data.libraryEmpty)
+                                  const Expanded(child: BlocksEmpty())
+                                else ...[
+                                  const BlocksFilterRow(),
+                                  const Expanded(child: BlocksWall()),
+                                ],
+                              ],
+                            ),
+                            if (_picking && _picked.isNotEmpty)
+                              const Positioned(
+                                left: 12,
+                                right: 12,
+                                bottom: 12,
+                                child: BlocksSelectionBar(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   var sidebar = data.sidebarOpen;
                   var inspector = data.inspectorOpen && !data.libraryEmpty;
                   if (inspector &&
@@ -408,6 +450,169 @@ class BlocksLibraryPageState extends State<BlocksLibraryPage> {
       ),
     );
   }
+}
+
+/// 手机端工具栏 52：左栏入口 + 搜索 + 视图循环 + 更多。
+///
+/// 桌面工具栏里的排序下拉、范围标题、计数、详情开关在手机上收进底部弹层与
+/// 「更多」菜单；搜索始终在第一位。
+class BlocksMobileToolbar extends StatelessWidget {
+  const BlocksMobileToolbar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l10n = context.l10n;
+    final scope = BlocksPageScope.of(context);
+    final d = scope.data;
+    final a = scope.actions;
+    final ctrl = scope.controller;
+    final empty = d.libraryEmpty;
+    final view = d.view;
+    return Container(
+      key: const Key('blocks-toolbar-mobile'),
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        spacing: 4,
+        children: [
+          UiIconBox(
+            key: const Key('blocks-mobile-nav'),
+            glyph: UiGlyphs.doubleRight,
+            glyphSize: 17,
+            size: 44,
+            tooltip: l10n.blocks_expandSidebar,
+            onTap: () => showBlocksNavSheet(context),
+          ),
+          if (!empty)
+            Expanded(
+              child: KeyedSubtree(
+                key: const Key('blocks-search'),
+                child: UiSearchField(
+                  key: ValueKey(d.scope),
+                  value: d.query,
+                  hint: l10n.blocks_searchLibrary,
+                  focusNode: ctrl.searchFocus,
+                  enabled: !empty,
+                  onChanged: a.onQueryChanged,
+                  trailing: d.rag.enabled ? BlocksRagBadge(data: d.rag) : null,
+                ),
+              ),
+            )
+          else
+            const Spacer(),
+          if (!empty)
+            UiIconBox(
+              key: const Key('blocks-mobile-view'),
+              glyph: switch (view) {
+                BlocksView.masonry => UiGlyphs.masonryMedium,
+                BlocksView.grid => UiGlyphs.grid,
+                BlocksView.list => UiGlyphs.list,
+              },
+              glyphSize: 17,
+              size: 44,
+              tooltip: switch (view) {
+                BlocksView.masonry => l10n.blocks_viewMasonry,
+                BlocksView.grid => l10n.blocks_viewGrid,
+                BlocksView.list => l10n.blocks_viewList,
+              },
+              onTap: () => a.onViewChanged(switch (view) {
+                BlocksView.masonry => BlocksView.grid,
+                BlocksView.grid => BlocksView.list,
+                BlocksView.list => BlocksView.masonry,
+              }),
+            ),
+          UiIconBox(
+            key: const Key('blocks-mobile-more'),
+            glyph: UiGlyphs.more,
+            glyphSize: 17,
+            size: 44,
+            tooltip: l10n.blocks_more,
+            onTap: () => showMobileContextMenu(
+              context,
+              title: blocksScopeTitle(context, d),
+              items: [
+                MobileMenuItem(
+                  label: l10n.blocks_newBlock,
+                  icon: Icons.add,
+                  onTap: () => ctrl.openEdit(null),
+                ),
+                MobileMenuItem(
+                  label: ctrl.picking
+                      ? l10n.blocks_multiDone
+                      : l10n.blocks_multiSelect,
+                  icon: Icons.checklist,
+                  onTap: () => ctrl.setPicking(!ctrl.picking),
+                ),
+                for (final s in BlocksSort.values)
+                  MobileMenuItem(
+                    label: BlocksFormat.sort(context, s),
+                    icon: d.sort == s ? Icons.check : null,
+                    onTap: () => a.onSortChanged(s, descending: d.descending),
+                  ),
+                if (a.onGroupByFolderChanged != null)
+                  MobileMenuItem(
+                    label: l10n.blocks_groupByFolder,
+                    icon: d.groupByFolder ? Icons.check : null,
+                    onTap: () => a.onGroupByFolderChanged!(!d.groupByFolder),
+                  ),
+                MobileMenuItem(
+                  label: l10n.blocks_details,
+                  icon: Icons.info_outline,
+                  enabled: d.selectedId != null,
+                  onTap: () => showBlocksDetailSheet(context),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端左栏：整宽底部弹层；弹层是独立路由，显式补一层 [BlocksPageScope]。
+Future<void> showBlocksNavSheet(BuildContext context) {
+  final scope = BlocksPageScope.of(context);
+  final height = MediaQuery.sizeOf(context).height * 0.78;
+  return showMobileSheet<void>(
+    context: context,
+    title: context.l10n.blocks_title,
+    heightFactor: 0.9,
+    builder: (_) => SizedBox(
+      height: height,
+      child: BlocksPageScope(
+        data: scope.data,
+        actions: scope.actions,
+        controller: scope.controller,
+        child: const BlocksNav(width: double.infinity, inSheet: true),
+      ),
+    ),
+  );
+}
+
+/// 手机端详情：整宽底部弹层里放右侧检查器（单块 / 多选两种内容都在）。
+Future<void> showBlocksDetailSheet(BuildContext context) {
+  final scope = BlocksPageScope.of(context);
+  final height = MediaQuery.sizeOf(context).height * 0.8;
+  return showMobileSheet<void>(
+    context: context,
+    title: context.l10n.blocks_details,
+    heightFactor: 0.9,
+    builder: (_) => SizedBox(
+      height: height,
+      child: BlocksPageScope(
+        data: scope.data,
+        actions: scope.actions,
+        controller: scope.controller,
+        child: const BlocksInspector(width: double.infinity),
+      ),
+    ),
+  );
 }
 
 /// 删除确认：一个块写名字，多个写数量；提醒提示词里的实例会变成“块已删除”。

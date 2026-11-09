@@ -4,6 +4,7 @@ import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 
 import '../../../core/autocomplete/completion_models.dart';
 import '../../../core/utils/tag_normalizer.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/autocomplete/tag_category_visuals.dart';
 
 /// Two readable lines with a stable action slot, including when it is hidden.
@@ -49,8 +50,10 @@ class _WikiTagRowState extends State<WikiTagRow> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final tag = widget.candidate.canonicalTag;
+    // 手机端没有悬停：书签按钮常显，触控区也放到 44。
+    final mobile = usesMobileLayout;
     final showBookmark =
-        widget.selected || widget.bookmarked || _hovered || _focused;
+        mobile || widget.selected || widget.bookmarked || _hovered || _focused;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5),
       child: MouseRegion(
@@ -170,8 +173,8 @@ class _WikiTagRowState extends State<WikiTagRow> {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: 32,
-                    height: 36,
+                    width: mobile ? 44 : 32,
+                    height: mobile ? 44 : 36,
                     child: showBookmark
                         ? IconButton(
                             key: ValueKey('wiki-row-bookmark-$tag'),

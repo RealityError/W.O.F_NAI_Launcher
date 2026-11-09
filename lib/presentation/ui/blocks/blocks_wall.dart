@@ -8,6 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../../widgets/common/workspace_text_scale_scope.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
@@ -32,7 +34,23 @@ var _lastTapAt = DateTime(0);
 
 /// 单击选中、300ms 内再点同一张 = 编辑；多选中或按着 Ctrl / Shift 时切换勾选。
 /// 不用 onDoubleTap：那会让单击和卡片上的按钮都等 300ms 才响应。
-void _tapBlock(BlocksLibraryPageState ctrl, BlocksLibraryActions a, String id) {
+///
+/// 手机端改成「单击 = 选中并打开全屏详情弹层」，操作全部在详情与长按菜单里。
+void _tapBlock(
+  BuildContext context,
+  BlocksLibraryPageState ctrl,
+  BlocksLibraryActions a,
+  String id,
+) {
+  if (usesMobileLayout) {
+    if (ctrl.picking) {
+      ctrl.togglePick(id);
+      return;
+    }
+    a.onSelect(id);
+    showBlocksDetailSheet(context);
+    return;
+  }
   final hw = HardwareKeyboard.instance;
   if (ctrl.picking || hw.isPrimaryPressed || hw.isShiftPressed) {
     ctrl.togglePick(id);
@@ -45,6 +63,25 @@ void _tapBlock(BlocksLibraryPageState ctrl, BlocksLibraryActions a, String id) {
   _lastTapAt = now;
   again ? ctrl.openEdit(id) : a.onSelect(id);
 }
+
+/// 桌面右键菜单 → 手机长按底部菜单。
+void _showMobileMenu(
+  BuildContext context,
+  List<UiMenuItem> items,
+  String? title,
+) => showMobileContextMenu(
+  context,
+  title: title,
+  items: [
+    for (final it in items)
+      MobileMenuItem(
+        label: it.label,
+        onTap: it.onTap,
+        destructive: it.danger,
+        enabled: it.enabled,
+      ),
+  ],
+);
 
 /// “含负面”的图标：圆里一横。
 const _negGlyph = 'M12 21a9 9 0 100-18 9 9 0 000 18zM8 12h8';
@@ -358,40 +395,58 @@ class BlocksFilterRow extends StatelessWidget {
       );
     }
 
+    final chips = <Widget>[
+      UiFilterChip(
+        key: const Key('blocks-quick-all'),
+        label: l10n.blocks_filterAll,
+        selected: d.quick.isEmpty,
+        onTap: () => a.onQuickChanged(const {}),
+      ),
+      chip(BlocksQuick.image, UiGlyphs.picture, l10n.blocks_quickImage),
+      chip(BlocksQuick.negative, _negGlyph, l10n.blocks_quickNegative),
+      chip(BlocksQuick.params, UiGlyphs.bolt, l10n.blocks_quickParams),
+    ];
+
     return Container(
       key: const Key('blocks-filter-row'),
       height: 46,
-      padding: const EdgeInsets.only(left: 18, right: 16),
-      child: Row(
-        spacing: 6,
-        children: [
-          UiFilterChip(
-            key: const Key('blocks-quick-all'),
-            label: l10n.blocks_filterAll,
-            selected: d.quick.isEmpty,
-            onTap: () => a.onQuickChanged(const {}),
-          ),
-          chip(BlocksQuick.image, UiGlyphs.picture, l10n.blocks_quickImage),
-          chip(BlocksQuick.negative, _negGlyph, l10n.blocks_quickNegative),
-          chip(BlocksQuick.params, UiGlyphs.bolt, l10n.blocks_quickParams),
-          const Spacer(),
-          if (d.view != BlocksView.list) ...[
-            Text(l10n.blocks_cardSize, style: UiText.sans(12, color: c.faint)),
-            SizedBox(
-              key: const Key('blocks-card-size'),
-              width: 88,
-              child: UiSlider(
-                value: ctrl.cardSize,
-                onChanged: ctrl.setLiveSize,
-                onChangeEnd: (v) {
-                  ctrl.setLiveSize(null);
-                  a.onCardSizeChanged(v);
-                },
-              ),
-            ),
-          ],
-        ],
+      padding: EdgeInsets.only(
+        left: usesMobileLayout ? 0 : 18,
+        right: usesMobileLayout ? 0 : 16,
       ),
+      // 手机端筛选条横向滚动（英文 / 日文标签会超出 360dp）；桌面端保持一行。
+      child: usesMobileLayout
+          ? SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(spacing: 6, children: chips),
+            )
+          : Row(
+              spacing: 6,
+              children: [
+                ...chips,
+                const Spacer(),
+                // 桌面网格视图右侧是「卡片大小」滑杆。
+                if (d.view != BlocksView.list) ...[
+                  Text(
+                    l10n.blocks_cardSize,
+                    style: UiText.sans(12, color: c.faint),
+                  ),
+                  SizedBox(
+                    key: const Key('blocks-card-size'),
+                    width: 88,
+                    child: UiSlider(
+                      value: ctrl.cardSize,
+                      onChanged: ctrl.setLiveSize,
+                      onChangeEnd: (v) {
+                        ctrl.setLiveSize(null);
+                        a.onCardSizeChanged(v);
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
     );
   }
 }
@@ -805,7 +860,7 @@ class _CardState extends State<_Card> {
     final picked = ctrl.picked.contains(b.id);
     final selected = !picking && d.selectedId == b.id;
 
-    void tap() => _tapBlock(ctrl, a, b.id);
+    void tap() => _tapBlock(context, ctrl, a, b.id);
 
     Widget hoverBtn(
       String glyph,
@@ -821,7 +876,7 @@ class _CardState extends State<_Card> {
       builder: (context, h) => Tooltip(
         message: tip,
         child: Container(
-          height: 26,
+          height: usesMobileLayout ? 40 : 26,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
             color: h ? Colors.white.withValues(alpha: .16) : null,
@@ -929,14 +984,14 @@ class _CardState extends State<_Card> {
                     : null,
               ),
             ),
-          if (_hover && !picking)
+          if ((_hover || usesMobileLayout) && !picking)
             Positioned(
               left: 8,
               right: 8,
               bottom: 8,
               child: Container(
                 key: Key('blocks-hoverbar-${b.id}'),
-                height: 32,
+                height: usesMobileLayout ? 44 : 32,
                 decoration: BoxDecoration(
                   color: const Color(0xBD141414),
                   borderRadius: BorderRadius.circular(8),
@@ -948,7 +1003,7 @@ class _CardState extends State<_Card> {
                       UiGlyphs.plus,
                       l10n.blocks_insertToPrompt,
                       () => a.onInsert([b.id]),
-                      label: l10n.blocks_insert,
+                      label: usesMobileLayout ? null : l10n.blocks_insert,
                       key: Key('blocks-insert-${b.id}'),
                     ),
                     hoverBtn(
@@ -1065,6 +1120,10 @@ class _CardState extends State<_Card> {
       child: GestureDetector(
         key: Key('blocks-card-${b.id}'),
         onTap: tap,
+        onLongPress: usesMobileLayout
+            ? () =>
+                  _showMobileMenu(context, blocksCardMenu(context, b), b.title)
+            : null,
         onSecondaryTapUp: (e) {
           if (!picking) a.onSelect(b.id);
           ctrl.openMenu(
@@ -1434,6 +1493,9 @@ class _Row extends StatelessWidget {
     final mono = UiText.mono(12, color: c.muted);
     return GestureDetector(
       key: Key('blocks-row-${b.id}'),
+      onLongPress: usesMobileLayout
+          ? () => _showMobileMenu(context, blocksCardMenu(context, b), b.title)
+          : null,
       onSecondaryTapUp: (e) {
         a.onSelect(b.id);
         ctrl.openMenu(
@@ -1449,7 +1511,7 @@ class _Row extends StatelessWidget {
           count: picked ? ctrl.picked.length : 1,
         ),
         child: UiPressable(
-          onTap: () => _tapBlock(ctrl, a, b.id),
+          onTap: () => _tapBlock(context, ctrl, a, b.id),
           builder: (context, hover) => Container(
             decoration: BoxDecoration(
               color: on ? c.control : (hover ? c.hover : null),
@@ -1633,6 +1695,128 @@ class BlocksSelectionBar extends StatelessWidget {
         },
       ),
     );
+    // 手机端：桌面那排「收藏 / 移到 / 标签 / 调色板 / 导出 / 删除」在 360dp 下溢出，
+    // 改成整宽一行：计数 + 收藏 + 更多（其余操作进底部菜单）+ 关闭。
+    if (usesMobileLayout) {
+      Widget mbtn(
+        String key,
+        String glyph,
+        String tip,
+        VoidCallback? onTap, {
+        bool danger = false,
+      }) => UiPressable(
+        key: Key('blocks-sel-$key'),
+        onTap: onTap,
+        builder: (context, hover) => Tooltip(
+          message: tip,
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: hover ? c.bg.withValues(alpha: .12) : null,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: UiGlyph(
+              glyph,
+              size: 17,
+              filled: key == 'favorite' && allFav,
+              color: danger ? const Color(0xFFFF8A8A) : c.bg,
+            ),
+          ),
+        ),
+      );
+      return Container(
+        key: const Key('blocks-selection-bar'),
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 4, 6, 4),
+        decoration: BoxDecoration(
+          color: c.ink,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: c.dark ? .5 : .18),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                l10n.blocks_selectedN(ids.length),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: UiText.sans(13, weight: FontWeight.w600, color: c.bg),
+              ),
+            ),
+            const Spacer(),
+            mbtn(
+              'favorite',
+              UiGlyphs.star,
+              allFav ? l10n.blocks_unfavorite : l10n.blocks_favorite,
+              () => a.onSetFavorite(ids, !allFav),
+            ),
+            mbtn(
+              'more',
+              UiGlyphs.more,
+              l10n.blocks_more,
+              () => showMobileContextMenu(
+                context,
+                title: l10n.blocks_selectedN(ids.length),
+                items: [
+                  MobileMenuItem(
+                    label: l10n.blocks_moveTo,
+                    icon: Icons.drive_file_move_outline,
+                    onTap: () => _showMobileMenu(
+                      context,
+                      blocksMoveMenu(context, ids),
+                      l10n.blocks_moveTo,
+                    ),
+                  ),
+                  MobileMenuItem(
+                    label: l10n.blocks_tags,
+                    icon: Icons.sell_outlined,
+                    enabled: d.tags.isNotEmpty,
+                    onTap: () => _showMobileMenu(context, [
+                      for (final t in d.tags)
+                        UiMenuItem(
+                          label: t.tag.name,
+                          glyph: UiGlyphs.tag,
+                          onTap: () => a.onAddTag(ids, t.tag),
+                        ),
+                    ], l10n.blocks_tags),
+                  ),
+                  MobileMenuItem(
+                    label: l10n.blocks_addToPalette,
+                    icon: Icons.dashboard_customize_outlined,
+                    onTap: () => a.onAddToPalette(ids),
+                  ),
+                  MobileMenuItem(
+                    label: l10n.blocks_export,
+                    icon: Icons.upload_outlined,
+                    onTap: () => a.onExport(ids),
+                  ),
+                  MobileMenuItem(
+                    label: l10n.blocks_delete,
+                    icon: Icons.delete_outline,
+                    destructive: true,
+                    onTap: () => ctrl.confirmDelete(ids),
+                  ),
+                ],
+              ),
+            ),
+            mbtn(
+              'close',
+              UiGlyphs.close,
+              l10n.blocks_close,
+              () => ctrl.setPicking(false),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       key: const Key('blocks-selection-bar'),
       padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),

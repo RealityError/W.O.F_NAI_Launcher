@@ -7,6 +7,7 @@ import '../../core/utils/app_logger.dart';
 import '../../core/utils/localization_extension.dart';
 import '../../data/services/generation_foreground_service.dart';
 import '../providers/image_generation_provider.dart';
+import 'notification_permission_wiring.dart';
 
 /// 生成中把 App 挂到 Android 前台服务上：切后台不被系统回收，通知栏显示进度，
 /// 完成 / 失败 / 取消时用一条普通通知告诉用户。
@@ -17,6 +18,7 @@ class GenerationBackgroundSync {
   GenerationBackgroundSync._();
 
   static bool _attached = false;
+  static WidgetRef? _ref;
   static ProviderSubscription<ImageGenerationState>? _subscription;
   static double _lastProgress = -1;
   static int _lastCurrentImage = -1;
@@ -28,6 +30,7 @@ class GenerationBackgroundSync {
   static void attach(WidgetRef ref) {
     if (!GenerationForegroundService.isSupported || _attached) return;
     _attached = true;
+    _ref = ref;
     _subscription = ref.listenManual<ImageGenerationState>(
       imageGenerationNotifierProvider,
       (previous, next) => updateForState(previous, next),
@@ -40,6 +43,7 @@ class GenerationBackgroundSync {
     _subscription?.close();
     _subscription = null;
     _attached = false;
+    _ref = null;
     _lastProgress = -1;
     _lastCurrentImage = -1;
   }
@@ -49,6 +53,7 @@ class GenerationBackgroundSync {
     _subscription?.close();
     _subscription = null;
     _attached = false;
+    _ref = null;
     _lastProgress = -1;
     _lastCurrentImage = -1;
   }
@@ -73,6 +78,12 @@ class GenerationBackgroundSync {
         // 启动时记住当前进度/张数，避免首帧立刻再刷一条重复通知。
         _lastProgress = next.progress;
         _lastCurrentImage = next.currentImage;
+        // Android 13+：只在真正开始生成（即将用前台服务跑后台）时申请
+        // 通知权限；拒绝后不会重复申请，详见 NotificationPermissionWiring。
+        final ref = _ref;
+        if (ref != null) {
+          NotificationPermissionWiring.onGenerationStarted(ref);
+        }
         unawaited(
           GenerationForegroundService.start(
             title: currentL10n.generation_backgroundRunningTitle,

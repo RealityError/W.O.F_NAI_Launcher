@@ -647,6 +647,8 @@
   "layer_rename": "이름 변경",
   "layer_moveUp": "위로 이동",
   "layer_moveDown": "아래로 이동",
+  "common_moveUp": "위로 이동",
+  "common_moveDown": "아래로 이동",
   "vibe_title": "Vibe 트랜스퍼",
   "vibe_description": "이미지는 바꾸고, 분위기는 그대로.",
   "vibe_addFromFileTitle": "파일에서 추가",
@@ -3175,6 +3177,24 @@
   "@tips_studio_guide_8": {
     "description": "settings_warnHighAnlasCostTitle."
   },
+  "tips_studio_mobile_1": "휴대폰에서는 한 손으로 생성할 수 있어요. 프롬프트를 쓰고 생성을 누르면 이미지가 캔버스에 배치별로 쌓입니다. 모델·크기·장수는 하단 도구 모음에서 바꿀 수 있어요.",
+  "@tips_studio_mobile_1": {
+    "description": "Touch counterpart of tips_studio_guide_1 for the studio welcome card."
+  },
+  "tips_studio_mobile_2": "캔버스의 이미지를 길게 누르면 저장·복사·공유와 img2img·Vibe·캐릭터 참조로 보내기가 나옵니다.",
+  "@tips_studio_mobile_2": {
+    "description": "Mobile long-press menu; same actions as the desktop right-click menu."
+  },
+  "tips_studio_mobile_3": "프롬프트 오버레이 오른쪽 위의 라이브러리 아이콘에서 프롬프트 블록·Vibe·정밀 참조를 열 수 있어요. 항목을 탭하면 현재 프롬프트에 삽입됩니다.",
+  "@tips_studio_mobile_3": {
+    "description": "Mobile resource library entry in the editor overlay header."
+  },
+  "prompt_replaceAllMobile": "모두 바꾸기",
+  "autocomplete_relatedTagsSubtitleMobile": "프롬프트에서 로컬 태그를 검색하고 관련 태그를 확인합니다",
+  "prompt_cooccurrenceRecommendationSubtitleMobile": "로컬 태그를 검색하고 관련 태그를 확인",
+  "settings_outputViewer_canvasDescriptionMobile": "NAI5 스타일 무한 캔버스: 생성 이미지를 배치별로 펼칩니다. 핀치로 확대, 드래그로 이동.",
+  "editor_sourcePointPick": "소스 지정",
+  "editor_sourcePointPicking": "캔버스를 탭해 소스 지점을 지정하세요",
   "tips_studio_trick_1": "시드가 이번에 무엇을 뽑을지 정해요. 파라미터와 시드가 같으면 같은 그림이 나와요. 명작을 다시 뽑고 싶다면 시드도 같이 챙기고, 운을 바꾸고 싶다면 그 시드는 그만 쳐다보세요.",
   "@tips_studio_trick_1": {
     "description": "NovelAI output is deterministic for identical parameters and seed."
@@ -7505,6 +7525,8 @@
     }
   },
   "imageViewer_yesterday": "어제",
+  "explore_mobileEditor": "편집",
+  "explore_mobileResults": "결과",
   "explore_back": "화풍 탐색",
   "explore_close": "닫기",
   "explore_cancel": "취소",
@@ -11121,6 +11143,7 @@
   "mp_filter": "필터",
   "mp_manualAdd": "직접 추가",
   "mp_dragHint": "드래그로 기능 배정 기본 순서 결정",
+  "mp_reorderHintMobile": "모델 오른쪽의 위로 이동 / 아래로 이동으로 기능 배정 기본 순서를 변경",
   "mp_noModels": "모델 없음",
   "mp_noModelsSub": "카탈로그에서 추가하거나 모델 ID 입력",
   "mp_manualHint": "모델 ID 입력 후 Enter",
@@ -11631,5 +11654,7 @@
   "set_agMcpTest": "연결 테스트",
   "set_agMcpJsonOne": "MCP 서버를 한 번에 하나씩 가져오세요.",
   "set_agMcpPending": "다음 턴에 적용",
-  "ag_tool_agent_manage": "Agent 관리"
+  "ag_tool_agent_manage": "Agent 관리",
+  "generation_notificationPermissionDenied": "알림이 허용되지 않아 백그라운드 생성 진행 상황과 완료 알림이 표시되지 않습니다.",
+  "generation_notificationGoToSettings": "설정 열기"
 }

@@ -12,14 +12,24 @@ abstract final class OnlineLayout {
   /// 墙的内边距：左右 18、上 2、下 18。
   static const padding = EdgeInsets.fromLTRB(18, 2, 18, 18);
 
+  /// 手机端墙的内边距更窄（左右 12），把宽度让给两张卡片。
+  static const mobilePadding = EdgeInsets.fromLTRB(12, 2, 12, 18);
+
+  static EdgeInsets paddingFor(bool mobile) => mobile ? mobilePadding : padding;
+
   static double targetWidth(OnlineCardSize size) => switch (size) {
     OnlineCardSize.small => 160,
     OnlineCardSize.medium => 210,
     OnlineCardSize.large => 280,
   };
 
-  static int columns(double width, OnlineCardSize size) =>
-      math.max(1, ((width + gap) / (targetWidth(size) + gap)).ceil());
+  /// 手机端最小目标宽 165：小卡片也不至于在 360dp 里塞成三列。
+  static int columns(double width, OnlineCardSize size, {bool mobile = false}) {
+    final target = mobile
+        ? math.max(targetWidth(size), 165)
+        : targetWidth(size);
+    return math.max(1, ((width + gap) / (target + gap)).ceil());
+  }
 
   /// 图片高：按原图比例，夹在 80 到 宽 × 2.5 之间。
   static double imageHeight(double width, double aspect) =>

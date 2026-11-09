@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -560,6 +562,131 @@ class OnlineSelectionBar extends StatelessWidget {
         .where((w) => ctrl.picked.contains(w.key))
         .fold<int>(0, (n, w) => n + w.mediaCount);
     final fg = c.bg;
+
+    // 手机端：桌面那排「计数 + 全选 / 反选 + 收藏 + 下载 + 复制 + 退出」在 360dp
+    // 下必然横向溢出，改成整宽一行：计数 + 图标按钮，全选 / 反选进「更多」菜单。
+    if (usesMobileLayout) {
+      Widget action(
+        Key key,
+        String glyph,
+        String tooltip,
+        VoidCallback? onTap, {
+        bool primary = false,
+      }) => UiPressable(
+        key: key,
+        onTap: onTap,
+        builder: (context, hover) => Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: primary
+                ? (hover ? Color.lerp(c.brand, Colors.black, .08) : c.brand)
+                : (hover ? fg.withValues(alpha: .12) : null),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: UiGlyph(glyph, size: 18, color: primary ? Colors.white : fg),
+        ),
+      );
+      return Container(
+        key: const Key('online-selection-bar'),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+        decoration: BoxDecoration(
+          color: c.ink,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: c.dark ? .45 : .14),
+              blurRadius: 26,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                l10n.online_selCount(keys.length),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: UiText.sans(13, weight: FontWeight.w600, color: fg),
+              ),
+            ),
+            const Spacer(),
+            action(
+              const Key('online-sel-more'),
+              UiGlyphs.more,
+              l10n.online_selAll,
+              () => showMobileContextMenu(
+                context,
+                title: l10n.online_multiSelect,
+                items: [
+                  MobileMenuItem(
+                    label: l10n.online_selAll,
+                    icon: Icons.select_all,
+                    onTap: () =>
+                        ctrl.setPicked(data.list.items.map((w) => w.key)),
+                  ),
+                  MobileMenuItem(
+                    label: l10n.online_selInvert,
+                    icon: Icons.swap_horiz,
+                    onTap: () => ctrl.setPicked([
+                      for (final w in data.list.items)
+                        if (!ctrl.picked.contains(w.key)) w.key,
+                    ]),
+                  ),
+                ],
+              ),
+            ),
+            if (s.favorites && s.favoritesWritable)
+              Builder(
+                builder: (ctx) => action(
+                  const Key('online-sel-favorite'),
+                  UiGlyphs.heartLib,
+                  l10n.online_favoriteTo,
+                  keys.isEmpty
+                      ? null
+                      : s.favoritesLocal
+                      ? () {
+                          final box = ctx.findRenderObject()! as RenderBox;
+                          ctrl.openFavoriteTo(
+                            UiPopoverAnchor(
+                              box.localToGlobal(const Offset(0, -16)),
+                              alignBottom: true,
+                            ),
+                            keys,
+                          );
+                        }
+                      : () {
+                          ctrl.setPicking(false);
+                          a.onFavoriteMany(keys, null);
+                        },
+                  primary: true,
+                ),
+              ),
+            action(
+              const Key('online-sel-download'),
+              UiGlyphs.download,
+              l10n.online_downloadN(images),
+              keys.isEmpty ? null : () => a.onDownload(keys, all: true),
+            ),
+            action(
+              const Key('online-sel-copy'),
+              UiGlyphs.copy,
+              s.promptQuery ? l10n.online_copyPrompt : l10n.online_copyTags,
+              keys.isEmpty ? null : () => a.onCopyPrompt(keys),
+            ),
+            action(
+              const Key('online-sel-exit'),
+              UiGlyphs.close,
+              l10n.online_exitMulti,
+              () => ctrl.setPicking(false),
+            ),
+          ],
+        ),
+      );
+    }
 
     Widget item(
       Widget content, {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_dialog.dart';
@@ -166,11 +167,13 @@ class RefsDetailDialog extends StatelessWidget {
                     false,
                   ),
                   const SizedBox(width: 4),
-                  const UiKeycaps(['←', '→'], style: UiKeycapStyle.tip),
-                  Text(
-                    l10n.refs_switch,
-                    style: UiText.sans(11, color: const Color(0xFFAAAAAA)),
-                  ),
+                  if (!usesMobileLayout) ...[
+                    const UiKeycaps(['←', '→'], style: UiKeycapStyle.tip),
+                    Text(
+                      l10n.refs_switch,
+                      style: UiText.sans(11, color: const Color(0xFFAAAAAA)),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -189,7 +192,7 @@ class RefsDetailDialog extends StatelessWidget {
     );
 
     final panel = Container(
-      width: vibe ? 400 : 380,
+      width: usesMobileLayout ? double.infinity : (vibe ? 400 : 380),
       decoration: BoxDecoration(
         border: Border(left: BorderSide(color: c.line)),
       ),
@@ -283,15 +286,24 @@ class RefsDetailDialog extends StatelessWidget {
       },
       child: RefsDialogFrame(
         key: const Key('refs-detail'),
-        width: vibe ? 1260 : 1200,
-        height: vibe ? 860 : 840,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: stage),
-            panel,
-          ],
-        ),
+        width: usesMobileLayout ? double.infinity : (vibe ? 1260 : 1200),
+        height: usesMobileLayout ? double.infinity : (vibe ? 860 : 840),
+        child: usesMobileLayout
+            // 手机端：竖排全屏 —— 上方大图、下方参数面板。
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 5, child: stage),
+                  Expanded(flex: 6, child: panel),
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: stage),
+                  panel,
+                ],
+              ),
       ),
     );
   }
@@ -362,77 +374,91 @@ class _RefsBundleDialogState extends State<RefsBundleDialog> {
       });
     }
 
+    final scopeSeg = UiSeg<bool>(
+      key: const Key('refs-bundle-scope'),
+      small: false,
+      values: const [false, true],
+      selected: _onlyChecked,
+      onChanged: (v) => setState(() => _onlyChecked = v),
+      labelOf: (v) => v
+          ? l10n.refs_bundleOnlyChecked(_checked.length)
+          : l10n.refs_bundleAll(n),
+    );
+    final exportBtn = UiBtn(
+      onTap: () => ctrl.openExport([e.key]),
+      children: [
+        const UiGlyph(UiGlyphs.upload, size: 14),
+        Text(l10n.refs_export),
+      ],
+    );
+    final splitBtn = UiBtn(
+      key: const Key('refs-bundle-split'),
+      onTap: () => a.onSplitBundle(e.key),
+      children: [
+        const UiGlyph(UiGlyphs.stack, size: 14),
+        Text(l10n.refs_splitBundle),
+      ],
+    );
+    final addBtn = UiBtn(
+      key: const Key('refs-bundle-add'),
+      tone: UiBtnTone.primary,
+      onTap: !usable || sending == 0
+          ? null
+          : () => a.onAddBundle(
+              e.key,
+              indexes: _onlyChecked ? (_checked.toList()..sort()) : null,
+              overrides: Map.of(_values),
+            ),
+      children: [
+        const UiGlyph(UiGlyphs.plus, size: 14, strokeWidth: 2.4),
+        Text(l10n.refs_addToGeneration),
+        Opacity(
+          opacity: .75,
+          child: Text(
+            '$before→${before + sending}/${k.maxVibes}',
+            style: UiText.mono(12, color: Colors.white),
+          ),
+        ),
+      ],
+    );
     final toolbar = Container(
       key: const Key('refs-bundle-toolbar'),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: c.line)),
       ),
-      child: Row(
-        spacing: 10,
-        children: [
-          UiSeg<bool>(
-            key: const Key('refs-bundle-scope'),
-            small: false,
-            values: const [false, true],
-            selected: _onlyChecked,
-            onChanged: (v) => setState(() => _onlyChecked = v),
-            labelOf: (v) => v
-                ? l10n.refs_bundleOnlyChecked(_checked.length)
-                : l10n.refs_bundleAll(n),
-          ),
-          Expanded(
-            child: Text(
-              l10n.refs_bundleScopeNote,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: UiText.sans(12, color: c.muted),
-            ),
-          ),
-          UiBtn(
-            onTap: () => ctrl.openExport([e.key]),
-            children: [
-              const UiGlyph(UiGlyphs.upload, size: 14),
-              Text(l10n.refs_export),
-            ],
-          ),
-          UiBtn(
-            key: const Key('refs-bundle-split'),
-            onTap: () => a.onSplitBundle(e.key),
-            children: [
-              const UiGlyph(UiGlyphs.stack, size: 14),
-              Text(l10n.refs_splitBundle),
-            ],
-          ),
-          UiBtn(
-            key: const Key('refs-bundle-add'),
-            tone: UiBtnTone.primary,
-            onTap: !usable || sending == 0
-                ? null
-                : () => a.onAddBundle(
-                    e.key,
-                    indexes: _onlyChecked ? (_checked.toList()..sort()) : null,
-                    overrides: Map.of(_values),
-                  ),
-            children: [
-              const UiGlyph(UiGlyphs.plus, size: 14, strokeWidth: 2.4),
-              Text(l10n.refs_addToGeneration),
-              Opacity(
-                opacity: .75,
-                child: Text(
-                  '$before→${before + sending}/${k.maxVibes}',
-                  style: UiText.mono(12, color: Colors.white),
-                ),
+      child: usesMobileLayout
+          // 手机端：范围切换 + 按钮一行放不下，改成横向滚动。
+          ? SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 10,
+                children: [scopeSeg, exportBtn, splitBtn, addBtn],
               ),
-            ],
-          ),
-        ],
-      ),
+            )
+          : Row(
+              spacing: 10,
+              children: [
+                scopeSeg,
+                Expanded(
+                  child: Text(
+                    l10n.refs_bundleScopeNote,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: UiText.sans(12, color: c.muted),
+                  ),
+                ),
+                exportBtn,
+                splitBtn,
+                addBtn,
+              ],
+            ),
     );
 
     final grid = LayoutBuilder(
       builder: (context, box) {
-        const cols = 5;
+        final cols = usesMobileLayout ? 2 : 5;
         final cw = (box.maxWidth - 36 - 16 * (cols - 1)) / cols;
         return Wrap(
           key: const Key('refs-bundle-grid'),

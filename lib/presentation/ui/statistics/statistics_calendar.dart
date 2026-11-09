@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_card.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -54,6 +55,7 @@ class _StatsCalendarCardState extends State<StatsCalendarCard> {
         ? recentWindow(today, 53)
         : yearWindow(year, today);
 
+    final mobile = usesMobileLayout;
     return UiCard(
       key: const Key('stats-calendar'),
       child: Column(
@@ -62,9 +64,13 @@ class _StatsCalendarCardState extends State<StatsCalendarCard> {
           UiCardHeader(
             title: l10n.stats_calendarTitle,
             subtitle: l10n.stats_calendarHint,
+            // 手机端标题 + 图例 + 年份菜单会超过 360dp：只留年份菜单，
+            // 图例（少→多）收进提示，避免卡片标题行溢出。
             trailing: [
-              _Legend(colors: pal.heat),
-              const SizedBox(width: 10),
+              if (!mobile) ...[
+                _Legend(colors: pal.heat),
+                const SizedBox(width: 10),
+              ],
               MenuAnchor(
                 alignmentOffset: const Offset(0, 4),
                 menuChildren: [
@@ -102,7 +108,13 @@ class _StatsCalendarCardState extends State<StatsCalendarCard> {
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = widget.layout.wide;
+              final mobile = usesMobileLayout;
               final sideWidth = wide ? 260.0 + 28 : 0.0;
+              // 手机端不让日历把最近 20 周以后的日子裁掉：按整年宽度画，
+              // 外面包一层横向滚动；桌面端仍按可用宽度自适应。
+              final gridWidth = mobile
+                  ? _labelWidth + window.weeks * (14 + _gap)
+                  : constraints.maxWidth - sideWidth;
               final grid = _CalendarGrid(
                 window: window,
                 daily: s.dailyImages,
@@ -111,7 +123,7 @@ class _StatsCalendarCardState extends State<StatsCalendarCard> {
                 range: year == null
                     ? rangePeriod(widget.data.range, today)
                     : null,
-                maxWidth: constraints.maxWidth - sideWidth,
+                maxWidth: gridWidth,
                 onOpenDay: (d) => widget.actions.onOpenGallery(
                   StatsDateFilter(d, addDays(d, 1)),
                 ),
@@ -122,16 +134,29 @@ class _StatsCalendarCardState extends State<StatsCalendarCard> {
                 daily: s.dailyImages,
                 today: today,
                 wide: wide,
+                mobile: mobile,
               );
-              return wide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [grid, const SizedBox(width: 28), side],
+              if (wide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [grid, const SizedBox(width: 28), side],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (mobile)
+                    SingleChildScrollView(
+                      key: const Key('stats-calendar-scroll'),
+                      scrollDirection: Axis.horizontal,
+                      child: grid,
                     )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [grid, const SizedBox(height: 16), side],
-                    );
+                  else
+                    grid,
+                  const SizedBox(height: 16),
+                  side,
+                ],
+              );
             },
           ),
         ],
@@ -464,6 +489,7 @@ class _Summary extends StatelessWidget {
     required this.daily,
     required this.today,
     required this.wide,
+    this.mobile = false,
   });
 
   final CalendarWindow window;
@@ -471,6 +497,7 @@ class _Summary extends StatelessWidget {
   final Map<DateTime, int> daily;
   final DateTime today;
   final bool wide;
+  final bool mobile;
 
   @override
   Widget build(BuildContext context) {
@@ -540,13 +567,34 @@ class _Summary extends StatelessWidget {
         l10n.stats_calendarLongestStreak,
       ),
     ];
-    if (!wide) {
+    if (!wide && !mobile) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final (i, it) in items.indexed) ...[
             if (i > 0) const SizedBox(width: 16),
             Expanded(child: it),
+          ],
+        ],
+      );
+    }
+    if (mobile) {
+      // 手机端 2×2：四项在 360dp 下各占一半宽，数值和标签都不被挤成省略号。
+      return Column(
+        children: [
+          for (final (r, pair) in [
+            [items[0], items[1]],
+            [items[2], items[3]],
+          ].indexed) ...[
+            if (r > 0) const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: pair[0]),
+                const SizedBox(width: 16),
+                Expanded(child: pair[1]),
+              ],
+            ),
           ],
         ],
       );

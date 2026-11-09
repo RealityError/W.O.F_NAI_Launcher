@@ -1465,6 +1465,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get layer_moveDown => '아래로 이동';
 
   @override
+  String get common_moveUp => '위로 이동';
+
+  @override
+  String get common_moveDown => '아래로 이동';
+
+  @override
   String get vibe_title => 'Vibe 트랜스퍼';
 
   @override
@@ -5755,6 +5761,39 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get tips_studio_guide_8 =>
       'Anlas를 실수로 왕창 쓸까 걱정된다면 설정에서 높은 Anlas 비용 경고를 켜 두세요. 한 번에 드는 예상 비용이 정한 값을 넘으면 생성 전에 한 번 더 묻습니다.';
+
+  @override
+  String get tips_studio_mobile_1 =>
+      '휴대폰에서는 한 손으로 생성할 수 있어요. 프롬프트를 쓰고 생성을 누르면 이미지가 캔버스에 배치별로 쌓입니다. 모델·크기·장수는 하단 도구 모음에서 바꿀 수 있어요.';
+
+  @override
+  String get tips_studio_mobile_2 =>
+      '캔버스의 이미지를 길게 누르면 저장·복사·공유와 img2img·Vibe·캐릭터 참조로 보내기가 나옵니다.';
+
+  @override
+  String get tips_studio_mobile_3 =>
+      '프롬프트 오버레이 오른쪽 위의 라이브러리 아이콘에서 프롬프트 블록·Vibe·정밀 참조를 열 수 있어요. 항목을 탭하면 현재 프롬프트에 삽입됩니다.';
+
+  @override
+  String get prompt_replaceAllMobile => '모두 바꾸기';
+
+  @override
+  String get autocomplete_relatedTagsSubtitleMobile =>
+      '프롬프트에서 로컬 태그를 검색하고 관련 태그를 확인합니다';
+
+  @override
+  String get prompt_cooccurrenceRecommendationSubtitleMobile =>
+      '로컬 태그를 검색하고 관련 태그를 확인';
+
+  @override
+  String get settings_outputViewer_canvasDescriptionMobile =>
+      'NAI5 스타일 무한 캔버스: 생성 이미지를 배치별로 펼칩니다. 핀치로 확대, 드래그로 이동.';
+
+  @override
+  String get editor_sourcePointPick => '소스 지정';
+
+  @override
+  String get editor_sourcePointPicking => '캔버스를 탭해 소스 지점을 지정하세요';
 
   @override
   String get tips_studio_trick_1 =>
@@ -13516,6 +13555,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get imageViewer_yesterday => '어제';
 
   @override
+  String get explore_mobileEditor => '편집';
+
+  @override
+  String get explore_mobileResults => '결과';
+
+  @override
   String get explore_back => '화풍 탐색';
 
   @override
@@ -21000,6 +21045,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mp_dragHint => '드래그로 기능 배정 기본 순서 결정';
 
   @override
+  String get mp_reorderHintMobile => '모델 오른쪽의 위로 이동 / 아래로 이동으로 기능 배정 기본 순서를 변경';
+
+  @override
   String get mp_noModels => '모델 없음';
 
   @override
@@ -22023,4 +22071,11 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get ag_tool_agent_manage => 'Agent 관리';
+
+  @override
+  String get generation_notificationPermissionDenied =>
+      '알림이 허용되지 않아 백그라운드 생성 진행 상황과 완료 알림이 표시되지 않습니다.';
+
+  @override
+  String get generation_notificationGoToSettings => '설정 열기';
 }

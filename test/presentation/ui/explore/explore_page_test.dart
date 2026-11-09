@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/presentation/ui/explore/explore_contract.dart';
 import 'package:nai_launcher/presentation/ui/explore/explore_fixture.dart';
+import 'package:nai_launcher/presentation/ui/explore/explore_wall.dart';
 
 import '../../../helpers/studio_capture_fonts.dart';
 import 'explore_test_harness.dart';
@@ -13,7 +14,14 @@ void main() {
   setUpAll(loadStudioCaptureFonts);
 
   late RecordingExploreActions rec;
-  setUp(() => rec = RecordingExploreActions());
+  late DateTime fakeNow;
+  setUp(() {
+    rec = RecordingExploreActions();
+    // 双击判定用假时钟，避免并发跑测试时真实耗时把两次 tap 判成两次单击。
+    fakeNow = DateTime(2026, 1, 1);
+    exploreTapClock = () => fakeNow;
+  });
+  tearDown(() => exploreTapClock = DateTime.now);
 
   Future<void> pump(
     WidgetTester t, {
@@ -39,10 +47,6 @@ void main() {
     await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await t.pumpAndSettle();
   }
-
-  // 双击判定用真实时钟（同块库），这里真等 0.35 秒。
-  Future<void> wait300(WidgetTester t) =>
-      t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 350)));
 
   Finder text(String s) => find.text(s, findRichText: true);
 
@@ -81,7 +85,7 @@ void main() {
       await pump(t);
       await t.tap(find.byKey(const Key('explore-card-c29')));
       await t.pumpAndSettle();
-      await wait300(t);
+      fakeNow = fakeNow.add(const Duration(seconds: 1));
       await t.tap(find.byKey(const Key('explore-card-c29')));
       await t.pumpAndSettle();
       expect(find.byKey(const Key('explore-detail')), findsNothing);

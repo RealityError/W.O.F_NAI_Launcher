@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_block_pill.dart';
@@ -69,35 +70,40 @@ class ExploreStageHeader extends StatelessWidget {
         child: Row(
           spacing: 10,
           children: [
-            const _RunButton(),
-            Expanded(
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    for (final (i, m) in meta.indexed) ...[
-                      if (i > 0)
-                        TextSpan(
-                          text: '  ·  ',
-                          style: TextStyle(color: c.strong),
-                        ),
-                      TextSpan(text: m),
+            if (usesMobileLayout)
+              const Expanded(child: _RunButton())
+            else
+              const _RunButton(),
+            if (!usesMobileLayout)
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      for (final (i, m) in meta.indexed) ...[
+                        if (i > 0)
+                          TextSpan(
+                            text: '  ·  ',
+                            style: TextStyle(color: c.strong),
+                          ),
+                        TextSpan(text: m),
+                      ],
                     ],
-                  ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: UiText.sans(12, color: c.muted),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: UiText.sans(12, color: c.muted),
               ),
-            ),
-            if (p != null) _Progress(p),
-            _SizeSeg(
-              value: data.cardSize,
-              onChanged: scope.actions.onCardSizeChanged,
-            ),
+            if (!usesMobileLayout && p != null) _Progress(p),
+            if (!usesMobileLayout)
+              _SizeSeg(
+                value: data.cardSize,
+                onChanged: scope.actions.onCardSizeChanged,
+              ),
             UiIconBox(
               key: const Key('explore-inspector-toggle'),
               glyph: UiGlyphs.panel,
-              size: 28,
+              size: usesMobileLayout ? 44 : 28,
               glyphSize: 16,
               tone: ctrl.inspectorVisible
                   ? UiIconBoxTone.on
@@ -557,94 +563,114 @@ class ExploreTabsRow extends StatelessWidget {
       ];
     }
 
+    final tabs = <Widget>[
+      _BigTab(
+        key: const Key('explore-tab-candidates'),
+        icon: Icon(
+          StudioIcons.galleryImage,
+          size: 16,
+          color: evo ? c.muted : c.ink,
+        ),
+        label: l.explore_tabCandidates,
+        count: cands.length,
+        on: !evo,
+        onTap: () => ctrl.setTab(ExploreTab.candidates),
+      ),
+      _BigTab(
+        key: const Key('explore-tab-evolution'),
+        icon: UiGlyph(UiGlyphs.evo, size: 16, color: evo ? c.evo : c.muted),
+        label: l.explore_tabEvolution,
+        count: run.lines.length,
+        on: evo,
+        color: c.evo,
+        onTap: () => ctrl.setTab(ExploreTab.evolution),
+      ),
+      Container(
+        width: 1,
+        height: 20,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        color: c.line,
+      ),
+      const SizedBox(width: 6),
+    ];
+    final tail = <Widget>[
+      if (evo)
+        UiBtn(
+          key: const Key('explore-evo-help'),
+          tone: UiBtnTone.ghost,
+          tooltip: l.explore_evoHelpBody,
+          children: [
+            const UiGlyph(UiGlyphs.infoCircle, size: 14),
+            Text(l.explore_evoHelp),
+          ],
+        )
+      else if (ctrl.selecting) ...[
+        UiBtn(
+          key: const Key('explore-select-all'),
+          tone: UiBtnTone.ghost,
+          onTap: () => ctrl.setSelected(
+            ctrl.visibleKeys.where((k) => run.candidate(k)?.done ?? false),
+          ),
+          children: [Text(l.explore_selectAll)],
+        ),
+        const SizedBox(width: 4),
+        UiBtn(
+          key: const Key('explore-select-done'),
+          tone: UiBtnTone.accent,
+          onTap: () => ctrl.setSelecting(false),
+          children: [Text(l.explore_selectDone)],
+        ),
+      ] else ...[
+        UiIconBox(
+          key: const Key('explore-sort'),
+          glyph: UiGlyphs.sort,
+          size: usesMobileLayout ? 44 : 28,
+          tooltip: ctrl.newestFirst
+              ? l.explore_sortNewest
+              : l.explore_sortOldest,
+          onTap: ctrl.toggleOrder,
+        ),
+        const SizedBox(width: 6),
+        UiBtn(
+          key: const Key('explore-select'),
+          onTap: () => ctrl.setSelecting(true),
+          children: [
+            const UiGlyph(UiGlyphs.select, size: 14),
+            Text(l.explore_select),
+          ],
+        ),
+      ],
+    ];
+
     return Container(
       height: 46,
       padding: const EdgeInsets.only(left: 14, right: 12),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: c.line)),
       ),
-      child: Row(
-        children: [
-          _BigTab(
-            key: const Key('explore-tab-candidates'),
-            icon: Icon(
-              StudioIcons.galleryImage,
-              size: 16,
-              color: evo ? c.muted : c.ink,
-            ),
-            label: l.explore_tabCandidates,
-            count: cands.length,
-            on: !evo,
-            onTap: () => ctrl.setTab(ExploreTab.candidates),
-          ),
-          _BigTab(
-            key: const Key('explore-tab-evolution'),
-            icon: UiGlyph(UiGlyphs.evo, size: 16, color: evo ? c.evo : c.muted),
-            label: l.explore_tabEvolution,
-            count: run.lines.length,
-            on: evo,
-            color: c.evo,
-            onTap: () => ctrl.setTab(ExploreTab.evolution),
-          ),
-          Container(
-            width: 1,
-            height: 20,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            color: c.line,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: _FadeScroll(child: Row(spacing: 6, children: chips)),
-          ),
-          const SizedBox(width: 6),
-          if (evo)
-            UiBtn(
-              key: const Key('explore-evo-help'),
-              tone: UiBtnTone.ghost,
-              tooltip: l.explore_evoHelpBody,
+      // 手机端：页签 + 筛选胶囊一起横向滚动，尾巴（排序 / 多选 / 帮助）固定在右侧。
+      child: usesMobileLayout
+          ? Row(
               children: [
-                const UiGlyph(UiGlyphs.infoCircle, size: 14),
-                Text(l.explore_evoHelp),
+                Expanded(
+                  child: _FadeScroll(
+                    child: Row(spacing: 6, children: [...tabs, ...chips]),
+                  ),
+                ),
+                if (tail.isNotEmpty) const SizedBox(width: 6),
+                ...tail,
               ],
             )
-          else if (ctrl.selecting) ...[
-            UiBtn(
-              key: const Key('explore-select-all'),
-              tone: UiBtnTone.ghost,
-              onTap: () => ctrl.setSelected(
-                ctrl.visibleKeys.where((k) => run.candidate(k)?.done ?? false),
-              ),
-              children: [Text(l.explore_selectAll)],
-            ),
-            const SizedBox(width: 4),
-            UiBtn(
-              key: const Key('explore-select-done'),
-              tone: UiBtnTone.accent,
-              onTap: () => ctrl.setSelecting(false),
-              children: [Text(l.explore_selectDone)],
-            ),
-          ] else ...[
-            UiIconBox(
-              key: const Key('explore-sort'),
-              glyph: UiGlyphs.sort,
-              size: 28,
-              tooltip: ctrl.newestFirst
-                  ? l.explore_sortNewest
-                  : l.explore_sortOldest,
-              onTap: ctrl.toggleOrder,
-            ),
-            const SizedBox(width: 6),
-            UiBtn(
-              key: const Key('explore-select'),
-              onTap: () => ctrl.setSelecting(true),
+          : Row(
               children: [
-                const UiGlyph(UiGlyphs.select, size: 14),
-                Text(l.explore_select),
+                ...tabs,
+                Expanded(
+                  child: _FadeScroll(child: Row(spacing: 6, children: chips)),
+                ),
+                const SizedBox(width: 6),
+                ...tail,
               ],
             ),
-          ],
-        ],
-      ),
     );
   }
 }

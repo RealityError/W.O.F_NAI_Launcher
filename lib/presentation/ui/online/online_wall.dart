@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -46,11 +48,13 @@ class OnlineWallArea extends StatelessWidget {
           ],
         ),
         if (scope.controller.picking)
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 22,
-            child: Center(child: OnlineSelectionBar()),
+          Positioned(
+            left: usesMobileLayout ? 12 : 0,
+            right: usesMobileLayout ? 12 : 0,
+            bottom: usesMobileLayout ? 12 : 22,
+            child: usesMobileLayout
+                ? const OnlineSelectionBar()
+                : const Center(child: OnlineSelectionBar()),
           ),
       ],
     );
@@ -242,8 +246,13 @@ class _OnlineWallState extends State<OnlineWall> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth - OnlineLayout.padding.horizontal;
-        final cols = OnlineLayout.columns(width, data.cardSize);
+        final pad = OnlineLayout.paddingFor(usesMobileLayout);
+        final width = constraints.maxWidth - pad.horizontal;
+        final cols = OnlineLayout.columns(
+          width,
+          data.cardSize,
+          mobile: usesMobileLayout,
+        );
         final cw = (width - (cols - 1) * OnlineLayout.gap) / cols;
         final ai = data.status.promptQuery;
         final items = list.loading ? const <OnlineWork>[] : list.items;
@@ -317,14 +326,14 @@ class _OnlineWallState extends State<OnlineWall> {
           child: ScrollConfiguration(
             behavior: ScrollConfiguration.of(
               context,
-            ).copyWith(scrollbars: !list.loading),
+            ).copyWith(scrollbars: !list.loading && !usesMobileLayout),
             child: SingleChildScrollView(
               key: const Key('online-wall'),
               controller: _scroll,
               physics: list.loading
                   ? const NeverScrollableScrollPhysics()
                   : null,
-              padding: OnlineLayout.padding,
+              padding: pad,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -479,6 +488,11 @@ class _OnlineCardState extends State<OnlineCard> {
       ctrl.togglePick(w.key);
       return;
     }
+    if (usesMobileLayout) {
+      // 手机上单击就是打开全屏查看器（没有双击，也没有右侧检查器可看）。
+      ctrl.openViewer(w.key);
+      return;
+    }
     final now = DateTime.now();
     if (_lastTap != null &&
         now.difference(_lastTap!) < const Duration(milliseconds: 320)) {
@@ -488,6 +502,25 @@ class _OnlineCardState extends State<OnlineCard> {
     }
     _lastTap = now;
     if (scope.data.selectedKey != w.key) scope.actions.onSelect(w.key);
+  }
+
+  /// 把桌面右键菜单拍平成手机长按菜单：动作与顺序一致，只是图标从
+  /// 字符串 glyph 换成 Material 图标；分隔项在底部弹层里自然被忽略。
+  void _mobileMenu(BuildContext context, OnlineScope scope) {
+    final l10n = context.l10n;
+    showMobileContextMenu(
+      context,
+      title: widget.work.title ?? l10n.online_title,
+      items: [
+        for (final it in _menu(context, scope))
+          MobileMenuItem(
+            label: it.label,
+            onTap: it.onTap,
+            destructive: it.danger,
+            enabled: it.enabled,
+          ),
+      ],
+    );
   }
 
   List<OnlineMenuItem> _menu(BuildContext context, OnlineScope scope) {
@@ -631,7 +664,7 @@ class _OnlineCardState extends State<OnlineCard> {
               ),
             ),
             ...badges,
-            if (hover) ...[
+            if (hover)
               Positioned(
                 left: 7,
                 bottom: 47,
@@ -642,39 +675,44 @@ class _OnlineCardState extends State<OnlineCard> {
                   ].join(' · '),
                 ),
               ),
+            // 手机上悬停不存在：卡片底部操作条常显，保证收藏 / 下载 / 菜单可点。
+            if (hover || usesMobileLayout)
               Positioned(
                 left: 7,
                 right: 7,
                 bottom: 7,
                 child: _HoverBar(work: w, menu: () => _menu(context, scope)),
               ),
-            ],
           ],
         ),
       ),
     );
 
-    Widget card = MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        key: Key('online-card-${w.key}'),
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _tap(scope),
-        onSecondaryTapUp: (d) => ctrl.openMenu(
-          UiPopoverAnchor(d.globalPosition),
-          _menu(context, scope),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            image,
-            if (!widget.small) _Caption(work: w),
-          ],
-        ),
+    Widget card = GestureDetector(
+      key: Key('online-card-${w.key}'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _tap(scope),
+      onLongPress: usesMobileLayout ? () => _mobileMenu(context, scope) : null,
+      onSecondaryTapUp: (d) => ctrl.openMenu(
+        UiPopoverAnchor(d.globalPosition),
+        _menu(context, scope),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          image,
+          if (!widget.small) _Caption(work: w),
+        ],
       ),
     );
+    if (!usesMobileLayout) {
+      card = MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        cursor: SystemMouseCursors.click,
+        child: card,
+      );
+    }
 
     if (data.mode == OnlineMode.favorites && data.status.favoritesLocal) {
       final keys = picking && picked ? ctrl.picked.toList() : [w.key];
@@ -778,6 +816,9 @@ class _HoverBar extends StatelessWidget {
     final scope = OnlineScope.of(context);
     final a = scope.actions;
     final s = scope.data.status;
+    // 手机上操作条常显，卡片只有 ~150dp 宽：去掉「发送到生图」文字和复制按钮，
+    // 用 40dp 图标按钮保证一行放得下；完整操作在长按菜单里。
+    final compact = usesMobileLayout;
     Widget btn(
       Widget child, {
       required VoidCallback? onTap,
@@ -789,8 +830,8 @@ class _HoverBar extends StatelessWidget {
         key: key,
         onTap: onTap,
         builder: (context, hover) => Container(
-          height: 28,
-          width: primary ? null : 28,
+          height: compact ? 40 : 28,
+          width: primary ? null : (compact ? 40 : 28),
           alignment: primary ? null : Alignment.center,
           padding: primary ? const EdgeInsets.symmetric(horizontal: 8) : null,
           decoration: BoxDecoration(
@@ -805,53 +846,69 @@ class _HoverBar extends StatelessWidget {
       return tip == null ? b : Tooltip(message: tip, child: b);
     }
 
+    void requestSend(BuildContext ctx) {
+      final box = ctx.findRenderObject()! as RenderBox;
+      scope.controller.requestSend(
+        work.key,
+        UiPopoverAnchor(
+          box.localToGlobal(const Offset(-4, -8)),
+          alignBottom: true,
+        ),
+      );
+    }
+
     return OnlineFrosted(
       radius: 9,
       color: const Color(0xCC121212),
       child: SizedBox(
-        height: 34,
+        height: compact ? 44 : 34,
         child: LayoutBuilder(
           builder: (context, box) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
+            padding: EdgeInsets.symmetric(horizontal: compact ? 2 : 3),
             child: Row(
               spacing: 2,
               children: [
-                Builder(
-                  builder: (ctx) => btn(
-                    key: const Key('online-card-send'),
-                    primary: true,
-                    onTap: () {
-                      final box = ctx.findRenderObject()! as RenderBox;
-                      scope.controller.requestSend(
-                        work.key,
-                        UiPopoverAnchor(
-                          box.localToGlobal(const Offset(-4, -8)),
-                          alignBottom: true,
-                        ),
-                      );
-                    },
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      spacing: 5,
-                      children: [
-                        const UiGlyph(
-                          UiGlyphs.send,
-                          size: 13,
-                          color: Colors.white,
-                        ),
-                        Text(
-                          l10n.online_send,
-                          maxLines: 1,
-                          style: UiText.sans(
-                            12,
-                            weight: FontWeight.w500,
+                if (!compact)
+                  Builder(
+                    builder: (ctx) => btn(
+                      key: const Key('online-card-send'),
+                      primary: true,
+                      onTap: () => requestSend(ctx),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: 5,
+                        children: [
+                          const UiGlyph(
+                            UiGlyphs.send,
+                            size: 13,
                             color: Colors.white,
                           ),
-                        ),
-                      ],
+                          Text(
+                            l10n.online_send,
+                            maxLines: 1,
+                            style: UiText.sans(
+                              12,
+                              weight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Builder(
+                    builder: (ctx) => btn(
+                      key: const Key('online-card-send'),
+                      tip: l10n.online_send,
+                      onTap: () => requestSend(ctx),
+                      const UiGlyph(
+                        UiGlyphs.send,
+                        size: 17,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
                 if (s.favoritesWritable)
                   btn(
                     key: const Key('online-card-fav'),
@@ -861,13 +918,13 @@ class _HoverBar extends StatelessWidget {
                     onTap: () => a.onToggleFavorite(work.key),
                     UiGlyph(
                       UiGlyphs.heartLib,
-                      size: 14,
+                      size: compact ? 17 : 14,
                       filled: work.favorited,
                       color: work.favorited ? c.fav : Colors.white,
                     ),
                   ),
                 // 窄卡片（小于 200）放不下，复制留在 ⋯ 菜单和 Ctrl+C 里。
-                if (box.maxWidth >= 200)
+                if (!compact && box.maxWidth >= 200)
                   btn(
                     key: const Key('online-card-copy'),
                     tip: s.promptQuery
@@ -892,9 +949,9 @@ class _HoverBar extends StatelessWidget {
                         menu(),
                       );
                     },
-                    const UiGlyph(
+                    UiGlyph(
                       UiGlyphs.more,
-                      size: 15,
+                      size: compact ? 18 : 15,
                       strokeWidth: 3,
                       color: Colors.white,
                     ),
@@ -1163,20 +1220,31 @@ class _EndLine extends StatelessWidget {
     final c = context.ui;
     final l10n = context.l10n;
     Widget line() => Container(width: 120, height: 1, color: c.line);
+    final label = Text(
+      blocked != null && blocked! > 0
+          ? l10n.online_endBlocked(count, blocked!)
+          : l10n.online_end(count),
+      style: UiText.sans(12, color: c.faint),
+    );
+    // 手机端 360dp 放不下「120 + 文案 + 120」：改成居中的换行排，桌面仍是单行。
+    if (usesMobileLayout) {
+      return Padding(
+        key: const Key('online-end'),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 6,
+          children: [label],
+        ),
+      );
+    }
     return Row(
       key: const Key('online-end'),
       mainAxisAlignment: MainAxisAlignment.center,
       spacing: 10,
-      children: [
-        line(),
-        Text(
-          blocked != null && blocked! > 0
-              ? l10n.online_endBlocked(count, blocked!)
-              : l10n.online_end(count),
-          style: UiText.sans(12, color: c.faint),
-        ),
-        line(),
-      ],
+      children: [line(), label, line()],
     );
   }
 }

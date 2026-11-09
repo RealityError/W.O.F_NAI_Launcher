@@ -89,13 +89,18 @@ void main() {
     test('walks a full shuffled cycle before repeating', () {
       final deck = TipDeck(seed: 7);
       for (final surface in TipSurface.values) {
-        final daytime = tipsFor(surface).where((tip) => !tip.night).toList();
+        final daytime = tipsFor(
+          surface,
+        ).where((tip) => !tip.night && tip.appliesTo(mobile: false)).toList();
         final seen = [
           for (var i = 0; i < daytime.length; i++)
-            deck.tipAt(surface, i, now: day),
+            deck.tipAt(surface, i, now: day, mobile: false),
         ];
         expect(seen.toSet(), daytime.toSet(), reason: '$surface');
-        expect(deck.tipAt(surface, daytime.length, now: day), seen.first);
+        expect(
+          deck.tipAt(surface, daytime.length, now: day, mobile: false),
+          seen.first,
+        );
       }
     });
 
@@ -105,14 +110,36 @@ void main() {
       expect(tips.where((tip) => tip.night), isNotEmpty);
       final dayTips = {
         for (var i = 0; i < tips.length * 2; i++)
-          deck.tipAt(TipSurface.studio, i, now: day),
+          deck.tipAt(TipSurface.studio, i, now: day, mobile: false),
       };
       expect(dayTips.where((tip) => tip.night), isEmpty);
       final nightTips = {
         for (var i = 0; i < tips.length; i++)
-          deck.tipAt(TipSurface.studio, i, now: night),
+          deck.tipAt(TipSurface.studio, i, now: night, mobile: false),
       };
-      expect(nightTips, tips.toSet());
+      expect(
+        nightTips,
+        tips.where((tip) => tip.appliesTo(mobile: false)).toSet(),
+      );
+    });
+
+    test('desktop and mobile pools never cross over', () {
+      final deck = TipDeck(seed: 11);
+      final studio = tipsFor(TipSurface.studio);
+      final desktopOnly = studio.where((tip) => tip.desktopOnly).toSet();
+      final mobileOnly = studio.where((tip) => tip.mobileOnly).toSet();
+      final desktopPool = studio.where((tip) => tip.appliesTo(mobile: false));
+      final mobilePool = studio.where((tip) => tip.appliesTo(mobile: true));
+      expect(desktopOnly, isNotEmpty);
+      expect(mobileOnly, isNotEmpty);
+      for (var i = 0; i < studio.length * 2; i++) {
+        final desk = deck.tipAt(TipSurface.studio, i, now: day, mobile: false);
+        final phone = deck.tipAt(TipSurface.studio, i, now: day, mobile: true);
+        expect(desktopPool, contains(desk));
+        expect(mobilePool, contains(phone));
+        expect(mobileOnly, isNot(contains(desk)));
+        expect(desktopOnly, isNot(contains(phone)));
+      }
     });
 
     test('shortOnly and kind filters', () {

@@ -5,6 +5,7 @@ import '../../../../core/autocomplete/autocomplete_providers.dart';
 import '../../../../core/autocomplete/autocomplete_settings.dart';
 import '../../../../core/database/database_providers.dart';
 import '../../../../core/utils/localization_extension.dart';
+import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
 import '../../../widgets/common/app_toast.dart';
 import 'settings_card.dart';
 import 'settings_columns.dart';
@@ -24,7 +25,11 @@ class DataSourceCacheSettings extends ConsumerWidget {
     final settings = ref.watch(autocompleteSettingsProvider);
     final relatedTags = SettingsSwitchTile(
       title: Text(context.l10n.autocomplete_relatedTagsTitle),
-      subtitle: Text(context.l10n.autocomplete_relatedTagsSubtitle),
+      subtitle: Text(
+        usesMobileLayout
+            ? context.l10n.autocomplete_relatedTagsSubtitleMobile
+            : context.l10n.autocomplete_relatedTagsSubtitle,
+      ),
       value: settings.relatedTagsEnabled,
       onChanged: ref
           .read(autocompleteSettingsProvider.notifier)

@@ -30,8 +30,13 @@ class RefsCategoryDrag {
 }
 
 /// 左栏 240：标题行 52、视图、分类树 / 参考类型、来源、底部文件夹或说明。
+///
+/// 手机端整宽放进底部弹层（`inSheet: true`），收起按钮换成关闭。
 class RefsSidebar extends StatelessWidget {
-  const RefsSidebar({super.key});
+  const RefsSidebar({super.key, this.width = 240, this.inSheet = false});
+
+  final double width;
+  final bool inSheet;
 
   @override
   Widget build(BuildContext context) {
@@ -43,16 +48,16 @@ class RefsSidebar extends StatelessWidget {
     final vibe = data.kind == RefsKind.vibe;
     return Container(
       key: const Key('refs-sidebar'),
-      width: 240,
+      width: width,
       decoration: BoxDecoration(
         color: c.panel,
-        border: Border(right: BorderSide(color: c.line)),
+        border: inSheet ? null : Border(right: BorderSide(color: c.line)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 52,
+            height: inSheet ? 56 : 52,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 8),
               child: Row(
@@ -85,11 +90,21 @@ class RefsSidebar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  UiIconBox(
-                    glyph: UiGlyphs.doubleLeft,
-                    tooltip: l10n.refs_collapseSidebar,
-                    onTap: () => a.onSidebarChanged(false),
-                  ),
+                  if (inSheet)
+                    UiIconBox(
+                      key: const Key('refs-nav-close'),
+                      glyph: UiGlyphs.close,
+                      glyphSize: 16,
+                      size: 40,
+                      tooltip: l10n.common_close,
+                      onTap: () => Navigator.maybePop(context),
+                    )
+                  else
+                    UiIconBox(
+                      glyph: UiGlyphs.doubleLeft,
+                      tooltip: l10n.refs_collapseSidebar,
+                      onTap: () => a.onSidebarChanged(false),
+                    ),
                 ],
               ),
             ),

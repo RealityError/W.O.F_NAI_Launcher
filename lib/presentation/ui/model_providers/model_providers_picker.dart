@@ -21,6 +21,7 @@ class ProvidersPicker extends StatefulWidget {
     required this.onPick,
     required this.onCancelSignIn,
     required this.onClose,
+    this.mobile = false,
   });
 
   final List<ProviderPresetItem> presets;
@@ -30,6 +31,9 @@ class ProvidersPicker extends StatefulWidget {
   final Future<bool> Function(String id, {required bool waitForSignIn}) onPick;
   final VoidCallback onCancelSignIn;
   final VoidCallback onClose;
+
+  /// 手机端：整页显示（自带 AppBar），不再是居中弹窗。
+  final bool mobile;
 
   @override
   State<ProvidersPicker> createState() => _ProvidersPickerState();
@@ -82,6 +86,18 @@ class _ProvidersPickerState extends State<ProvidersPicker> {
         shown.where((p) => p.id == _sel).firstOrNull ?? shown.firstOrNull;
     final account = sel?.browserSignIn == true;
     final alreadyAdded = widget.existing.contains(sel?.id);
+    final footText = _signingIn
+        ? l.naiAgent_chatGptBrowser
+        : _failedPreset != null && _failedPreset == sel?.id
+        ? l.naiAgent_chatGptError
+        : account
+        ? l.naiAgent_chatGptHint
+        : l.mp_pickerFoot;
+    final nextLabel = !account
+        ? l.mp_pickerNext
+        : alreadyAdded
+        ? l.mp_manageAccount
+        : l.naiAgent_chatGptSignIn;
     String groupName(ProviderGroup g) => switch (g) {
       ProviderGroup.domestic => l.mp_groupDomesticFull,
       ProviderGroup.international => l.mp_groupInternationalFull,
@@ -194,6 +210,124 @@ class _ProvidersPickerState extends State<ProvidersPicker> {
               ],
             ],
           );
+
+    if (widget.mobile) {
+      return Scaffold(
+        backgroundColor: c.card,
+        appBar: AppBar(
+          backgroundColor: c.card,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            key: const Key('mp-picker-back'),
+            onPressed: _close,
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            icon: Icon(Icons.arrow_back_rounded, size: 22, color: c.ink),
+          ),
+          title: Text(
+            l.mp_pickerTitle,
+            style: UiText.sans(16, weight: FontWeight.w600, color: c.ink),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: c.rowLine),
+          ),
+        ),
+        body: SafeArea(
+          top: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 8,
+                  children: [
+                    UiSearchField(
+                      key: const Key('mp-picker-search'),
+                      value: _q,
+                      hint: l.mp_pickerSearch,
+                      height: 40,
+                      onChanged: (v) => setState(() {
+                        _q = v;
+                        _sel = null;
+                      }),
+                    ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: UiSeg<ProviderGroup?>(
+                        key: const Key('mp-picker-group'),
+                        values: const [null, ...ProviderGroup.values],
+                        selected: _group,
+                        labelOf: (g) => switch (g) {
+                          null => l.mp_groupAll,
+                          ProviderGroup.domestic => l.mp_groupDomestic,
+                          ProviderGroup.international =>
+                            l.mp_groupInternational,
+                          ProviderGroup.aggregator => l.mp_groupAggregator,
+                          ProviderGroup.local => l.mp_groupLocal,
+                        },
+                        onChanged: (g) => setState(() {
+                          _group = g;
+                          _sel = null;
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  key: const Key('mp-picker-scroll'),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: body,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                decoration: BoxDecoration(
+                  color: c.card,
+                  border: Border(top: BorderSide(color: c.rowLine)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 8,
+                  children: [
+                    Text(
+                      footText,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: UiText.sans(12, color: c.muted),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      spacing: 10,
+                      children: [
+                        SettingsBtn(
+                          label: l.set_cancel,
+                          tone: SettingsBtnTone.ghost,
+                          onTap: _close,
+                        ),
+                        SettingsBtn(
+                          key: const Key('mp-picker-next'),
+                          label: nextLabel,
+                          tone: SettingsBtnTone.primary,
+                          onTap: sel == null || _signingIn
+                              ? null
+                              : () => _pick(sel),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return CallbackShortcuts(
       bindings: {
@@ -318,14 +452,7 @@ class _ProvidersPickerState extends State<ProvidersPicker> {
                         children: [
                           Expanded(
                             child: Text(
-                              _signingIn
-                                  ? l.naiAgent_chatGptBrowser
-                                  : _failedPreset != null &&
-                                        _failedPreset == sel?.id
-                                  ? l.naiAgent_chatGptError
-                                  : account
-                                  ? l.naiAgent_chatGptHint
-                                  : l.mp_pickerFoot,
+                              footText,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: UiText.sans(12, color: c.muted),
@@ -339,11 +466,7 @@ class _ProvidersPickerState extends State<ProvidersPicker> {
                           ),
                           SettingsBtn(
                             key: const Key('mp-picker-next'),
-                            label: !account
-                                ? l.mp_pickerNext
-                                : alreadyAdded
-                                ? l.mp_manageAccount
-                                : l.naiAgent_chatGptSignIn,
+                            label: nextLabel,
                             small: true,
                             tone: SettingsBtnTone.primary,
                             onTap: sel == null || _signingIn

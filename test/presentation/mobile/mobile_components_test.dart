@@ -73,6 +73,32 @@ void main() {
     expect(backTapped, isTrue);
   });
 
+  testWidgets('MobileListTile clamps long trailing text at 360dp', (
+    tester,
+  ) async {
+    await pumpPhone(
+      tester,
+      Scaffold(
+        body: ListView(
+          children: [
+            MobileListTile(
+              icon: Icons.tune,
+              title: '输出目录与文件命名规则',
+              subtitle: '自定义保存位置、文件名模板与自动整理规则',
+              trailingText: '已启用（按生成批次自动归档）',
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final trailing = tester.widget<Text>(find.text('已启用（按生成批次自动归档）'));
+    expect(trailing.maxLines, 1);
+    expect(trailing.overflow, TextOverflow.ellipsis);
+  });
+
   testWidgets('showMobileSheet opens and dismisses', (tester) async {
     await pumpPhone(
       tester,

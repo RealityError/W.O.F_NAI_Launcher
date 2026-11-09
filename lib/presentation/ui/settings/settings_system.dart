@@ -44,64 +44,63 @@ class SettingsBridgesPage extends StatelessWidget {
     final a = s.actions;
     final krita = d.values.flag(SettingKey.kritaBridge);
     final comfy = d.values.flag(SettingKey.comfyEnabled);
+    final mobile = usesMobileLayout || debugForceMobileSettingsLayout;
+    final statusRows = <Widget>[
+      for (final (name, tone, text) in [
+        if (supportsKritaBridge)
+          (
+            'Krita',
+            !krita
+                ? SettingsTone.idle
+                : (b.kritaConnected ? SettingsTone.ok : SettingsTone.warn),
+            !krita
+                ? l.set_brOff
+                : (b.kritaConnected ? l.set_brConnected : l.set_brWaiting),
+          ),
+        if (supportsKritaBridge)
+          (
+            l.set_brAgents,
+            b.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
+            l.set_brAgentsShort('${b.agentClients}'),
+          ),
+        (
+          'ComfyUI',
+          !comfy ? SettingsTone.idle : b.comfyTone,
+          !comfy
+              ? l.set_brOff
+              : (b.comfyTone == SettingsTone.error
+                    ? l.set_brNoResponse
+                    : l.set_brConnected),
+        ),
+      ])
+        Row(
+          spacing: 8,
+          children: [
+            SettingsDot(tone),
+            Expanded(
+              child: Text(name, style: UiText.sans(12, color: c.ink)),
+            ),
+            Text(text, style: UiText.sans(12, color: c.muted)),
+          ],
+        ),
+    ];
+    final statusCard = SettingsAsideCard(
+      key: const Key('bridges-status'),
+      title: l.set_brStatus,
+      child: SettingsAsideList(rows: statusRows),
+    );
     return SettingsPageFrame(
       title: SettingsPageTitle(
         eyebrow: SettingsFormat.eyebrow(SettingsPageId.bridges),
         title: l.set_pageBridges,
         description: l.set_brDesc,
       ),
-      aside: [
-        SettingsAsideCard(
-          title: l.set_brStatus,
-          child: SettingsAsideList(
-            rows: [
-              for (final (name, tone, text) in [
-                if (supportsKritaBridge)
-                  (
-                    'Krita',
-                    !krita
-                        ? SettingsTone.idle
-                        : (b.kritaConnected
-                              ? SettingsTone.ok
-                              : SettingsTone.warn),
-                    !krita
-                        ? l.set_brOff
-                        : (b.kritaConnected
-                              ? l.set_brConnected
-                              : l.set_brWaiting),
-                  ),
-                if (supportsKritaBridge)
-                  (
-                    l.set_brAgents,
-                    b.agentClients > 0 ? SettingsTone.ok : SettingsTone.idle,
-                    l.set_brAgentsShort('${b.agentClients}'),
-                  ),
-                (
-                  'ComfyUI',
-                  !comfy ? SettingsTone.idle : b.comfyTone,
-                  !comfy
-                      ? l.set_brOff
-                      : (b.comfyTone == SettingsTone.error
-                            ? l.set_brNoResponse
-                            : l.set_brConnected),
-                ),
-              ])
-                Row(
-                  spacing: 8,
-                  children: [
-                    SettingsDot(tone),
-                    Expanded(
-                      child: Text(name, style: UiText.sans(12, color: c.ink)),
-                    ),
-                    Text(text, style: UiText.sans(12, color: c.muted)),
-                  ],
-                ),
-            ],
-          ),
-        ),
-        SettingsHint.text(context, l.set_brTip),
-      ],
+      // 手机端状态卡放到内容最上方，桌面端继续作为右侧侧注。
+      aside: mobile
+          ? const []
+          : [statusCard, SettingsHint.text(context, l.set_brTip)],
       children: [
+        if (mobile) ...[statusCard, const SizedBox(height: 14)],
         if (supportsKritaBridge)
           SettingsSection(
             title: 'Krita',
@@ -270,20 +269,46 @@ class SettingsBridgesPage extends StatelessWidget {
               title: l.set_brComfyUrl,
               sub: true,
               disabled: !comfy,
-              control: Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 8,
-                children: [
-                  const SetText(SettingKey.comfyUrl),
-                  SettingsBtn(
-                    key: const Key('comfy-test'),
-                    label: b.comfyTesting ? l.set_testing : l.set_test,
-                    glyph: UiGlyphs.bolt,
-                    small: true,
-                    onTap: b.comfyTesting ? null : a.onTestComfy,
-                  ),
-                ],
-              ),
+              control: mobile
+                  ? null
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 8,
+                      children: [
+                        const SetText(SettingKey.comfyUrl),
+                        SettingsBtn(
+                          key: const Key('comfy-test'),
+                          label: b.comfyTesting ? l.set_testing : l.set_test,
+                          glyph: UiGlyphs.bolt,
+                          small: true,
+                          onTap: b.comfyTesting ? null : a.onTestComfy,
+                        ),
+                      ],
+                    ),
+              // 手机端整宽：地址框占满一行，测试按钮单独一行靠右。
+              below: mobile
+                  ? LayoutBuilder(
+                      builder: (context, cs) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 8,
+                        children: [
+                          SetText(SettingKey.comfyUrl, width: cs.maxWidth),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: SettingsBtn(
+                              key: const Key('comfy-test'),
+                              label: b.comfyTesting
+                                  ? l.set_testing
+                                  : l.set_test,
+                              glyph: UiGlyphs.bolt,
+                              small: true,
+                              onTap: b.comfyTesting ? null : a.onTestComfy,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : null,
             ),
             if (comfy && b.comfyTone == SettingsTone.error)
               SettingsBlock(
@@ -331,6 +356,10 @@ class SettingsBridgesPage extends StatelessWidget {
               ),
           ],
         ),
+        if (mobile) ...[
+          const SizedBox(height: 14),
+          SettingsHint.text(context, l.set_brTip),
+        ],
       ],
     );
   }

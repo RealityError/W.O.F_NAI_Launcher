@@ -20,8 +20,13 @@ import 'refs_parts.dart';
 import 'refs_wall.dart';
 
 /// 右侧检查器 340：头部 62（名称 · 改名）、可滚动的参数和整理、底部操作。多选时换成批量面板。
+///
+/// 手机端整宽放进底部弹层（`inSheet: true`），左分隔线去掉。
 class RefsInspector extends StatelessWidget {
-  const RefsInspector({super.key});
+  const RefsInspector({super.key, this.width = 340, this.inSheet = false});
+
+  final double width;
+  final bool inSheet;
 
   @override
   Widget build(BuildContext context) {
@@ -75,10 +80,10 @@ class RefsInspector extends StatelessWidget {
 
     return Container(
       key: const Key('refs-inspector'),
-      width: 340,
+      width: width,
       decoration: BoxDecoration(
         color: c.panel,
-        border: Border(left: BorderSide(color: c.line)),
+        border: inSheet ? null : Border(left: BorderSide(color: c.line)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

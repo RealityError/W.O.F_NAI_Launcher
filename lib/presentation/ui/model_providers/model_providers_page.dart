@@ -9,9 +9,13 @@ import '../kit/ui_glyph.dart';
 import '../kit/ui_lib_controls.dart';
 import '../kit/ui_text.dart';
 import '../kit/ui_inputs.dart';
-import '../settings/settings_contract.dart' show SettingsOption, SettingsTone;
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_list.dart';
+import '../settings/settings_contract.dart'
+    show SettingsOption, SettingsTone, debugForceMobileSettingsLayout;
 import '../settings/settings_format.dart';
 import '../settings/settings_kit.dart';
+import '../settings/settings_scope.dart';
 import '../settings/settings_page.dart'
     show SettingsDockBar, SettingsDockButton;
 import 'model_providers_catalog.dart';
@@ -20,6 +24,8 @@ import 'model_providers_controller.dart';
 import 'model_providers_inspector.dart';
 import 'model_providers_kit.dart';
 import 'model_providers_picker.dart';
+
+part 'model_providers_mobile.dart';
 
 /// 服务商工作台（方案 B · 三栏检查器）：服务商列表 | 连接 + 请求 + 模型列表 | 模型检查器。
 ///
@@ -74,12 +80,18 @@ class ModelProvidersPanelState extends State<ModelProvidersPanel> {
       widget.controller ?? ProvidersController();
   var _dirty = false;
 
+  /// 手机端（含测试里的强制开关）：三栏工作台换成列表 + 全屏编辑页。
+  bool get mobileLayout => usesMobileLayout || debugForceMobileSettingsLayout;
+
   @override
   void initState() {
     super.initState();
     if (widget.selectedId case final id?) ctrl.select(id);
     ctrl.addListener(_changed);
   }
+
+  /// 手机端全屏编辑页在路由里，外部数据（保存 / 增删模型 / 排序）更新后要主动重建。
+  final dataRevision = ValueNotifier(0);
 
   @override
   void didUpdateWidget(covariant ModelProvidersPanel oldWidget) {
@@ -88,13 +100,19 @@ class ModelProvidersPanelState extends State<ModelProvidersPanel> {
         widget.selectedId != null) {
       ctrl.select(widget.selectedId!);
     }
-    if (widget.data != oldWidget.data) ctrl.sync(widget.data);
+    if (widget.data != oldWidget.data) {
+      ctrl.sync(widget.data);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) dataRevision.value++;
+      });
+    }
     _reportDirty();
   }
 
   @override
   void dispose() {
     ctrl.removeListener(_changed);
+    dataRevision.dispose();
     if (widget.controller == null) ctrl.dispose();
     super.dispose();
   }
@@ -130,6 +148,7 @@ class ModelProvidersPanelState extends State<ModelProvidersPanel> {
   Widget build(BuildContext context) {
     final c = context.ui;
     final d = widget.data;
+    if (mobileLayout) return _MobileProvidersView(panel: this);
     final p = ctrl.selectedOf(d);
     if (p == null) {
       return _Empty(onAdd: () => ctrl.pickerOpen = true);
@@ -514,10 +533,14 @@ class _Middle extends StatefulWidget {
     required this.panel,
     required this.item,
     required this.inlineInspector,
+    this.onModelTap,
   });
   final ModelProvidersPanelState panel;
   final ProviderItem item;
   final bool inlineInspector;
+
+  /// 手机端点模型行：除了选中，还要打开模型参数底部弹层。
+  final ValueChanged<ProviderModelSettings>? onModelTap;
 
   @override
   State<_Middle> createState() => _MiddleState();
@@ -546,84 +569,104 @@ class _MiddleState extends State<_Middle> {
     final draft = ctrl.draft(p.id);
     final errors = ProvidersValidate.errors(s);
     final proto = data.protocol(s.protocolId);
+    final mobile = widget.panel.mobileLayout;
     void edit(ProviderSettings Function(ProviderSettings) f) => ctrl.edit(p, f);
 
-    final head = Row(
-      spacing: 10,
+    final nameBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ProviderLogo.of(p, size: 36),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        if (_renaming)
+          SizedBox(
+            width: 240,
+            child: ProviderInput(
+              key: const Key('mp-name'),
+              value: s.name,
+              autofocus: true,
+              height: 28,
+              error: errors.contains('name'),
+              onChanged: (v) => edit((x) => x.copyWith(name: v)),
+              onSubmitted: (_) => setState(() => _renaming = false),
+            ),
+          )
+        else
+          Row(
+            spacing: 6,
             children: [
-              if (_renaming)
-                SizedBox(
-                  width: 240,
-                  child: ProviderInput(
-                    key: const Key('mp-name'),
-                    value: s.name,
-                    autofocus: true,
-                    height: 28,
-                    error: errors.contains('name'),
-                    onChanged: (v) => edit((x) => x.copyWith(name: v)),
-                    onSubmitted: (_) => setState(() => _renaming = false),
-                  ),
-                )
-              else
-                Row(
-                  spacing: 6,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        s.name,
-                        key: const Key('mp-title'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: UiText.sans(
-                          15,
-                          weight: FontWeight.w600,
-                          color: c.ink,
-                        ),
-                      ),
-                    ),
-                    ProviderTinyBtn(
-                      key: const Key('mp-rename'),
-                      glyph: UiGlyphs.pencil,
-                      glyphSize: 13,
-                      tooltip: l.mp_rename,
-                      onTap: () => setState(() => _renaming = true),
-                    ),
-                  ],
+              Flexible(
+                child: Text(
+                  s.name,
+                  key: const Key('mp-title'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: UiText.sans(15, weight: FontWeight.w600, color: c.ink),
                 ),
-              Text(
-                proto?.label ?? s.protocolId,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: UiText.sans(12, color: c.muted),
+              ),
+              ProviderTinyBtn(
+                key: const Key('mp-rename'),
+                glyph: UiGlyphs.pencil,
+                glyphSize: 13,
+                tooltip: l.mp_rename,
+                onTap: () => setState(() => _renaming = true),
               ),
             ],
           ),
-        ),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 220),
-          child: ProviderStatusPill(item: p, now: widget.panel.widget.now),
-        ),
-        SettingsBtn(
-          key: const Key('mp-test'),
-          label: p.testing ? l.mp_testing : l.mp_test,
-          glyph: UiGlyphs.bolt,
-          small: true,
-          onTap: p.testing || !p.enabled
-              ? null
-              : () => actions.onTest(p.id, s, draft?.apiKey),
-        ),
-        SettingsSwitch(
-          key: const Key('mp-enabled'),
-          value: p.enabled,
-          onChanged: (v) => actions.onEnabled(p.id, v),
+        Text(
+          proto?.label ?? s.protocolId,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: UiText.sans(12, color: c.muted),
         ),
       ],
     );
+    final statusControls = <Widget>[
+      ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 220),
+        child: ProviderStatusPill(item: p, now: widget.panel.widget.now),
+      ),
+      SettingsBtn(
+        key: const Key('mp-test'),
+        label: p.testing ? l.mp_testing : l.mp_test,
+        glyph: UiGlyphs.bolt,
+        small: true,
+        onTap: p.testing || !p.enabled
+            ? null
+            : () => actions.onTest(p.id, s, draft?.apiKey),
+      ),
+      SettingsSwitch(
+        key: const Key('mp-enabled'),
+        value: p.enabled,
+        onChanged: (v) => actions.onEnabled(p.id, v),
+      ),
+    ];
+    // 手机端窄：品牌行独占一行，状态 / 测试 / 开关自动换行，避免 360dp 溢出。
+    final head = mobile
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 10,
+            children: [
+              Row(
+                spacing: 10,
+                children: [
+                  ProviderLogo.of(p, size: 36),
+                  Expanded(child: nameBlock),
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: statusControls,
+              ),
+            ],
+          )
+        : Row(
+            spacing: 10,
+            children: [
+              ProviderLogo.of(p, size: 36),
+              Expanded(child: nameBlock),
+              ...statusControls,
+            ],
+          );
 
     if (_lastDraftKey != null && draft?.apiKey == null && _revealed != null) {
       _revealed = null;
@@ -838,11 +881,14 @@ class _MiddleState extends State<_Middle> {
             settings: s,
             ctrl: ctrl,
             onReorder: (ids) => actions.onReorderModels(p.id, ids),
+            onModelTap: widget.onModelTap,
           );
 
     return Container(
       key: const Key('mp-middle'),
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+      padding: mobile
+          ? const EdgeInsets.fromLTRB(16, 16, 16, 20)
+          : const EdgeInsets.fromLTRB(22, 20, 22, 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -864,6 +910,15 @@ class _MiddleState extends State<_Middle> {
           request,
           const SizedBox(height: 18),
           listHead,
+          if (mobile && mode == ProvidersListMode.added && s.models.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                l.mp_reorderHintMobile,
+                key: const Key('mp-reorder-hint'),
+                style: UiText.sans(11, color: c.faint, height: 1.5),
+              ),
+            ),
           if (_manual && mode == ProvidersListMode.added) ...[
             const SizedBox(height: 8),
             _ManualAdd(
@@ -913,7 +968,9 @@ class _MiddleState extends State<_Middle> {
                 ),
               ).danger(context),
               const Spacer(),
-              if (mode == ProvidersListMode.added && s.models.length > 1)
+              if (!mobile &&
+                  mode == ProvidersListMode.added &&
+                  s.models.length > 1)
                 Flexible(
                   child: Text(
                     l.mp_dragHint,
@@ -1236,18 +1293,20 @@ class _ManualAddState extends State<_ManualAdd> {
   }
 }
 
-/// 已添加的模型：可拖动排序，点选打开右侧检查器。
+/// 已添加的模型：可拖动排序，点选打开右侧检查器。手机端改成上移 / 下移按钮。
 class _ModelList extends StatelessWidget {
   const _ModelList({
     required this.item,
     required this.settings,
     required this.ctrl,
     required this.onReorder,
+    this.onModelTap,
   });
   final ProviderItem item;
   final ProviderSettings settings;
   final ProvidersController ctrl;
   final ValueChanged<List<String>> onReorder;
+  final ValueChanged<ProviderModelSettings>? onModelTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1265,6 +1324,7 @@ class _ModelList extends StatelessWidget {
               )
               .toList();
     final current = ctrl.modelOf(settings, item.id);
+    final mobile = usesMobileLayout || debugForceMobileSettingsLayout;
     final box = BoxDecoration(
       color: c.card,
       border: Border.all(color: c.border),
@@ -1311,12 +1371,130 @@ class _ModelList extends StatelessWidget {
           : m.reasoningLevels!.isEmpty
           ? l.mp_unsupported
           : providerLevelLabel(context, m.effectiveDefault);
+
+      /// 手机端：品牌 / 元信息在上，右侧 48dp 上移、下移按钮代替拖动。
+      Widget mobileBody() {
+        final draft = ctrl.draft(item.id);
+        final dirty =
+            draft != null &&
+            draft.base.model(m.id) != null &&
+            m.differences(draft.base.model(m.id)!) > 0;
+        void move(int delta) {
+          final to = i + delta;
+          if (to < 0 || to >= all.length) return;
+          final ids = [for (final x in all) x.id];
+          ids.insert(to, ids.removeAt(i));
+          onReorder(ids);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 6,
+          children: [
+            Row(
+              spacing: 6,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        spacing: 6,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              m.id,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: UiText.mono(
+                                12.5,
+                                weight: FontWeight.w500,
+                                color: c.ink,
+                              ),
+                            ),
+                          ),
+                          if (info.retired)
+                            UiMini(l.set_mdRetired, tone: UiMiniTone.warn),
+                          if (dirty)
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: c.accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                      Text(
+                        sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: UiText.sans(11, color: c.faint),
+                      ),
+                    ],
+                  ),
+                ),
+                if (q.isEmpty) ...[
+                  _MobileReorderButton(
+                    key: Key('mp-model-up-${m.id}'),
+                    glyph: UiGlyphs.arrowUp,
+                    tooltip: l.common_moveUp,
+                    enabled: i > 0,
+                    onTap: () => move(-1),
+                  ),
+                  _MobileReorderButton(
+                    key: Key('mp-model-down-${m.id}'),
+                    glyph: UiGlyphs.arrowDown,
+                    tooltip: l.common_moveDown,
+                    enabled: i < all.length - 1,
+                    onTap: () => move(1),
+                  ),
+                ],
+              ],
+            ),
+            Row(
+              spacing: 8,
+              children: [
+                ProviderCapIcons(m.capabilities),
+                Expanded(
+                  child: Text(
+                    '${providerTokens(m.contextWindow)} / ${providerTokens(m.maxOutput)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: UiText.mono(11, color: c.muted),
+                  ),
+                ),
+                Text(
+                  level,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: UiText.sans(
+                    12,
+                    color: m.reasoningLevels?.isNotEmpty == true
+                        ? c.ink
+                        : c.faint,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      }
+
       return UiPressable(
         key: Key('mp-model-${m.id}'),
-        onTap: () => ctrl.selectModel(item.id, m.id),
+        onTap: mobile
+            ? () {
+                ctrl.selectModel(item.id, m.id);
+                onModelTap?.call(m);
+              }
+            : () => ctrl.selectModel(item.id, m.id),
         builder: (context, hover) => Container(
-          constraints: const BoxConstraints(minHeight: 46),
-          padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
+          constraints: BoxConstraints(minHeight: mobile ? 56 : 46),
+          padding: mobile
+              ? const EdgeInsets.fromLTRB(12, 6, 4, 6)
+              : const EdgeInsets.fromLTRB(8, 7, 12, 7),
           decoration: BoxDecoration(
             color: on
                 ? c.accent.withValues(alpha: .08)
@@ -1331,84 +1509,87 @@ class _ModelList extends StatelessWidget {
               top: i == 0 ? BorderSide.none : BorderSide(color: c.rowLine),
             ),
           ),
-          child: Row(
-            spacing: 10,
-            children: [
-              q.isEmpty
-                  ? ReorderableDragStartListener(
-                      index: i,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.grab,
-                        child: UiGlyph(
-                          UiGlyphs.drag,
-                          size: 13,
-                          color: c.faint.withValues(alpha: .6),
-                        ),
-                      ),
-                    )
-                  : const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: mobile
+              ? mobileBody()
+              : Row(
+                  spacing: 10,
                   children: [
-                    Text(
-                      m.id,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: UiText.mono(
-                        12,
-                        weight: FontWeight.w500,
-                        color: c.ink,
+                    q.isEmpty
+                        ? ReorderableDragStartListener(
+                            index: i,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.grab,
+                              child: UiGlyph(
+                                UiGlyphs.drag,
+                                size: 13,
+                                color: c.faint.withValues(alpha: .6),
+                              ),
+                            ),
+                          )
+                        : const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m.id,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: UiText.mono(
+                              12,
+                              weight: FontWeight.w500,
+                              color: c.ink,
+                            ),
+                          ),
+                          Text(
+                            sub,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: UiText.sans(11, color: c.faint),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      sub,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: UiText.sans(11, color: c.faint),
+                    if (info.retired)
+                      UiMini(l.set_mdRetired, tone: UiMiniTone.warn),
+                    if (ctrl.draft(item.id) case final d?
+                        when d.base.model(m.id) != null &&
+                            m.differences(d.base.model(m.id)!) > 0)
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: c.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ProviderCapIcons(m.capabilities),
+                    SizedBox(
+                      width: 76,
+                      child: Text(
+                        '${providerTokens(m.contextWindow)} / ${providerTokens(m.maxOutput)}',
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        style: UiText.mono(11, color: c.muted),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        level,
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: UiText.sans(
+                          12,
+                          color: m.reasoningLevels?.isNotEmpty == true
+                              ? c.ink
+                              : c.faint,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              if (info.retired) UiMini(l.set_mdRetired, tone: UiMiniTone.warn),
-              if (ctrl.draft(item.id) case final d?
-                  when d.base.model(m.id) != null &&
-                      m.differences(d.base.model(m.id)!) > 0)
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: c.accent,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ProviderCapIcons(m.capabilities),
-              SizedBox(
-                width: 76,
-                child: Text(
-                  '${providerTokens(m.contextWindow)} / ${providerTokens(m.maxOutput)}',
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  style: UiText.mono(11, color: c.muted),
-                ),
-              ),
-              SizedBox(
-                width: 52,
-                child: Text(
-                  level,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: UiText.sans(
-                    12,
-                    color: m.reasoningLevels?.isNotEmpty == true
-                        ? c.ink
-                        : c.faint,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       );
     }
@@ -1517,10 +1698,14 @@ class _SaveDock extends StatelessWidget {
     required this.item,
     required this.ctrl,
     required this.onSave,
+    this.compact = false,
   });
   final ProviderItem item;
   final ProvidersController ctrl;
   final VoidCallback onSave;
+
+  /// 手机端编辑页底部整宽保存条（无 Ctrl+S 提示，按钮 48dp）。
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1551,6 +1736,46 @@ class _SaveDock extends StatelessWidget {
               l.mp_unsaved(item.settings.name, '$n'),
             ),
           };
+    if (compact) {
+      return Container(
+        key: const Key('mp-dock'),
+        color: c.tipBg,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+            child: Row(
+              spacing: 10,
+              children: [
+                if (glyph == null)
+                  const UiSpinner(size: 14)
+                else
+                  UiGlyph(glyph, size: 15, color: tone),
+                Expanded(
+                  child: Text(
+                    text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: UiText.sans(12.5, color: c.tipInk),
+                  ),
+                ),
+                _MobileDockButton(
+                  key: const Key('mp-mobile-discard'),
+                  label: l.set_discard,
+                  onTap: saving || n == 0 ? null : () => ctrl.discard(item.id),
+                ),
+                _MobileDockButton(
+                  key: const Key('mp-mobile-save'),
+                  label: l.set_save,
+                  primary: true,
+                  onTap: saving || n == 0 || errs > 0 ? null : onSave,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return SettingsDockBar(
       key: const Key('mp-dock'),
       children: [

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/localization_extension.dart';
 import '../../../data/models/gallery/gallery_category.dart';
+import '../../../data/models/gallery/image_collection.dart';
+import '../../mobile/mobile_context_menu.dart';
 import '../../mobile/mobile_list.dart';
 import '../../providers/collection_provider.dart';
 import '../../providers/gallery_category_provider.dart';
@@ -37,6 +39,41 @@ class MobileGalleryBrowseSheet extends ConsumerWidget {
   void _create(BuildContext context, VoidCallback action) {
     Navigator.of(context).pop();
     action();
+  }
+
+  /// 触屏没有拖拽排序：相册在手机上用「上移 / 下移」调整同级顺序，
+  /// 走与桌面拖拽同一个 `CollectionNotifier.reorder`。
+  Future<void> _showCollectionMenu(
+    BuildContext context,
+    WidgetRef ref,
+    ImageCollection collection,
+  ) async {
+    final l = context.l10n;
+    final notifier = ref.read(collectionNotifierProvider.notifier);
+    final siblings = ref
+        .read(collectionNotifierProvider)
+        .collections
+        .where((entry) => entry.parentId == collection.parentId)
+        .toList(growable: false);
+    final index = siblings.indexWhere((entry) => entry.id == collection.id);
+    await showMobileContextMenu(
+      context,
+      title: collection.name,
+      items: [
+        MobileMenuItem(
+          label: l.common_moveUp,
+          icon: Icons.arrow_upward_rounded,
+          enabled: index > 0,
+          onTap: () => notifier.reorder(collection.parentId, index, index - 1),
+        ),
+        MobileMenuItem(
+          label: l.common_moveDown,
+          icon: Icons.arrow_downward_rounded,
+          enabled: index >= 0 && index < siblings.length - 1,
+          onTap: () => notifier.reorder(collection.parentId, index, index + 1),
+        ),
+      ],
+    );
   }
 
   @override
@@ -142,7 +179,21 @@ class MobileGalleryBrowseSheet extends ConsumerWidget {
                   : StudioIcons.galleryCollection,
               title: collection.name,
               trailingText: '${collection.imageCount}',
-              trailing: check(selectionId),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ?check(selectionId),
+                  IconButton(
+                    key: ValueKey(
+                      'mobile-browse-collection-order-${collection.id}',
+                    ),
+                    icon: const Icon(Icons.more_horiz, size: 20),
+                    tooltip: l.localGallery_moreActions,
+                    onPressed: () =>
+                        _showCollectionMenu(context, ref, collection),
+                  ),
+                ],
+              ),
               showChevron: false,
               // 收藏文件夹只是组织节点（桌面同款语义），不承载图片。
               onTap: collection.isFolder

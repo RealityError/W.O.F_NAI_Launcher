@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -198,7 +199,7 @@ class _RoundHeader extends StatelessWidget {
                 ]),
                 children: [
                   UiGlyph(UiGlyphs.evo, size: 13, color: c.evo),
-                  Text(l.explore_pick),
+                  if (!usesMobileLayout) Text(l.explore_pick),
                 ],
               ),
           ],
@@ -296,6 +297,10 @@ List<UiMenuItem> exploreCandidateMenu(
   ];
 }
 
+/// 双击判定用的时钟。测试可替换成假时钟：慢机器上一次 tap + settle 可能超过 300ms，
+/// 会把「0.3 秒内再点」误判成两次单击。
+DateTime Function() exploreTapClock = DateTime.now;
+
 /// 候选卡：图（圆角 8、控件底）+ 2 行画师串。悬停出底部操作条和左上角勾选圈；
 /// 单击看检查器，0.3 秒内再点一次开大图，Ctrl / Shift 单击多选，右键菜单。
 class ExploreCard extends StatefulWidget {
@@ -319,7 +324,7 @@ class _ExploreCardState extends State<ExploreCard> {
     if ((hw.isPrimaryOrWindowsMetaPressed || ctrl.selecting) && x.done) {
       return ctrl.toggleSelect(x.key);
     }
-    final now = DateTime.now();
+    final now = exploreTapClock();
     final again =
         _lastTap != null &&
         now.difference(_lastTap!) < const Duration(milliseconds: 300);
@@ -1005,7 +1010,7 @@ mixin ExploreQuickOpen<T extends StatefulWidget> on State<T> {
   DateTime? _quickTap;
 
   void quickTap(ExploreController ctrl, String key) {
-    final now = DateTime.now();
+    final now = exploreTapClock();
     final again =
         _quickTap != null &&
         now.difference(_quickTap!) < const Duration(milliseconds: 300);

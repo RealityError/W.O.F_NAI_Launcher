@@ -11,6 +11,7 @@ import 'bulk_progress_dialog.dart';
 import '../widgets/common/themed_divider.dart';
 import '../widgets/common/app_toast.dart';
 import '../widgets/tag_expansion/tag_expansion_wrapper.dart';
+import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
 import 'package:nai_launcher/presentation/widgets/common/themed_input.dart';
 
 /// Bulk Metadata Edit Dialog Widget
@@ -189,10 +190,18 @@ class _BulkMetadataEditDialogState
 
     return AlertDialog(
       backgroundColor: Colors.transparent,
+      // 手机端左右 inset 收窄，500 宽的卡片尽量铺满；高度按屏幕 82% 封顶。
+      insetPadding: usesMobileLayout
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 24)
+          : null,
       content: Container(
-        width: 500,
-        constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(16),
+        width: usesMobileLayout ? double.infinity : 500,
+        constraints: BoxConstraints(
+          maxHeight: usesMobileLayout
+              ? MediaQuery.sizeOf(context).height * .82
+              : 600,
+        ),
+        padding: EdgeInsets.all(usesMobileLayout ? 12 : 16),
         decoration: BoxDecoration(
           color: isDark
               ? theme.colorScheme.surfaceContainerHigh

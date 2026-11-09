@@ -68,9 +68,9 @@ class _CountingTipDeck extends TipDeck {
   _CountingTipDeck() : super(seed: 23);
   int generatingDraws = 0;
   @override
-  Tip draw(TipSurface surface, {DateTime? now}) {
+  Tip draw(TipSurface surface, {DateTime? now, bool? mobile}) {
     if (surface == TipSurface.generating) generatingDraws++;
-    return super.draw(surface, now: now);
+    return super.draw(surface, now: now, mobile: mobile);
   }
 }
 

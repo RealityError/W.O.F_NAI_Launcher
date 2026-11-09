@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/utils/desktop_platform.dart';
 import '../../l10n/app_localizations.dart';
 
 part 'tip_catalog.dart';
@@ -57,19 +58,55 @@ enum TipSurface {
 }
 
 class Tip {
-  const Tip(this.kind, this._text, {this.short = false, this.night = false});
+  const Tip(
+    this.kind,
+    this._text, {
+    this.short = false,
+    this.night = false,
+    this.desktopOnly = false,
+    this.mobileOnly = false,
+  });
 
-  const Tip.guide(String Function(AppLocalizations) text, {bool short = false})
-    : this(TipKind.guide, text, short: short);
+  const Tip.guide(
+    String Function(AppLocalizations) text, {
+    bool short = false,
+    bool desktopOnly = false,
+    bool mobileOnly = false,
+  }) : this(
+         TipKind.guide,
+         text,
+         short: short,
+         desktopOnly: desktopOnly,
+         mobileOnly: mobileOnly,
+       );
 
-  const Tip.trick(String Function(AppLocalizations) text, {bool short = false})
-    : this(TipKind.trick, text, short: short);
+  const Tip.trick(
+    String Function(AppLocalizations) text, {
+    bool short = false,
+    bool desktopOnly = false,
+    bool mobileOnly = false,
+  }) : this(
+         TipKind.trick,
+         text,
+         short: short,
+         desktopOnly: desktopOnly,
+         mobileOnly: mobileOnly,
+       );
 
   const Tip.wolf(
     String Function(AppLocalizations) text, {
     bool short = false,
     bool night = false,
-  }) : this(TipKind.wolf, text, short: short, night: night);
+    bool desktopOnly = false,
+    bool mobileOnly = false,
+  }) : this(
+         TipKind.wolf,
+         text,
+         short: short,
+         night: night,
+         desktopOnly: desktopOnly,
+         mobileOnly: mobileOnly,
+       );
 
   final TipKind kind;
   final String Function(AppLocalizations) _text;
@@ -79,6 +116,15 @@ class Tip {
 
   /// 只在深夜出现。
   final bool night;
+
+  /// 讲键盘/鼠标操作，手机端不出现。
+  final bool desktopOnly;
+
+  /// 讲触屏操作，桌面端不出现。
+  final bool mobileOnly;
+
+  /// 当前形态下是否可用；[mobile] 由调用方判定（测试可注入）。
+  bool appliesTo({required bool mobile}) => mobile ? !desktopOnly : !mobileOnly;
 
   String text(AppLocalizations l10n) => _text(l10n);
 
@@ -118,21 +164,25 @@ class TipDeck {
 
   /// 第 [index] 条可用小贴士；同一序号结果稳定。
   ///
-  /// 白天跳过深夜条；[shortOnly] 只取短句；[kind] 只取某一类。
+  /// 白天跳过深夜条；[shortOnly] 只取短句；[kind] 只取某一类；
+  /// [mobile] 决定过滤手机专属还是桌面专属的条目（默认取当前平台）。
   Tip tipAt(
     TipSurface surface,
     int index, {
     DateTime? now,
     bool shortOnly = false,
     TipKind? kind,
+    bool? mobile,
   }) {
+    final isMobile = mobile ?? isMobilePlatform;
     final tips = tipsFor(surface);
     final night = isTipNight(now ?? DateTime.now());
     final eligible = [
       for (final i in _order(surface))
         if ((night || !tips[i].night) &&
             (!shortOnly || tips[i].short) &&
-            (kind == null || tips[i].kind == kind))
+            (kind == null || tips[i].kind == kind) &&
+            tips[i].appliesTo(mobile: isMobile))
           tips[i],
     ];
     final pool = eligible.isEmpty ? tips : eligible;
@@ -140,10 +190,10 @@ class TipDeck {
   }
 
   /// 一次性位置（欢迎页、占位卡、启动页）每次露面取下一条。
-  Tip draw(TipSurface surface, {DateTime? now}) {
+  Tip draw(TipSurface surface, {DateTime? now, bool? mobile}) {
     final index = _drawn[surface] ?? 0;
     _drawn[surface] = index + 1;
-    return tipAt(surface, index, now: now);
+    return tipAt(surface, index, now: now, mobile: mobile);
   }
 }
 

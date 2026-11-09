@@ -46,6 +46,7 @@ import 'presentation/providers/floating_resource_windows_provider.dart';
 import 'presentation/wiring/resource_window_wiring.dart';
 import 'presentation/wiring/android_share_wiring.dart';
 import 'presentation/wiring/generation_background_sync.dart';
+import 'presentation/wiring/notification_permission_wiring.dart';
 
 double windowCaptionHeightForRoute(String path) => switch (path) {
   AppRoutes.localGallery => 62,
@@ -226,6 +227,8 @@ class NAILauncherApp extends ConsumerWidget {
         child: MaterialApp.router(
           title: studioWindowTitle(Brand.name),
           debugShowCheckedModeBanner: false,
+          // 通知权限「去设置」引导等无 context 的提示走根 ScaffoldMessenger。
+          scaffoldMessengerKey: appScaffoldMessengerKey,
 
           theme: usesMobileLayout
               ? mobileAdaptiveTheme(ref.watch(studioLightThemeProvider))

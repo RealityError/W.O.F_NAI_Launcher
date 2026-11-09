@@ -6,10 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../widgets/common/drag_preview_divider.dart';
+import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
+import '../kit/ui_controls.dart';
 import '../kit/ui_dialog.dart';
 import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
+import '../kit/ui_text.dart';
 import 'explore_contract.dart';
 import 'explore_detail.dart';
 import 'explore_dialogs.dart';
@@ -186,6 +190,9 @@ class _StyleExplorePageState extends State<StyleExplorePage>
   var _renamingRun = false;
   var _narrow = false;
   var _drawer = false;
+
+  /// 手机端单列：`false` 看编辑列，`true` 看舞台（候选 / 进化）。
+  var _mobileStage = false;
   double? _committedWidth;
   final _widthPreview = DragPreviewController();
 
@@ -228,6 +235,8 @@ class _StyleExplorePageState extends State<StyleExplorePage>
       _detailKey = null;
       _dialog = _Dialog.none;
       _renamingRun = false;
+      // 手机端：出现新的一轮生成就切到舞台看结果。
+      _mobileStage = run != null;
     } else if (run != null) {
       // 刚建的进化线：切到进化页签看它；培育出新一代：清掉上一代的勾选。
       final before = {
@@ -752,7 +761,9 @@ class _StyleExplorePageState extends State<StyleExplorePage>
       width: width,
       decoration: BoxDecoration(
         color: c.bg,
-        border: Border(right: BorderSide(color: c.line)),
+        border: usesMobileLayout
+            ? null
+            : Border(right: BorderSide(color: c.line)),
       ),
       child: Builder(
         builder: (context) => widget.editor(
@@ -832,6 +843,68 @@ class _StyleExplorePageState extends State<StyleExplorePage>
               color: c.bg,
               child: LayoutBuilder(
                 builder: (context, box) {
+                  if (usesMobileLayout) {
+                    // 手机端：单列。编辑列和舞台用顶部切换；检查器整宽盖在舞台上。
+                    _narrow = true;
+                    return Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (_) {
+                        if (!_typing()) _focusNode.requestFocus();
+                      },
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: Stack(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _ExploreMobileSwitch(
+                                  stage: _mobileStage && _hasRun,
+                                  hasRun: _hasRun,
+                                  onChanged: (v) =>
+                                      setState(() => _mobileStage = v),
+                                ),
+                                Expanded(
+                                  child: _mobileStage && _hasRun
+                                      ? _stage()
+                                      : _editorColumn(double.infinity),
+                                ),
+                              ],
+                            ),
+                            if (_detailKey != null)
+                              Positioned.fill(
+                                child: ExploreDetail(
+                                  currentKey: _detailKey!,
+                                  keys: _detailList,
+                                  onClose: _closeDetail,
+                                  onStep: _stepDetail,
+                                  onCaptionOverStage: _reportCaption,
+                                ),
+                              ),
+                            if (_drawer && _hasRun)
+                              Positioned.fill(
+                                child: Container(
+                                  key: const Key('explore-inspector-mobile'),
+                                  color: c.bg,
+                                  child: const ExploreInspector(
+                                    drawer: true,
+                                    width: double.infinity,
+                                  ),
+                                ),
+                              ),
+                            if (data.undo case final u?)
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: _selecting ? 76 : 18,
+                                child: Center(child: ExploreUndoToast(undo: u)),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   final dock = widget.dock == null
                       ? 0.0
                       : StyleExplorePage.dockWidth;
@@ -958,6 +1031,84 @@ class _StyleExplorePageState extends State<StyleExplorePage>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 手机端顶部「编辑 / 结果」切换条 48。
+class _ExploreMobileSwitch extends StatelessWidget {
+  const _ExploreMobileSwitch({
+    required this.stage,
+    required this.hasRun,
+    required this.onChanged,
+  });
+
+  final bool stage;
+  final bool hasRun;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    Widget seg(bool value, String label, Key key, {bool enabled = true}) {
+      final on = stage == value;
+      return UiPressable(
+        key: key,
+        onTap: !enabled || on ? null : () => onChanged(value),
+        builder: (context, hover) => Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? c.raised : (hover && enabled ? c.hover : null),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: on
+                ? [
+                    BoxShadow(
+                      color: c.accent.withValues(alpha: .14),
+                      spreadRadius: 3,
+                    ),
+                    BoxShadow(color: c.accent, spreadRadius: 1),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: UiText.sans(
+              13,
+              weight: on ? FontWeight.w700 : FontWeight.w500,
+              color: on ? c.ink : (enabled ? c.muted : c.faint),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      key: const Key('explore-mobile-switch'),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        spacing: 4,
+        children: [
+          seg(
+            false,
+            l.explore_mobileEditor,
+            const Key('explore-mobile-editor'),
+          ),
+          seg(
+            true,
+            l.explore_mobileResults,
+            const Key('explore-mobile-stage'),
+            enabled: hasRun,
+          ),
+        ],
       ),
     );
   }
