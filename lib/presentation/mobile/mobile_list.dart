@@ -78,13 +78,39 @@ class MobileListTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: foreground,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: foreground,
+                              ),
+                            ),
+                          ),
+                          // 尾部状态与标题同一行（而不是整行垂直居中）：副标题
+                          // 换行时不会插进句子中间，窄屏也不与副标题抢宽度。
+                          if (trailingText != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 120,
+                                ),
+                                child: Text(
+                                  trailingText!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       if (subtitle != null) ...[
                         const SizedBox(height: 2),
@@ -100,24 +126,6 @@ class MobileListTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailingText != null)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    // 窄屏（360dp）把尾部状态限制在最宽 120dp：超出省略，
-                    // 不跟标题/副标题抢宽度，也避免行尾被挤出屏幕。
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 120),
-                      child: Text(
-                        trailingText!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
                 ?trailing,
                 if (showChevron)
                   Padding(
