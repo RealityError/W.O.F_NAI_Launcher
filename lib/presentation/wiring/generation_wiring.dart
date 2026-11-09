@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/localization_extension.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../../core/shortcuts/default_shortcuts.dart';
 import '../widgets/prompt/blocks/prompt_block_palette.dart';
 import '../widgets/shortcuts/shortcut_aware_widget.dart';
@@ -343,11 +344,13 @@ class _GenerationWiringState extends ConsumerState<GenerationWiring> {
         onToggleTranslation: () => ref
             .read(promptTranslationCoordinatorProvider)
             .toggleAll(currentData().prompt.negative),
-        onTranslationAdjust: (rect) => _translationAdjustment.toggle(
-          context,
-          rect,
-          currentData().prompt.negative,
-        ),
+        onTranslationAdjust: supportsTranslationAdjustment
+            ? (rect) => _translationAdjustment.toggle(
+                context,
+                rect,
+                currentData().prompt.negative,
+              )
+            : null,
         onClearTranslations: () {
           final negative = currentData().prompt.negative;
           final coordinator = ref.read(promptTranslationCoordinatorProvider);
