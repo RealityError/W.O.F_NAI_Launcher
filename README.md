@@ -230,7 +230,7 @@ flutter gen-l10n
 flutter build apk --release --split-per-abi
 ```
 
-x86_64 模拟器（如 MuMu）用 `flutter build apk --debug --target-platform android-x64`，arm64 真机用 `android-arm64`；产物在 `build/app/outputs/flutter-apk/`。仓库根目录的 `scripts/build_android.ps1` 会做 SDK/JDK/NDK、LFS 与生成源码预检，并把 APK 放到 `dist/android/`。当前 release 仍使用 debug 签名，不能对外发布。平台差异、已知限制和排障见 [Android 移植说明](docs/android-port.md)。
+x86_64 模拟器（如 MuMu）用 `flutter build apk --debug --target-platform android-x64`，arm64 真机用 `android-arm64`；产物在 `build/app/outputs/flutter-apk/`。仓库根目录的 `scripts/build_android.ps1` 会做 SDK/JDK/NDK、LFS 与生成源码预检，并把 APK 放到 `dist/android/`。release 包用项目专用密钥签名（CI 从 Secrets 还原 `android/app/wof-release.jks` 与 `android/key.properties`，两者都不入库），同密钥版本可直接覆盖安装；本地缺这两个文件时回退 debug 签名，仅供临时构建。平台差异、已知限制和排障见 [Android 移植说明](docs/android-port.md)。
 
 </details>
 

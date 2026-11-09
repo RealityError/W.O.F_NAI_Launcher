@@ -207,7 +207,7 @@ SDK 自动检测顺序：`-FlutterPath` → `WOF_FLUTTER_SDK_ROOT` → `FLUTTER_
 - 环境：`ubuntu-latest`、Temurin JDK 17、`subosito/flutter-action` 固定 **3.47.7**（与 `tool/flutter-sdk.json` 一致）、Gradle 与 pub 缓存。
 - 步骤：`lfs: true` 检出 → `flutter pub get` → `flutter gen-l10n` + `dart run tool/generate.dart`（生成文件不入库，CI 必须重新生成）→ `flutter build apk --release --split-per-abi` → 上传 `android-release-apks`。
 - 首次运行会下载 NDK、Android 平台和 Rust 目标，加上 400 MB+ 资产，整条流水线较慢；`timeout-minutes: 120` 是保守值。
-- 产物用 debug 签名，仅用于内部测试，不要直接对外分发；签名方案见第 7 节。
+- 产物用项目固定的 release 密钥签名（CI 从 Secrets 还原，见 §7.6），可用于覆盖安装；PR 来自 fork 拿不到 secret 时退回 debug 签名（仅供构建验证）。
 
 ### 3.6 安装到模拟器 / 真机
 
@@ -328,7 +328,9 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 ## 5. 已知限制
 
 1. **APK 很大**：`assets/databases` 约 419 MB，字体约 31 MB，翻译资源约 34 MB，加上其它资源总计约 500 MB。2026-11-08 的 x86_64 debug 包为 313,062,058 字节（Flutter 输出显示 298.6 MB），2026-11-09 本机最新 debug 产物为 **368,226,394 字节（约 351 MB，构建参数/ABI 与插件库集合不同会在该量级浮动）**，其中还带有部分插件的多 ABI 预编译 `.so`（onnxruntime / sqlite3 的 arm64、armeabi-v7a 库随包进入）；安装和首次启动都明显比桌面版慢。后续方向：AAB + Play Asset Delivery、按需下载语言/数据库资产、拆分内置数据；当前分支未做。
-2. **release 未正式签名**：当前沿用 debug 签名（见第 7 节），不能发布。
+2. **签名密钥要保管好**：release 包已用项目专用密钥签名（§7.6），密钥存在 GitHub Secrets。
+   2.4.0 及更早的包是临时 debug 签名，升到 2.5.0 需要卸载重装一次；此后同密钥版本可直接覆盖安装。
+   换密钥或丢密钥都等于所有用户重装。
 3. **没有 iOS 目标**：`ios/` 未生成；`isIOSPlatform` 只是给未来移植留的判断。
 4. **存储范围**：Android 上默认图库/数据目录在应用私有空间，不能像桌面那样任意指定磁盘文件夹；导入外部图片走系统文件选择器（SAF）。手动保存生成图时会把副本镜像到系统相册 `Pictures/W.O.F NAI Studio`（MediaStore，Android 10+），自动保存的图片和图库里的其它文件仍只在应用私有目录；卸载应用会删除私有目录数据，重要作品请及时导出。
 5. **移动端交互取舍**：桌面右键 / hover / 拖拽 / 快捷键在触屏上的等价入口是长按菜单、底部弹层、选择后操作和可见按钮；图片拖拽排序、框选、部分快捷键在手机上仍没有等价入口。这是移动端 UX 取舍，不是桌面功能回归，桌面代码路径未改。
@@ -341,7 +343,7 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 12. **未知来源授权提示文案暂缓**：未授权“安装未知应用”时，应用当前只静默跳到系统设置页，返回后需再次点安装；原生跳转已经闭环，但缺少应用内提示文案。计划新增 ARB key `update_androidUnknownSources`（zh「请允许本应用安装未知来源应用后重试。」/ en「Allow this app to install unknown apps, then try again.」/ ja「不明なアプリのインストールを許可してから再試行してください。」/ ko「알 수 없는 앱 설치를 허용한 후 다시 시도하세요.」），为避免未引用 key 触发 l10n 回归，本轮**暂不加入**，后续补提示时与代码一起加。
 13. **明文 HTTP**：manifest 开启 `usesCleartextTraffic` 以支持局域网 ComfyUI，正式发布前应评估是否收窄。
 14. **构建所需外部资源**：首次构建要下载 NDK、Rust 目标、cargokit 预编译/编译产物，离线环境需要提前预热缓存。
-15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 在本机 MuMu 上补做了登录、生图、画布与手机端布局回归（画布单条工具条实测见 `docs/mobile-adaptation.md` §8.16），全程无崩溃、无 overflow。仍未覆盖：真机（arm64）回归、应用内更新的完整安装闭环（需要先有带 APK 资产的 Release）、分享出站/入站与后台生成通知的手测。release APK 目前沿用 debug 签名，还不能对外发布。
+15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 在本机 MuMu 上补做了登录、生图、画布与手机端布局回归（画布单条工具条实测见 `docs/mobile-adaptation.md` §8.16），全程无崩溃、无 overflow。2.5.0 用 CI 产物的 x86_64 包重装后同样启动正常，设置列表只剩手机端该有的 12 页（无「键盘快捷键」）。仍未覆盖：真机（arm64）回归、应用内更新的完整安装闭环（模拟器侧已确认新旧包签名一致、可覆盖安装，尚未在真实网络下走完下载→安装器）、分享出站/入站与后台生成通知的手测。
 
 ## 6. 排障
 
@@ -430,9 +432,12 @@ AGP 8.11 / Gradle 8.14 需要 JDK 17–24。若 `java -version` 是 11，用 `fl
 - **从其它应用分享进来没反应**：只接收单张 `image/*` 的 `ACTION_SEND`，多图/非图片/文本不支持（见第 5 节第 11 条）。冷启动分享会先落盘到 cache 的 `incoming_shares/`，等 Dart 启动后轮询消费；如果应用还没完成启动，图片会保留到下一次启动再处理。
 - **分享失败**：`flutter` 日志里会有 `AndroidShare` 前缀的警告；`shareFile` 失败常见原因是源文件已被删除或 MIME 推断失败。
 
-## 7. 发布签名（TODO）
+## 7. 发布签名（已落地，见 §7.6）
 
-当前 `android/app/build.gradle.kts` 的 `release` 使用 `signingConfigs.getByName("debug")` 占位，`flutter build apk --release` 能跑通但**产物不可发布**。正式发布前需要：
+`release` 已改用项目专用密钥（不再是 `signingConfig debug` 占位），密钥存 GitHub Secrets，
+CI 构建前还原。下面保留最初的方案草稿作为背景，实际配置以 §7.6 为准。
+
+原计划：
 
 1. 生成 keystore（一次性，妥善备份，丢失后无法覆盖升级）：
 
@@ -440,6 +445,8 @@ AGP 8.11 / Gradle 8.14 需要 JDK 17–24。若 `java -version` 是 11，用 `fl
 keytool -genkeypair -v -keystore "$env:USERPROFILE\.android-keystores\wof-nai-studio.jks" `
   -alias wof-nai-studio -keyalg RSA -keysize 4096 -validity 10000
 ```
+
+实际生成的是 RSA 2048 + alias `wof`，文件放在 `android/app/wof-release.jks`。
 
 2. 在 `android/` 下新建 `key.properties`（**不要提交**；`android/.gitignore` 已忽略该文件名和 `*.jks` / `*.keystore`）：
 
@@ -450,37 +457,13 @@ keyAlias=wof-nai-studio
 keyPassword=***
 ```
 
-3. 在 `android/app/build.gradle.kts` 里读取 `key.properties` 并替换 release 的 `signingConfig`（这是后续实现项，当前文件仍是占位 TODO）：
+实际值：`storeFile=app/wof-release.jks`、`keyAlias=wof`（相对 `android/` 目录）。
 
-```kotlin
-val keystorePropertiesFile = rootProject.file("key.properties")
-val keystoreProperties = java.util.Properties().apply {
-    if (keystorePropertiesFile.exists()) {
-        keystorePropertiesFile.inputStream().use { load(it) }
-    }
-}
-android {
-    signingConfigs {
-        if (keystorePropertiesFile.exists()) {
-            create("release") {
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-            }
-        }
-    }
-    buildTypes {
-        release {
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
-            }
-        }
-    }
-}
-```
+3. `android/app/build.gradle.kts` 读 `key.properties` 决定签名，缺文件时回退 debug 签名——
+   已实现，见 §7.6。
 
 4. 校验：`keytool -list -v -keystore <jks>`，以及 `apksigner verify --print-certs <apk>`。
+   证书 SHA-256 应与 CI 日志里 `Verify APK signature` 步骤输出一致。
 5. 密钥、口令只放在本机或 CI Secret 中，不写进仓库、提交信息或日志。
 
 ## 7.5 发布 Android APK（应用内更新的前提）

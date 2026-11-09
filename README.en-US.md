@@ -230,7 +230,7 @@ flutter gen-l10n
 flutter build apk --release --split-per-abi
 ```
 
-Use `flutter build apk --debug --target-platform android-x64` for x86_64 emulators (for example MuMu) and `android-arm64` for most phones; the APKs are written to `build/app/outputs/flutter-apk/`. `scripts/build_android.ps1` in the repository root runs the SDK/JDK/NDK, Git LFS and generated-source checks and copies the APKs to `dist/android/`. Release builds currently use the debug signing key and must not be distributed. See [Android port notes](docs/android-port.md) for platform differences, known limitations and troubleshooting.
+Use `flutter build apk --debug --target-platform android-x64` for x86_64 emulators (for example MuMu) and `android-arm64` for most phones; the APKs are written to `build/app/outputs/flutter-apk/`. `scripts/build_android.ps1` in the repository root runs the SDK/JDK/NDK, Git LFS and generated-source checks and copies the APKs to `dist/android/`. Release builds are signed with a dedicated project key: CI restores `android/app/wof-release.jks` and `android/key.properties` from repository secrets (neither is committed), so builds signed with the same key upgrade in place. Without those two files a local build falls back to the debug key, which is for temporary builds only. See [Android port notes](docs/android-port.md) for platform differences, known limitations and troubleshooting.
 
 </details>
 
