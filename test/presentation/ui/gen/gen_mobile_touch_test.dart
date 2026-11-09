@@ -88,13 +88,21 @@ void main() {
   testWidgets('画布工具条命中区 >= 48dp', (tester) async {
     await pumpMobile(tester);
 
-    // 右下操作条：钉住 / 复制 / 保存 / 打开查看器。
-    for (final key in ['gen-pin', 'gen-copy', 'gen-save', 'gen-info']) {
+    // 底部动作条（单行）：显示设置 + 钉住 / 复制 / 保存 / 打开查看器。
+    for (final key in [
+      'gen-display',
+      'gen-pin',
+      'gen-copy',
+      'gen-save',
+      'gen-info',
+    ]) {
       expectTouchTarget(tester, key);
     }
-    // 左下信息条：显示设置 + 种子胶囊。
-    expectTouchTarget(tester, 'gen-display');
+    // 尺寸 / 种子收进显示弹层；种子胶囊在弹层里仍是 48dp 命中区。
+    await tester.tap(find.byKey(const Key('gen-display')));
+    await tester.pumpAndSettle();
     expectTouchTarget(tester, 'gen-seed-pill');
+    expect(find.byKey(const Key('gen-mobile-size-info')), findsOneWidget);
     // 顶部工具条：增强 / 变体 / 放大 / 收起菜单 / 设为图生图 / 编辑 / 局部重绘。
     for (final key in [
       'gen-enhance',

@@ -91,13 +91,16 @@ class _GenCanvasState extends State<GenCanvas> {
       _measurePending = false;
       if (!mounted) return;
       final top = _topBarKey.currentContext?.findRenderObject() as RenderBox?;
-      final info = _infoBarKey.currentContext?.findRenderObject() as RenderBox?;
       final actions =
           _actionBarKey.currentContext?.findRenderObject() as RenderBox?;
-      if (top == null || info == null || actions == null) {
+      if (top == null || actions == null) {
         _focusPadding.value = null;
         return;
       }
+      // 桌面端有信息条和操作条两条；手机端只有一条动作条（没有信息条），
+      // 此时用操作条同时兜底，画布底部留白不会多算一行。
+      final info = _infoBarKey.currentContext?.findRenderObject() as RenderBox?;
+      final bottomBar = info ?? actions;
       final canvas = context.findRenderObject()! as RenderBox;
       double topOf(RenderBox bar) =>
           bar.localToGlobal(Offset.zero, ancestor: canvas).dy;
@@ -106,7 +109,7 @@ class _GenCanvasState extends State<GenCanvas> {
         topOf(top) + top.size.height + GenCanvas._focusGap,
         GenCanvas._sideFocusPadding,
         canvas.size.height -
-            math.min(topOf(info), topOf(actions)) +
+            math.min(topOf(bottomBar), topOf(actions)) +
             GenCanvas._focusGap,
       );
     });
@@ -1272,7 +1275,6 @@ class _InfoBar extends StatelessWidget {
     final c = context.ui;
     final scope = GenScope.of(context, GenAspect.canvas);
     final info = scope.data.canvas.info!;
-    final a = scope.actions;
     final l = context.l10n;
     return GenFloat(
       key: const Key('gen-bar-info'),
@@ -1297,56 +1299,70 @@ class _InfoBar extends StatelessWidget {
             child: GenNaiIcon('settings', size: 16, color: c.ink),
           ),
         ),
-        if (info.seed != null)
-          Builder(
-            builder: (ctx) => UiPressable(
-              key: const Key('gen-seed-pill'),
-              onTap: () => scope.controller.openMenu(
-                genAbove(ctx, dy: 10),
-                [
-                  UiMenuItem(
-                    key: const Key('gen-use-seed'),
-                    label: l.gen_useSeed,
-                    glyph: UiGlyphs.lock,
-                    onTap: () => a.onUseSeed(info.tileId),
-                  ),
-                  UiMenuItem(
-                    label: l.gen_copySeed,
-                    glyph: UiGlyphs.copy,
-                    onTap: () => a.onCopySeed(info.tileId),
-                  ),
-                ],
-                tag: #seed,
-                width: 190,
-              ),
-              builder: (context, hover) => GenTouchTarget(
-                child: Container(
-                  height: 30,
-                  padding: const EdgeInsets.only(left: 2, right: 8),
-                  decoration: BoxDecoration(
-                    color: hover ? c.control : null,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: 5,
-                    children: [
-                      GenNaiIcon('seed', size: 13, color: c.ink),
-                      Text(
-                        '${info.seed}',
-                        style: UiText.mono(
-                          12.5,
-                          weight: FontWeight.w500,
-                          color: c.ink,
-                        ),
-                      ),
-                    ],
+        if (info.seed != null) const _SeedPill(),
+      ],
+    );
+  }
+}
+
+/// 种子胶囊：点开「使用 / 复制种子」菜单。桌面信息条和手机显示弹层共用。
+class _SeedPill extends StatelessWidget {
+  const _SeedPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final scope = GenScope.of(context, GenAspect.canvas);
+    final info = scope.data.canvas.info!;
+    final a = scope.actions;
+    final l = context.l10n;
+    return Builder(
+      builder: (ctx) => UiPressable(
+        key: const Key('gen-seed-pill'),
+        onTap: () => scope.controller.openMenu(
+          genAbove(ctx, dy: 10),
+          [
+            UiMenuItem(
+              key: const Key('gen-use-seed'),
+              label: l.gen_useSeed,
+              glyph: UiGlyphs.lock,
+              onTap: () => a.onUseSeed(info.tileId),
+            ),
+            UiMenuItem(
+              label: l.gen_copySeed,
+              glyph: UiGlyphs.copy,
+              onTap: () => a.onCopySeed(info.tileId),
+            ),
+          ],
+          tag: #seed,
+          width: 190,
+        ),
+        builder: (context, hover) => GenTouchTarget(
+          child: Container(
+            height: 30,
+            padding: const EdgeInsets.only(left: 2, right: 8),
+            decoration: BoxDecoration(
+              color: hover ? c.control : null,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 5,
+              children: [
+                GenNaiIcon('seed', size: 13, color: c.ink),
+                Text(
+                  '${info.seed}',
+                  style: UiText.mono(
+                    12.5,
+                    weight: FontWeight.w500,
+                    color: c.ink,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
-      ],
+        ),
+      ),
     );
   }
 }
@@ -1397,35 +1413,55 @@ class _BottomBars extends StatelessWidget {
       child: const _ActionBar(),
     );
     return LayoutBuilder(
-      // 手机端控件按 48dp 命中区后两条工具条放不进一行：和窄画布一样改为上下叠放。
-      builder: (context, box) => usesMobileLayout || box.maxWidth < _stackWidth
-          ? Stack(
-              children: [
-                Positioned(
-                  left: 8,
-                  right: 8,
-                  bottom: _bottom,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: _gap,
-                    children: [
-                      _CanvasBarViewport(child: info),
-                      _CanvasBarViewport(child: actions),
-                    ],
+      // 手机端只保留一条动作条（尺寸/种子收进显示弹层），把画布高度让给图片；
+      // 窄窗口的桌面布局仍按宽度叠放两条浮条。
+      builder: (context, box) {
+        if (usesMobileLayout) {
+          return Stack(
+            children: [
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: _bottom,
+                child: _CanvasBarViewport(
+                  child: SizeChangedLayoutNotifier(
+                    key: actionKey,
+                    child: const _MobileBar(),
                   ),
                 ),
-              ],
-            )
-          : Stack(
-              children: [
-                Positioned(
-                  left: 16,
-                  bottom: infoOffset(box.maxWidth, hasOriginal),
-                  child: info,
-                ),
-                Positioned(right: 16, bottom: _bottom, child: actions),
-              ],
-            ),
+              ),
+            ],
+          );
+        }
+        return box.maxWidth < _stackWidth
+            ? Stack(
+                children: [
+                  Positioned(
+                    left: 8,
+                    right: 8,
+                    bottom: _bottom,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: _gap,
+                      children: [
+                        _CanvasBarViewport(child: info),
+                        _CanvasBarViewport(child: actions),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Stack(
+                children: [
+                  Positioned(
+                    left: 16,
+                    bottom: infoOffset(box.maxWidth, hasOriginal),
+                    child: info,
+                  ),
+                  Positioned(right: 16, bottom: _bottom, child: actions),
+                ],
+              );
+      },
     );
   }
 }
@@ -1435,56 +1471,94 @@ class _ActionBar extends StatelessWidget {
   const _ActionBar();
 
   @override
+  Widget build(BuildContext context) => GenFloat(
+    key: const Key('gen-bar-actions'),
+    children: _imageActionButtons(context),
+  );
+}
+
+/// 手机端底部动作条：显示设置 + 图片动作合成一行。
+///
+/// 尺寸/种子不再单独占一条信息条，收进 [ _DisplayPopover ] 顶部，手机画布
+/// 因此只被一条工具条占位，图片可视高度多出约 46dp。
+class _MobileBar extends StatelessWidget {
+  const _MobileBar();
+
+  @override
   Widget build(BuildContext context) {
     final c = context.ui;
     final scope = GenScope.of(context, GenAspect.canvas);
-    final info = scope.data.canvas.info!;
-    final a = scope.actions;
     final l = context.l10n;
-    final id = info.tileId;
     return GenFloat(
-      key: const Key('gen-bar-actions'),
+      key: const Key('gen-bar-mobile'),
       children: [
-        if (info.canCompareOriginal) ...[
-          _OriginalCompareButton(
-            key: ValueKey('gen-old-${info.tileId}'),
-            id: info.tileId,
-            enabled: !scope.data.canvas.locked,
-          ),
-          const GenFloatDivider(),
-        ],
-        GenFloatButton(
-          key: const Key('gen-pin'),
-          tooltip: info.pinned ? l.gen_unpinImage : l.gen_pinImage,
-          active: info.pinned,
-          onTap: () => a.onPin(id, !info.pinned),
-          child: GenNaiIcon(
-            info.pinned ? 'pin-filled' : 'pin',
-            size: 16,
-            color: info.pinned ? c.accent : c.ink,
+        Builder(
+          builder: (ctx) => GenFloatButton(
+            key: const Key('gen-display'),
+            tooltip: l.gen_display,
+            active: scope.controller.popoverTag == #display,
+            onTap: () => scope.controller.openPopover(
+              genAbove(ctx, dy: 10),
+              (_) => const _DisplayPopover(),
+              tag: #display,
+            ),
+            child: GenNaiIcon('settings', size: 16, color: c.ink),
           ),
         ),
-        GenFloatButton(
-          key: const Key('gen-copy'),
-          tooltip: l.gen_copyImage,
-          onTap: () => a.onCopyImage(id),
-          child: GenNaiIcon('copy', size: 16, color: c.ink),
-        ),
-        GenFloatButton(
-          key: const Key('gen-save'),
-          tooltip: l.gen_saveImage,
-          onTap: () => a.onSaveImage(id),
-          child: GenNaiIcon('save', size: 16, color: c.ink),
-        ),
-        GenFloatButton(
-          key: const Key('gen-info'),
-          tooltip: l.gen_openViewer,
-          onTap: () => a.onOpenViewer(id),
-          child: GenNaiIcon('info', size: 16, color: c.ink),
-        ),
+        const GenFloatDivider(),
+        ..._imageActionButtons(context),
       ],
     );
   }
+}
+
+/// 图片动作按钮（OLD / 钉住 / 复制 / 保存 / 查看大图），桌面操作条和手机动作条共用。
+List<Widget> _imageActionButtons(BuildContext context) {
+  final c = context.ui;
+  final scope = GenScope.of(context, GenAspect.canvas);
+  final info = scope.data.canvas.info!;
+  final a = scope.actions;
+  final l = context.l10n;
+  final id = info.tileId;
+  return [
+    if (info.canCompareOriginal) ...[
+      _OriginalCompareButton(
+        key: ValueKey('gen-old-${info.tileId}'),
+        id: info.tileId,
+        enabled: !scope.data.canvas.locked,
+      ),
+      const GenFloatDivider(),
+    ],
+    GenFloatButton(
+      key: const Key('gen-pin'),
+      tooltip: info.pinned ? l.gen_unpinImage : l.gen_pinImage,
+      active: info.pinned,
+      onTap: () => a.onPin(id, !info.pinned),
+      child: GenNaiIcon(
+        info.pinned ? 'pin-filled' : 'pin',
+        size: 16,
+        color: info.pinned ? c.accent : c.ink,
+      ),
+    ),
+    GenFloatButton(
+      key: const Key('gen-copy'),
+      tooltip: l.gen_copyImage,
+      onTap: () => a.onCopyImage(id),
+      child: GenNaiIcon('copy', size: 16, color: c.ink),
+    ),
+    GenFloatButton(
+      key: const Key('gen-save'),
+      tooltip: l.gen_saveImage,
+      onTap: () => a.onSaveImage(id),
+      child: GenNaiIcon('save', size: 16, color: c.ink),
+    ),
+    GenFloatButton(
+      key: const Key('gen-info'),
+      tooltip: l.gen_openViewer,
+      onTap: () => a.onOpenViewer(id),
+      child: GenNaiIcon('info', size: 16, color: c.ink),
+    ),
+  ];
 }
 
 /// Website parity: pointer/key down shows OLD, up/cancel/focus loss restores it.
@@ -1670,6 +1744,26 @@ class _DisplayPopover extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 10,
           children: [
+            // 手机端信息条并进这条弹层：画布底部只留一条动作条。
+            if (usesMobileLayout)
+              if (cv.info case final info?) ...[
+                Row(
+                  key: const Key('gen-mobile-size-info'),
+                  children: [
+                    Text(
+                      '${info.width} × ${info.height}',
+                      style: UiText.mono(
+                        12.5,
+                        weight: FontWeight.w500,
+                        color: c.ink,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (info.seed != null) const _SeedPill(),
+                  ],
+                ),
+                Container(height: 1, color: c.line),
+              ],
             if (cv.backdrop case final bd?) ...[
               Text(
                 l.gen_backdrop,
