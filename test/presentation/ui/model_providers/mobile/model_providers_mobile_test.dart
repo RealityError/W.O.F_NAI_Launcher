@@ -163,6 +163,50 @@ void main() {
     expect(tester.takeException(), isNull, reason: '目录模式滚动到底');
   });
 
+  testWidgets('手机布局：目录勾选后底部出现添加条，点添加会加模型', (tester) async {
+    final rec = await pumpPhone(tester);
+    await tester.ensureVisible(find.byKey(const Key('mp-provider-or')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mp-provider-or')));
+    await tester.pumpAndSettle();
+
+    final mode = find.byKey(const Key('mp-mode'));
+    await tester.ensureVisible(mode);
+    await tester.tap(find.byKey(const ValueKey(ProvidersListMode.catalog)));
+    await tester.pumpAndSettle();
+
+    // 手机端编辑页没有右栏勾选面板，目录模式底部必须常驻提交条。
+    final add = find.byKey(const Key('mp-mobile-add-picked'));
+    expect(
+      find.byKey(const Key('mp-mobile-catalog-dock')),
+      findsOneWidget,
+      reason: '目录模式底部提交条',
+    );
+    expect(find.text('已选 0 个'), findsOneWidget);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    expect(rec.calls, isEmpty, reason: '未勾选时添加按钮禁用');
+    expect(tester.takeException(), isNull);
+
+    final row = find.byKey(const Key('mp-cat-anthropic/claude-opus-5'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.text('已选 1 个'), findsOneWidget);
+    expect(find.text('添加 1 个模型'), findsOneWidget);
+
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    expect(rec.calls, ['add:or:anthropic/claude-opus-5:false']);
+    expect(find.byKey(const Key('mp-mobile-catalog-dock')), findsNothing);
+    expect(
+      find.byKey(const Key('mp-model-anthropic/claude-opus-5')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('手机布局：没有服务商时显示空态并可添加', (tester) async {
     await pumpProviders(
       tester,

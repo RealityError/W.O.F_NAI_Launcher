@@ -330,6 +330,11 @@ class _MobileProviderEditorPageState extends State<_MobileProviderEditorPage> {
                   final changes = ctrl.changes(cur);
                   final showDock =
                       changes > 0 || ctrl.draft(cur.id)?.result != null;
+                  // 目录模式：桌面端靠右栏勾选面板提交，手机端没有右栏，
+                  // 底部必须常驻「添加 N 个模型」条，否则勾选后无法提交。
+                  final picking =
+                      ctrl.mode(cur.id) == ProvidersListMode.catalog;
+                  final picks = ctrl.picks(cur.id).toList();
                   return Column(
                     children: [
                       Expanded(
@@ -354,6 +359,22 @@ class _MobileProviderEditorPageState extends State<_MobileProviderEditorPage> {
                           ctrl: ctrl,
                           compact: true,
                           onSave: () => ctrl.save(cur, actions),
+                        ),
+                      if (picking)
+                        _MobileCatalogDock(
+                          item: cur,
+                          ctrl: ctrl,
+                          picks: picks,
+                          onAdd: () {
+                            final ids = List<String>.of(picks);
+                            actions.onAddModels(cur.id, ids);
+                            ctrl
+                              ..clearPicks(cur.id)
+                              ..setMode(cur.id, ProvidersListMode.added);
+                            if (ids.isNotEmpty) {
+                              ctrl.selectModel(cur.id, ids.first);
+                            }
+                          },
                         ),
                     ],
                   );
@@ -567,6 +588,75 @@ class _MobileDockButton extends StatelessWidget {
                 ? c.onBrand
                 : (enabled ? c.tipInk : c.tipInk.withValues(alpha: .45)),
             height: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 手机端目录模式的底部提交条：勾选模型后点「添加 N 个模型」。
+///
+/// 桌面端由右栏 [ProvidersPickTray] 承担这段流程；手机端编辑页没有右栏，
+/// 这里必须常驻确认入口，否则目录里只能勾选、无法真正添加模型。
+class _MobileCatalogDock extends StatelessWidget {
+  const _MobileCatalogDock({
+    required this.item,
+    required this.ctrl,
+    required this.picks,
+    required this.onAdd,
+  });
+
+  final ProviderItem item;
+  final ProvidersController ctrl;
+  final List<String> picks;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    return Container(
+      key: const Key('mp-mobile-catalog-dock'),
+      decoration: BoxDecoration(
+        color: c.card,
+        border: Border(top: BorderSide(color: c.rowLine)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+          child: Row(
+            spacing: 10,
+            children: [
+              Expanded(
+                child: Text(
+                  l.mp_picked('${picks.length}'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: UiText.sans(
+                    12.5,
+                    weight: FontWeight.w600,
+                    color: picks.isEmpty ? c.muted : c.ink,
+                  ),
+                ),
+              ),
+              _MobileDockButton(
+                key: const Key('mp-mobile-pick-cancel'),
+                label: l.set_cancel,
+                onTap: () {
+                  ctrl
+                    ..clearPicks(item.id)
+                    ..setMode(item.id, ProvidersListMode.added);
+                },
+              ),
+              _MobileDockButton(
+                key: const Key('mp-mobile-add-picked'),
+                label: l.mp_addPicked('${picks.length}'),
+                primary: true,
+                onTap: picks.isEmpty ? null : onAdd,
+              ),
+            ],
           ),
         ),
       ),
