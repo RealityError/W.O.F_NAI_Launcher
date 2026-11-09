@@ -901,6 +901,10 @@ Future<void> _bootstrapPreparedApplication() async {
       await servicesReady;
       if (DesktopAppShutdownService.isShuttingDown) return;
       try {
+        AppLogger.d(
+          'NAI Agent data directory: ${AppBundlePaths.agentDataDirectory}',
+          'Main',
+        );
         final runtime = container.read(androidNaiAgentRuntimeProvider);
         if (runtime == null) return;
         await runtime.ensure();

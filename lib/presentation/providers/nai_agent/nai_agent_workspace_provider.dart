@@ -26,9 +26,17 @@ class NaiAgentRuntimePaths {
 }
 
 /// Installer preserves this adjacent directory. It is outside Flutter data/.
-final naiAgentWorkspaceStoreProvider = Provider<AgentWorkspaceStore>(
-  (ref) => AgentWorkspaceStore(Directory(AppBundlePaths.agentDataDirectory)),
-);
+/// Android keeps both Agent state and the extracted runtime under the app
+/// support directory; builtin skills ship inside that runtime.
+final naiAgentWorkspaceStoreProvider = Provider<AgentWorkspaceStore>((ref) {
+  final root = Directory(AppBundlePaths.agentDataDirectory);
+  return AgentWorkspaceStore(
+    root,
+    builtinSkillsDirectory: Platform.isAndroid
+        ? Directory(p.join(root.parent.path, 'runtime', 'skills'))
+        : null,
+  );
+});
 
 /// Production uses the bundled runtime only; tests explicitly override paths.
 final naiAgentRuntimePathsProvider = Provider<NaiAgentRuntimePaths>((ref) {

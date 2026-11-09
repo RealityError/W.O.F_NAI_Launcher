@@ -28,23 +28,57 @@ abstract final class AppBundlePaths {
   }
 
   static String? _macSupport;
+  static String? _androidSupport;
 
   static Future<void> prepare() async {
     if (Platform.isMacOS) {
       _macSupport = (await getApplicationSupportDirectory()).path;
     }
+    if (Platform.isAndroid) {
+      _androidSupport = (await getApplicationSupportDirectory()).path;
+    }
+  }
+
+  /// Android has no writable directory next to the executable (the APK's
+  /// native-library folder is read-only), so Agent state belongs in the app
+  /// support directory. Desktop keeps the installer-owned layout beside the
+  /// executable and is unchanged.
+  static String resolveAgentDataDirectory({
+    required bool android,
+    required String executableDirectory,
+    String? androidSupport,
+    String? macSupport,
+    bool macOS = false,
+  }) {
+    if (android) {
+      final root = androidSupport;
+      if (root == null) {
+        throw StateError('Application data is not prepared');
+      }
+      return p.join(root, 'nai_agent', 'agent-data');
+    }
+    final root = macOS ? macSupport : executableDirectory;
+    if (root == null) {
+      throw StateError('Application data is not prepared');
+    }
+    return p.join(root, 'agent-data');
   }
 
   static String get agentDataDirectory {
     if (studioSandboxRoot() case final sandbox?) {
       return p.join(sandbox, 'agent-data');
     }
-    final root = Platform.isMacOS
-        ? _macSupport ??
-              (Platform.environment['FLUTTER_TEST'] == 'true'
-                  ? p.join(Directory.systemTemp.path, 'nai-launcher-test')
-                  : throw StateError('Application data is not prepared'))
-        : executableDirectory;
-    return p.join(root, 'agent-data');
+    final macFallback =
+        _macSupport ??
+        (Platform.environment['FLUTTER_TEST'] == 'true'
+            ? p.join(Directory.systemTemp.path, 'nai-launcher-test')
+            : null);
+    return resolveAgentDataDirectory(
+      android: Platform.isAndroid,
+      executableDirectory: executableDirectory,
+      androidSupport: _androidSupport,
+      macSupport: macFallback,
+      macOS: Platform.isMacOS,
+    );
   }
 }

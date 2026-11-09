@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../providers/nai_agent/nai_agent_window_controller.dart';
@@ -32,7 +33,8 @@ class AgentToggleWiring extends ConsumerWidget {
             : AgentToggleBadge.none,
         tooltip: context.l10n.naiAgent_title,
         onPressed: () => unawaited(
-          window.toggle().catchError((Object _) {
+          window.toggle().catchError((Object error) {
+            AppLogger.w('NAI Agent toggle failed: $error', 'Agent');
             if (context.mounted) {
               AppToast.error(context, context.l10n.naiAgent_error);
             }
