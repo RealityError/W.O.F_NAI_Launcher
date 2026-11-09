@@ -73,10 +73,14 @@ bool debugForceMobileSettingsLayout = false;
 bool settingsPageAvailable(SettingsPageId page) {
   if (!isMobilePlatform && !debugForceMobileSettingsLayout) return true;
   return switch (page) {
+    // 依赖桌面运行时/外部进程：随包 Node、Python、本地超分可执行文件、
+    // 注册表/scutil 代理读取，Android 上没有对应实现。
     SettingsPageId.agent ||
     SettingsPageId.rag ||
     SettingsPageId.upscale ||
     SettingsPageId.network => false,
+    // 键盘快捷键录制只对物理键盘有意义（手机触屏没有等价操作）。
+    SettingsPageId.shortcuts => false,
     _ => true,
   };
 }

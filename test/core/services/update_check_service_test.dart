@@ -16,6 +16,7 @@ class _FakeGitHubApiService extends GitHubApiService {
 
   /// 最近一次检查时实际使用的更新源，用于锁定桌面/Android 的仓库选择。
   String? lastOwner;
+  String? lastRepo;
   String? lastPlatform;
 
   @override
@@ -27,6 +28,7 @@ class _FakeGitHubApiService extends GitHubApiService {
     bool includePrerelease = false,
   }) {
     lastOwner = owner;
+    lastRepo = repo;
     lastPlatform = platform;
     return handler(currentVersion);
   }
@@ -285,15 +287,23 @@ void main() {
   test('桌面更新源保持上游仓库，Android 走 fork', () {
     expect(UpdateCheckService.ownerFor(android: false), 'z15087716457-stack');
     expect(UpdateCheckService.ownerFor(android: true), 'RealityError');
-    // 仓库名两端一致，只有 owner 换；改这里等于换整套发布流程。
-    expect(UpdateCheckService.defaultRepo, 'W.O.F_NAI_Launcher');
+    // Android 端的 fork 已改名为 *_Android；桌面仍读上游同名仓库。
+    expect(UpdateCheckService.repoFor(android: false), 'W.O.F_NAI_Launcher');
+    expect(
+      UpdateCheckService.repoFor(android: true),
+      'W.O.F_NAI_Launcher_Android',
+    );
     expect(
       UpdateCheckService.androidOwner,
       isNot(UpdateCheckService.defaultOwner),
     );
+    expect(
+      UpdateCheckService.androidRepo,
+      isNot(UpdateCheckService.defaultRepo),
+    );
   });
 
-  test('宿主平台检查更新时带上正确的 owner 与 platform', () async {
+  test('宿主平台检查更新时带上正确的 owner、repo 与 platform', () async {
     final api = _FakeGitHubApiService(
       (current) async => VersionInfo(version: current, isNewer: false),
     );
@@ -309,6 +319,9 @@ void main() {
 
     expect(api.lastOwner, UpdateCheckService.owner);
     expect(api.lastOwner, UpdateCheckService.defaultOwner);
+    // 桌面宿主必须查上游仓库，不能跟着 Android 改名走。
+    expect(api.lastRepo, UpdateCheckService.defaultRepo);
+    expect(api.lastRepo, 'W.O.F_NAI_Launcher');
     expect(api.lastPlatform, 'windows-portable');
   });
 }
