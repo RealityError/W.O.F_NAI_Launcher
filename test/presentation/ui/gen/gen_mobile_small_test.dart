@@ -39,10 +39,23 @@ void main() {
     expect(find.byKey(const Key('gen-params')), findsOneWidget);
     expect(find.byKey(const Key('gen-generate-bar')), findsOneWidget);
     expect(find.byKey(const Key('gen-params-toggle')), findsOneWidget);
-    // 画布两条工具条在手机上上下叠放（不再左右重叠）。
-    final info = tester.getRect(find.byKey(const Key('gen-display')));
+    // 手机画布底部只留一条动作条：显示设置与图片动作同一行，信息条收进弹层。
+    expect(find.byKey(const Key('gen-bar-info')), findsNothing);
+    expect(find.byKey(const Key('gen-bar-mobile')), findsOneWidget);
+    final display = tester.getRect(find.byKey(const Key('gen-display')));
     final pin = tester.getRect(find.byKey(const Key('gen-pin')));
-    expect(info.bottom, lessThanOrEqualTo(pin.top + 1));
+    expect(
+      (display.top - pin.top).abs(),
+      lessThan(1),
+      reason: '手机端显示设置和图片动作应在同一条工具条里',
+    );
+    // 画布图片高度不再被两条浮条上下夹住：360×640 下应明显超过旧版 ~300dp。
+    final tile = tester.getSize(find.byKey(const Key('gen-tile-i1')));
+    expect(
+      tile.height,
+      greaterThan(320),
+      reason: '360×640 下画布图片高度 ${tile.height} 太小',
+    );
     expect(tester.takeException(), isNull);
   });
 
