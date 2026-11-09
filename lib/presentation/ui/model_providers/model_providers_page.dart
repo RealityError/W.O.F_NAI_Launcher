@@ -13,6 +13,7 @@ import '../../mobile/mobile_breakpoints.dart';
 import '../../mobile/mobile_list.dart';
 import '../settings/settings_contract.dart'
     show SettingsOption, SettingsTone, debugForceMobileSettingsLayout;
+import '../settings/settings_dialog_kit.dart';
 import '../settings/settings_format.dart';
 import '../settings/settings_kit.dart';
 import '../settings/settings_scope.dart';
@@ -534,6 +535,7 @@ class _Middle extends StatefulWidget {
     required this.item,
     required this.inlineInspector,
     this.onModelTap,
+    this.onDeleteProvider,
   });
   final ModelProvidersPanelState panel;
   final ProviderItem item;
@@ -541,6 +543,10 @@ class _Middle extends StatefulWidget {
 
   /// 手机端点模型行：除了选中，还要打开模型参数底部弹层。
   final ValueChanged<ProviderModelSettings>? onModelTap;
+
+  /// 手机端编辑页是独立路由，设置页的确认层被它盖住；删除服务商要换成
+  /// 本页对话框，由调用方接管确认与删除。
+  final VoidCallback? onDeleteProvider;
 
   @override
   State<_Middle> createState() => _MiddleState();
@@ -957,15 +963,19 @@ class _MiddleState extends State<_Middle> {
                 glyph: ProvidersGlyphs.trash,
                 small: true,
                 tone: SettingsBtnTone.ghost,
-                onTap: () => widget.panel._ask(
-                  title: l.set_mdDeleteTitle(s.name),
-                  body: l.set_mdDeleteBody,
-                  confirm: l.set_delete,
-                  onConfirm: () {
-                    ctrl.discard(p.id);
-                    actions.onDelete(p.id);
-                  },
-                ),
+                onTap: () {
+                  final override = widget.onDeleteProvider;
+                  if (override != null) return override();
+                  widget.panel._ask(
+                    title: l.set_mdDeleteTitle(s.name),
+                    body: l.set_mdDeleteBody,
+                    confirm: l.set_delete,
+                    onConfirm: () {
+                      ctrl.discard(p.id);
+                      actions.onDelete(p.id);
+                    },
+                  );
+                },
               ).danger(context),
               const Spacer(),
               if (!mobile &&
@@ -1628,10 +1638,15 @@ class _InspectorColumn extends StatelessWidget {
     required this.panel,
     required this.item,
     this.inline = false,
+    this.onRemoveModel,
   });
   final ModelProvidersPanelState panel;
   final ProviderItem item;
   final bool inline;
+
+  /// 手机端复用时替换「移除模型」的确认方式：设置页的确认层在编辑页路由
+  /// 之下，必须改用本地对话框，否则点了没反应。
+  final void Function(ProviderModelSettings model)? onRemoveModel;
 
   @override
   Widget build(BuildContext context) {
@@ -1669,6 +1684,8 @@ class _InspectorColumn extends StatelessWidget {
                 ctrl.draft(item.id)?.apiKey,
               ),
               onRemove: () {
+                final override = onRemoveModel;
+                if (override != null) return override(m);
                 final l = context.l10n;
                 panel._ask(
                   title: l.mp_removeTitle(m.id),

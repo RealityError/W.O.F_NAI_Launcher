@@ -350,6 +350,8 @@ class _MobileProviderEditorPageState extends State<_MobileProviderEditorPage> {
                                   inlineInspector: false,
                                   onModelTap: (m) =>
                                       _openModelInspector(context, cur, m),
+                                  onDeleteProvider: () =>
+                                      _confirmDeleteProvider(cur),
                                 ),
                         ),
                       ),
@@ -389,6 +391,51 @@ class _MobileProviderEditorPageState extends State<_MobileProviderEditorPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && nav.canPop()) nav.pop();
     });
+  }
+
+  /// 移除模型：编辑页是独立路由，设置页内的确认层被它盖住，必须用本地对话框。
+  Future<void> _confirmRemoveModel(
+    BuildContext sheetContext,
+    ProviderItem item,
+    ProviderModelSettings model,
+  ) async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: SettingsConfirmDialog(
+          title: l.mp_removeTitle(model.id),
+          body: l.mp_removeBody,
+          confirm: l.mp_removeModel,
+          danger: true,
+        ),
+      ),
+    );
+    if (ok != true) return;
+    panel.widget.actions.onRemoveModel(item.id, model.id);
+    if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+  }
+
+  /// 删除服务商：同上，确认框必须留在编辑页自己的路由里。
+  Future<void> _confirmDeleteProvider(ProviderItem item) async {
+    final l = context.l10n;
+    final name = ctrl.display(item).name;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: SettingsConfirmDialog(
+          title: l.set_mdDeleteTitle(name),
+          body: l.set_mdDeleteBody,
+          confirm: l.set_delete,
+          danger: true,
+        ),
+      ),
+    );
+    if (ok != true) return;
+    ctrl.discard(item.id);
+    panel.widget.actions.onDelete(item.id);
   }
 
   /// 模型参数：从底部弹出，复用桌面右栏的检查器。
@@ -456,7 +503,31 @@ class _MobileProviderEditorPageState extends State<_MobileProviderEditorPage> {
                       panel: panel,
                       item: item,
                       inline: true,
+                      onRemoveModel: (model) =>
+                          _confirmRemoveModel(sheetContext, item, model),
                     ),
+                  ),
+                ),
+                // 桌面端靠检查器右上角「⋯」菜单移除模型；手机端弹层里
+                // 这个入口太深，底部再给一个显式的危险按钮。
+                Container(
+                  key: const Key('mp-inspector-remove-bar'),
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: c.rowLine)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _MobileDockButton(
+                          key: const Key('mp-mobile-remove-model'),
+                          label: context.l10n.mp_removeModel,
+                          danger: true,
+                          onTap: () =>
+                              _confirmRemoveModel(sheetContext, item, shown),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -549,16 +620,39 @@ class _MobileDockButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.primary = false,
+    this.danger = false,
   });
 
   final String label;
   final VoidCallback? onTap;
   final bool primary;
 
+  /// 危险操作（移除模型等）：红字 + 红色描边，不用品牌色。
+  final bool danger;
+
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
     final enabled = onTap != null;
+    final border = danger
+        ? c.error.withValues(alpha: .35)
+        : primary
+        ? Colors.transparent
+        : c.tipInk.withValues(alpha: .3);
+    final fg = danger
+        ? (enabled ? c.error : c.error.withValues(alpha: .45))
+        : primary
+        ? c.onBrand
+        : (enabled ? c.tipInk : c.tipInk.withValues(alpha: .45));
+    Color bg(bool hover) => primary
+        ? (enabled ? c.brand : c.brand.withValues(alpha: .45))
+        : danger
+        ? (hover && enabled
+              ? c.error.withValues(alpha: .08)
+              : Colors.transparent)
+        : (hover && enabled
+              ? c.tipInk.withValues(alpha: .1)
+              : Colors.transparent);
     return UiPressable(
       onTap: onTap,
       builder: (context, hover) => Container(
@@ -566,17 +660,9 @@ class _MobileDockButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: primary
-              ? (enabled ? c.brand : c.brand.withValues(alpha: .45))
-              : (hover && enabled
-                    ? c.tipInk.withValues(alpha: .1)
-                    : Colors.transparent),
+          color: bg(hover),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: primary
-                ? Colors.transparent
-                : c.tipInk.withValues(alpha: .3),
-          ),
+          border: Border.all(color: border),
         ),
         child: Text(
           label,
@@ -584,9 +670,7 @@ class _MobileDockButton extends StatelessWidget {
           style: UiText.sans(
             13,
             weight: FontWeight.w500,
-            color: primary
-                ? c.onBrand
-                : (enabled ? c.tipInk : c.tipInk.withValues(alpha: .45)),
+            color: fg,
             height: 1.2,
           ),
         ),

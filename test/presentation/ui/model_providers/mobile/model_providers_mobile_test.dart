@@ -142,6 +142,56 @@ void main() {
     expect(rec.lastSaved!.model('deepseek-flash')!.alias, 'fast');
   });
 
+  testWidgets('手机布局：模型参数弹层底部可直接移除模型', (tester) async {
+    final rec = await pumpPhone(tester);
+    await tester.tap(find.byKey(const Key('mp-provider-ds')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mp-model-deepseek-flash')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('mp-inspector')), findsOneWidget);
+
+    // 桌面端藏在「⋯」菜单里，手机端弹层底部要有显式入口。
+    final remove = find.byKey(const Key('mp-mobile-remove-model'));
+    expect(remove, findsOneWidget);
+    await tester.ensureVisible(remove);
+    await tester.pumpAndSettle();
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+
+    // 编辑页是独立路由，确认必须用本页对话框（设置页的确认层被盖住），
+    // 确认前不写数据。
+    expect(find.byKey(const Key('settings-confirm-dialog')), findsOneWidget);
+    expect(rec.calls, isEmpty);
+    await tester.tap(find.byKey(const Key('confirm-ok')));
+    await tester.pumpAndSettle();
+    expect(rec.calls, ['remove:ds:deepseek-flash']);
+    expect(find.byKey(const Key('mp-inspector')), findsNothing);
+    expect(find.byKey(const Key('mp-model-deepseek-flash')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('手机布局：删除服务商用编辑页自己的确认框', (tester) async {
+    final rec = await pumpPhone(tester);
+    await tester.tap(find.byKey(const Key('mp-provider-ds')));
+    await tester.pumpAndSettle();
+
+    final delete = find.byKey(const Key('mp-delete'));
+    await tester.ensureVisible(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+
+    // 设置页的确认层会被编辑页盖住，确认框必须由编辑页自己弹。
+    expect(find.byKey(const Key('settings-confirm-dialog')), findsOneWidget);
+    expect(rec.calls, isEmpty);
+    await tester.tap(find.byKey(const Key('confirm-ok')));
+    await tester.pumpAndSettle();
+    expect(rec.calls, ['delete:ds']);
+    expect(find.byKey(const Key('mp-mobile-editor-scroll')), findsNothing);
+    expect(find.byKey(const Key('mp-provider-ds')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('手机布局：服务商目录模式与勾选面板无溢出', (tester) async {
     await pumpPhone(tester);
     await tester.ensureVisible(find.byKey(const Key('mp-provider-or')));
