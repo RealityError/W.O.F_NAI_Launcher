@@ -363,13 +363,32 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
    `AndroidUpdateLogic.selectApkAsset`（拿到设备 ABI 后按 arm64-v8a / armeabi-v7a /
    x86_64 顺序挑，找不到再退回 `universal` 或第一个包）。
 3. **更新源**：上游 `z15087716457-stack` 的 Release 只有 Windows/macOS 资产，
-   Android 改读 fork `RealityError/W.O.F_NAI_Launcher`（`UpdateCheckService.owner`，
-   纯函数 `ownerFor(android:)` 便于测试）。**桌面仍查上游，行为不变**；更新说明里的
+   Android 改读 fork `RealityError/W.O.F_NAI_Launcher_Android`（`UpdateCheckService.owner`
+   与 `repoFor(android:)`，纯函数便于测试）。**桌面仍查上游，行为不变**；更新说明里的
    相对链接与「查看更新日志」入口跟着实际更新源走。
 4. **验证**：`flutter analyze --no-pub` 干净；`test/core/services`、`test/data/models/version`、
    `test/data/datasources/remote` 与 4 个更新 UI 测试文件共 387 例通过（仅
    `windows_update_launch_test` 两个已知的环境性失败，与本次改动无关）。
    新增用例覆盖「APK 被认成可安装」「android 平台只选 APK」「owner 按平台切换」。
+
+### 8.18 手机端设置裁剪（2.5.0）
+
+首个可分发版本前，把「点了必然失败」或「触屏无意义」的设置入口从手机端隐掉。
+判定口径仍是 `settingsPageAvailable`（`lib/presentation/ui/settings/settings_contract.dart`），
+桌面端不受影响，页面主体仍可被深链/搜索命中。
+
+| 隐藏项 | 原因 |
+| --- | --- |
+| Agent 页 | 随包 Node 运行时只在桌面存在 |
+| 语义检索（RAG）页 | Python + uv + PyTorch 运行时只在桌面存在 |
+| 放大页 | 本地/高级放大依赖随包可执行文件；云端放大属生成动作，不在此页 |
+| 网络页 | 手动代理未在 Android 实现（只能跟随系统 Wi-Fi 代理） |
+| 键盘快捷键页 | 触屏没有物理键盘，快捷键录制无意义 |
+| 存储页「打开文件夹」 | Android 是应用私有目录，没有「在资源管理器中打开」 |
+| 「添加服务商」里的 ChatGPT 套餐 | 登录走随包 Node，Android 上必然报「操作失败」（原为死入口） |
+
+后两项不是整页隐藏，分别用 `isMobilePlatform` 与 `supportsNaiAgentRuntime` 做局部门控。
+`settings_mobile_page_test` 的可见页清单改为按生产口径过滤，避免手写清单与实现漂移。
 
 ### 8.3 本阶段遗留（后续处理）
 

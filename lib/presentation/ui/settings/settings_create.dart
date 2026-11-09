@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
@@ -492,42 +493,44 @@ class SettingsStoragePage extends StatelessWidget {
         ),
         top: [if (d.restartPending) const SettingsRestartBanner()],
         aside: [
-          SettingsAsideCard(
-            title: l.set_stOpenFolders,
-            child: SettingsAsideList(
-              rows: [
-                for (final f in [
-                  SettingsFolder.images,
-                  SettingsFolder.vibes,
-                  SettingsFolder.thumbnails,
-                  SettingsFolder.appData,
-                  SettingsFolder.logs,
-                ])
-                  Row(
-                    spacing: 8,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          folderName(f),
-                          style: UiText.sans(12, color: c.ink),
+          // 手机端是应用私有目录，没有「在资源管理器中打开」这条路径。
+          if (!isMobilePlatform)
+            SettingsAsideCard(
+              title: l.set_stOpenFolders,
+              child: SettingsAsideList(
+                rows: [
+                  for (final f in [
+                    SettingsFolder.images,
+                    SettingsFolder.vibes,
+                    SettingsFolder.thumbnails,
+                    SettingsFolder.appData,
+                    SettingsFolder.logs,
+                  ])
+                    Row(
+                      spacing: 8,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            folderName(f),
+                            style: UiText.sans(12, color: c.ink),
+                          ),
                         ),
-                      ),
-                      Text(
-                        st.folderNames[f] ?? '',
-                        style: UiText.mono(11, color: c.faint),
-                      ),
-                      SettingsIconBtn(
-                        key: Key('open-folder-${f.name}'),
-                        glyph: SettingsGlyphs.external,
-                        glyphSize: 13,
-                        tooltip: l.set_open,
-                        onTap: () => s.actions.onOpenFolder(f),
-                      ),
-                    ],
-                  ),
-              ],
+                        Text(
+                          st.folderNames[f] ?? '',
+                          style: UiText.mono(11, color: c.faint),
+                        ),
+                        SettingsIconBtn(
+                          key: Key('open-folder-${f.name}'),
+                          glyph: SettingsGlyphs.external,
+                          glyphSize: 13,
+                          tooltip: l.set_open,
+                          onTap: () => s.actions.onOpenFolder(f),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
-          ),
           SettingsHint.text(context, l.set_stDeleteTip),
         ],
         children: [

@@ -221,6 +221,12 @@ class UpdateCheckService {
   /// 桌面路径仍走上游，保持原有更新行为不变。
   static const String androidOwner = 'RealityError';
 
+  /// Android 移植版仓库名称。
+  ///
+  /// fork 已改名为 `W.O.F_NAI_Launcher_Android`（GitHub 会把旧地址 301 到新
+  /// 地址，所以旧版本客户端仍能检查到新版本）。桌面仍读上游同名仓库。
+  static const String androidRepo = 'W.O.F_NAI_Launcher_Android';
+
   /// 按目标平台选择更新源所有者。
   ///
   /// 独立成纯函数，便于在测试里锁定两端的仓库归属（宿主测试跑不到
@@ -228,8 +234,15 @@ class UpdateCheckService {
   static String ownerFor({required bool android}) =>
       android ? androidOwner : defaultOwner;
 
+  /// 按目标平台选择更新源仓库。
+  static String repoFor({required bool android}) =>
+      android ? androidRepo : defaultRepo;
+
   /// 当前平台应使用的更新源所有者。
   static String get owner => ownerFor(android: isAndroidPlatform);
+
+  /// 当前平台应使用的更新源仓库。
+  static String get repo => repoFor(android: isAndroidPlatform);
 
   /// 默认检查间隔（24小时）
   static const Duration defaultCheckInterval = Duration(hours: 24);
@@ -327,7 +340,7 @@ class UpdateCheckService {
     try {
       final latestRelease = await _gitHubApiService.fetchLatestRelease(
         owner: owner,
-        repo: defaultRepo,
+        repo: repo,
         currentVersion: currentVersion,
         platform: isAndroidPlatform
             ? 'android'

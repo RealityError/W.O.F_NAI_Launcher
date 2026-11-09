@@ -344,7 +344,7 @@ class UpdateCheckDialog extends ConsumerWidget {
         : 'v${versionInfo.version}';
     final rawContentBase = Uri.parse(
       'https://raw.githubusercontent.com/${UpdateCheckService.owner}/'
-      'W.O.F_NAI_Launcher/$versionTag/',
+      '${UpdateCheckService.repo}/$versionTag/',
     );
 
     return MarkdownBody(
@@ -431,7 +431,8 @@ class UpdateCheckDialog extends ConsumerWidget {
           : null;
     }
     return Uri.parse(
-      'https://github.com/${UpdateCheckService.owner}/W.O.F_NAI_Launcher/blob/'
+      'https://github.com/${UpdateCheckService.owner}/'
+      '${UpdateCheckService.repo}/blob/'
       '$versionTag/',
     ).resolveUri(uri);
   }

@@ -159,7 +159,7 @@ void main() {
     for (final page in SettingsPageId.values) {
       final tile = find.byKey(Key('settings-mobile-page-${page.name}'));
       if (!settingsPageAvailable(page)) {
-        // 桌面专属页（agent / rag / upscale / network）不进入手机列表。
+        // 桌面专属页（agent / rag / upscale / network / shortcuts）不进入手机列表。
         expect(tile, findsNothing, reason: page.name);
         continue;
       }

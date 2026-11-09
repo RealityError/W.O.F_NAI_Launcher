@@ -336,7 +336,7 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 7. **剪贴板/拖放差异**：Android 系统剪贴板与拖放对图片格式、文件 URI 的支持不如 Windows 宽松；Windows 专属的 PowerShell/System.Drawing 剪贴板路径只在桌面使用。
 8. **后台限制**：生成中通过 `dataSync` 前台服务降低被系统回收的概率，但厂商省电策略、极端低电量模式或用户手动“强行停止”仍可能中断生成；应用没有托盘常驻，桌面式常驻行为不存在，长时间生成建议保持通知权限开启。
 9. **通知权限未主动申请**：`POST_NOTIFICATIONS` 已在 manifest 声明，但应用没有引入运行时权限请求插件；Android 13+ 新装应用默认没有通知权限，此时后台生成的进度/完成通知不可见（前台服务与生成本身继续运行）。需要通知的用户要到系统设置里手动允许。
-10. **应用内更新的工程前提**：Android 更新只从 GitHub Release 读取，**发布时必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` / `app-armeabi-v7a-release.apk` / `app-x86_64-release.apk`，或含 `universal` 的通用包）；否则客户端会检查到新版本但报“无可安装包”。Android 的更新源是本 fork `RealityError/W.O.F_NAI_Launcher` 的 Release（上游没有 APK 资产），桌面仍走上游仓库。首次安装更新还需要系统里的“安装未知应用”授权；下载失败后需要重新下载（当前 Android 链路不做断点续传）。当前没有应用商店渠道。
+10. **应用内更新的工程前提**：Android 更新只从 GitHub Release 读取，**发布时必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` / `app-armeabi-v7a-release.apk` / `app-x86_64-release.apk`，或含 `universal` 的通用包）；否则客户端会检查到新版本但报“无可安装包”。Android 的更新源是本 fork `RealityError/W.O.F_NAI_Launcher_Android` 的 Release（上游没有 APK 资产），桌面仍走上游仓库；改名前的老地址由 GitHub 301 到新地址，旧版本客户端不受影响。首次安装更新还需要系统里的“安装未知应用”授权；下载失败后需要重新下载（当前 Android 链路不做断点续传）。当前没有应用商店渠道。
 11. **分享入站只处理单张图片**：manifest 只注册了 `ACTION_SEND` + `image/*`，多图 / 非图片文件 / 纯文本分享不会进入应用；收到的图片会先拷到 cache，消费后删除。
 12. **未知来源授权提示文案暂缓**：未授权“安装未知应用”时，应用当前只静默跳到系统设置页，返回后需再次点安装；原生跳转已经闭环，但缺少应用内提示文案。计划新增 ARB key `update_androidUnknownSources`（zh「请允许本应用安装未知来源应用后重试。」/ en「Allow this app to install unknown apps, then try again.」/ ja「不明なアプリのインストールを許可してから再試行してください。」/ ko「알 수 없는 앱 설치를 허용한 후 다시 시도하세요.」），为避免未引用 key 触发 l10n 回归，本轮**暂不加入**，后续补提示时与代码一起加。
 13. **明文 HTTP**：manifest 开启 `usesCleartextTraffic` 以支持局域网 ComfyUI，正式发布前应评估是否收窄。
@@ -411,7 +411,7 @@ AGP 8.11 / Gradle 8.14 需要 JDK 17–24。若 `java -version` 是 11，用 `fl
 
 按顺序排查：
 
-1. **Release 有没有 APK 资产**：GitHub Release 的 assets 里必须有 `.apk` 且文件名能看出 ABI（`app-arm64-v8a-release.apk` 等，或含 `universal`）。没有 APK 时客户端选中不到安装包，更新卡片会进入失败状态。Android 看的是 **fork `RealityError/W.O.F_NAI_Launcher`** 的 Release——上游 `z15087716457-stack` 的 Release 只有 Windows/macOS 资产，桌面端才查那边。
+1. **Release 有没有 APK 资产**：GitHub Release 的 assets 里必须有 `.apk` 且文件名能看出 ABI（`app-arm64-v8a-release.apk` 等，或含 `universal`）。没有 APK 时客户端选中不到安装包，更新卡片会进入失败状态。Android 看的是 **fork `RealityError/W.O.F_NAI_Launcher_Android`** 的 Release——上游 `z15087716457-stack` 的 Release 只有 Windows/macOS 资产，桌面端才查那边。
 2. **`REQUEST_INSTALL_PACKAGES` 是否在 manifest 里**：缺这行时 `canRequestPackageInstalls()` 恒为 false，只会反复跳到系统设置页。
 3. **“安装未知应用”是否允许**：`设置 → 应用 → 本应用 → 安装未知应用`；Android 8+ 这个开关是按应用授权的。允许后返回应用，**再点一次「下载并安装」**。
 4. **FileProvider 是否可用**：更新包下载在应用 cache 的 `nai_launcher_updates/`，由现有 `${applicationId}.fileprovider` 的 `cache-path` 暴露；不要新增第二个同 authority 的 provider，也不要改 provider authority。
@@ -485,30 +485,39 @@ android {
 
 ## 7.5 发布 Android APK（应用内更新的前提）
 
-Android 客户端只认 fork `RealityError/W.O.F_NAI_Launcher` 的 Release（见第 5 节第 10 条），
-而 `.github/workflows/release.yml` 只构建 Windows/macOS，**不会自动产出 APK**。每次要发新版时手动走一遍：
+Android 客户端只认 fork `RealityError/W.O.F_NAI_Launcher_Android` 的 Release（见第 5 节第 10 条）。
 
-1. 改 `pubspec.yaml` 的 `version`。**必须动 semver 段**（如 `2.3.1` → `2.4.0`），
+**现在由 CI 自动完成**：`.github/workflows/release.yml` 的 `build-android` job 会在打 `v*` tag
+时构建 split-per-abi APK，产物与 Windows 一起进同一个 Release；`generate_release_metadata.ps1`
+把 APK 写成 `android-apk` 资产（带 size 与 SHA256），客户端据此判定「可应用内安装」。
+
+正常发版只有两步：
+
+1. 改 `pubspec.yaml` 的 `version`。**必须动 semver 段**（如 `2.4.0` → `2.5.0`），
    只加 `+build` 号不会触发更新——更新检查比较的是 `versionName`；`+build` 只影响
    `versionCode`（Android 覆盖安装要求递增）。
-2. 构建：`flutter build apk --release --split-per-abi`，产物在
-   `build/app/outputs/flutter-apk/app-<abi>-release.apk`。
-3. 生成校验和（应用内下载会核对大小与 SHA256）：
+2. 提交并打 tag：`git tag v2.5.0 && git push origin v2.5.0`。`prepare` job 会校验
+   tag 与 pubspec 版本一致，不一致直接失败。
+
+需要人工复核的点：
+
+- **文件名必须保留 ABI 字样**（`arm64-v8a` / `armeabi-v7a` / `x86_64`），
+  `AndroidUpdateLogic.selectApkAsset` 靠文件名匹配设备 ABI；CI 直接上传
+  `flutter build apk --split-per-abi` 的原生产物，不要改名。
+- Release 起来后核对 `release_manifest.json` 里有三条 `type: "android-apk"`，
+  且 `sha256` 与资产一致。
+- 只做构建验证不想发版时，走 `android-build.yml`（PR / push 触发，只产 artifact）。
+
+手工兜底（CI 不可用时）：
 
 ```powershell
-Get-ChildItem *.apk | ForEach-Object {
-  "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
-} | Set-Content -Encoding ascii checksums.txt
+flutter build apk --release --split-per-abi
+gh release upload v2.5.0 -R RealityError/W.O.F_NAI_Launcher_Android `
+  build/app/outputs/flutter-apk/app-*-release.apk --clobber
 ```
 
-4. 建 Release 并上传三个 APK：`gh release create v2.4.0 -R RealityError/W.O.F_NAI_Launcher --notes-file <notes>.md app-*.apk checksums.txt`。
-   **文件名必须保留 ABI 字样**（`arm64-v8a` / `armeabi-v7a` / `x86_64`），
-   `AndroidUpdateLogic.selectApkAsset` 靠文件名匹配设备 ABI。
-5. 核对 GitHub 的 `digest` 与本地 SHA256 一致（`gh api repos/<owner>/<repo>/releases/latest --jq '.assets[] | {name,size,digest}'`）。
-   GitHub 会自动给上传资产算 digest，客户端优先用它做校验；manifest 不是必需的。
-
-> 2026-11-09 已按此流程发布 `v2.4.0`，并用应用自身的更新逻辑对线上 Release 做了端到端确认：
-> 三个 APK 均识别为 `android-apk`、`supportsInAppInstall` 为 true、arm64 与 x86_64 分别选到对应包，
+> 2026-11-09 已用应用自身的更新逻辑对线上 Release 做过端到端确认：三个 APK 均识别为
+> `android-apk`、`supportsInAppInstall` 为 true、arm64 与 x86_64 分别选到对应包，
 > 桌面分支仍选中上游的 Windows 包。
 
 ## 8. 相关文件与后续

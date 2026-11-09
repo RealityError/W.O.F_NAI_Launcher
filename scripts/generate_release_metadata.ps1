@@ -1,4 +1,4 @@
-﻿param(
+param(
   [Parameter(Mandatory = $true)]
   [string]$AssetDirectory,
 
@@ -20,6 +20,15 @@ function Get-AssetInfo {
   param([System.IO.FileInfo]$File)
 
   $name = $File.Name
+  if ($name -match '^app-(?<abi>arm64-v8a|armeabi-v7a|x86_64|universal)-release\.apk$') {
+    $abi = $Matches['abi']
+    return [ordered]@{
+      platform = 'android'
+      type = 'android-apk'
+      label = "Android 安装包（$abi）"
+      description = '支持应用内下载并通过系统安装器更新。'
+    }
+  }
   if ($name -match '_Windows_.*_Setup\.exe$') {
     return [ordered]@{
       platform = 'windows'
@@ -93,7 +102,7 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $outputPath = Resolve-Path $OutputDirectory
 
 $releaseFiles = Get-ChildItem -Path $assetPath -File |
-  Where-Object { $_.Extension -in @('.exe', '.zip') } |
+  Where-Object { $_.Extension -in @('.exe', '.zip', '.apk') } |
   Sort-Object Name
 
 if (-not $releaseFiles) {
@@ -155,6 +164,17 @@ function Get-DownloadBadge {
     'macos-portable' {
       return "[![macOS Universal](https://img.shields.io/badge/macOS-Universal-555555?style=flat-square&logo=apple)]($url)"
     }
+    'android-apk' {
+      # 资产记录里只有 fileName，ABI 从文件名取（与客户端选包规则一致）。
+      $match = [regex]::Match(
+        [string]$Asset['fileName'],
+        '^app-(?<abi>.+)-release\.apk$'
+      )
+      $abi = if ($match.Success) { $match.Groups['abi'].Value } else { 'apk' }
+      # shields.io 用双横线转义字面量横线（armeabi-v7a -> armeabi--v7a）。
+      $badge = ($abi -replace '-', '--')
+      return "[![APK $abi](https://img.shields.io/badge/APK-$badge-3DDC84?style=flat-square&logo=android&logoColor=white)]($url)"
+    }
     default {
       throw "Cannot create download badge for asset type: $type"
     }
@@ -178,6 +198,23 @@ $macBadges = @(
 if ($macBadges.Count -gt 0) {
   $downloadRows += "| **macOS** | $($macBadges -join '<br>') |"
 }
+$androidBadges = @(
+  $assets |
+    Where-Object { $_['platform'] -eq 'android' } |
+    ForEach-Object { Get-DownloadBadge -Asset $_ }
+)
+if ($androidBadges.Count -gt 0) {
+  $downloadRows += "| **Android** | $($androidBadges -join '<br>') |"
+}
+$androidNoteLines = @()
+if ($androidBadges.Count -gt 0) {
+  $androidNoteLines = @(
+    "",
+    "> **Android：** ``app-arm64-v8a-release.apk`` 适用于绝大多数手机/平板，``app-armeabi-v7a-release.apk`` 面向老款 32 位 ARM 设备，``app-x86_64-release.apk`` 用于模拟器。应用内更新会按设备 ABI 选包，下载后交给系统安装器；首次更新需要在系统里允许「安装未知应用」。",
+    "",
+    "> **Android 签名：** 当前 APK 沿用 debug 签名，仅供测试。换成正式签名后必须卸载重装，会丢失登录状态与本地图库。"
+  )
+}
 $changelogSection = Get-ChangelogSection -Version ($Version -replace '\+.*$', '')
 
 $releaseLines = @(
@@ -195,7 +232,10 @@ $releaseLines += @(
   "",
   "> **应用内更新：** Windows 安装版会自动选择 Setup x64，下载并校验后退出旧版本、安装并重新启动。由 2.3.0 或更新版本发起的更新会显示安装进度。2.2.4 及以后的 Portable 版支持应用内更新和失败回滚。2.2.3 及更早的 Portable 版请完全退出后解压覆盖，保留用户数据。更新源为本仓库 Releases。",
   "",
-  "> **安装提示：** Windows Setup 为普通用户的推荐版本，Portable 适合放在自定义目录。",
+  "> **安装提示：** Windows Setup 为普通用户的推荐版本，Portable 适合放在自定义目录。"
+)
+$releaseLines += $androidNoteLines
+$releaseLines += @(
   "",
   "## 📝 更新内容",
   "",

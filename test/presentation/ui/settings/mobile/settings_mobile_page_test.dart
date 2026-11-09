@@ -8,22 +8,13 @@ import 'package:nai_launcher/presentation/ui/settings/settings_contract.dart';
 import '../../../../helpers/studio_capture_fonts.dart';
 import '../settings_test_harness.dart';
 
-/// Android 手机端实际可见的设置页（agent / rag / upscale / network 已隐藏）。
-const _mobilePages = [
-  SettingsPageId.overview,
-  SettingsPageId.account,
-  SettingsPageId.appearance,
-  SettingsPageId.canvas,
-  SettingsPageId.shortcuts,
-  SettingsPageId.generation,
-  SettingsPageId.storage,
-  SettingsPageId.dictionaries,
-  SettingsPageId.models,
-  SettingsPageId.bridges,
-  SettingsPageId.privacy,
-  SettingsPageId.backup,
-  SettingsPageId.about,
-];
+/// Android 手机端实际可见的设置页。
+///
+/// 用生产口径过滤（[settingsPageAvailable]），避免手写清单漏跟隐藏页：
+/// agent / rag / upscale / network 依赖桌面运行时，shortcuts 需要物理键盘。
+final _mobilePages = SettingsPageId.values
+    .where(settingsPageAvailable)
+    .toList(growable: false);
 
 /// 验收范围的手机竖屏逻辑宽度（dp）。
 const _phoneWidths = [360.0, 430.0];
@@ -54,6 +45,11 @@ void main() {
     // 桌面专属页不出现在列表里。
     expect(find.byKey(const Key('settings-mobile-page-agent')), findsNothing);
     expect(find.byKey(const Key('settings-mobile-page-rag')), findsNothing);
+    // 触屏没有物理键盘，快捷键录制页没有意义。
+    expect(
+      find.byKey(const Key('settings-mobile-page-shortcuts')),
+      findsNothing,
+    );
 
     await tester.tap(find.byKey(const Key('settings-mobile-page-appearance')));
     await tester.pumpAndSettle();

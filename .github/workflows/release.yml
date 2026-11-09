@@ -210,6 +210,76 @@ jobs:
             dist/checksums.txt
           if-no-files-found: error
 
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: prepare
+    permissions:
+      contents: read
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          lfs: true
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/**/*.gradle', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Generate localizations and code
+        run: |
+          flutter gen-l10n
+          dart run tool/generate.dart
+
+      - name: Build release APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: List artifacts
+        run: ls -lh build/app/outputs/flutter-apk/
+
+      # 与 Windows 产物一起进入同一个 Release；文件名保留 ABI 字样，
+      # AndroidUpdateLogic.selectApkAsset 按它匹配设备 ABI，不能改名。
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apks
+          if-no-files-found: error
+          path: build/app/outputs/flutter-apk/app-*-release.apk
+
   build-macos:
     if: github.event_name == 'workflow_dispatch' && inputs.include_macos
     needs: prepare
@@ -225,11 +295,13 @@ jobs:
     if: >-
       ${{ !cancelled() && needs.prepare.result == 'success' &&
           needs.build-windows.result == 'success' &&
+          needs.build-android.result == 'success' &&
           (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') }}
     runs-on: ubuntu-latest
     needs:
       - prepare
       - build-windows
+      - build-android
       - build-macos
 
     steps:

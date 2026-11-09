@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../prompt_assistant/models/prompt_assistant_models.dart';
 import '../../prompt_assistant/models/prompt_task_definitions.dart';
@@ -61,7 +62,11 @@ SettingsModelsData settingsModelsData(BuildContext context, WidgetRef ref) {
       workbench,
       health,
       context.l10n,
-      chatGpt: ref.watch(naiAgentChatGptProvider),
+      // ChatGPT 套餐靠随包 Node 运行时登录；移动端没有该运行时，
+      // 传 null 让预设列表不出现「点了必然失败」的入口。
+      chatGpt: supportsNaiAgentRuntime
+          ? ref.watch(naiAgentChatGptProvider)
+          : null,
     ),
     providers: [
       for (final provider in config.providers)
