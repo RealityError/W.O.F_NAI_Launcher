@@ -99,6 +99,36 @@ void main() {
     expect(trailing.overflow, TextOverflow.ellipsis);
   });
 
+  testWidgets('MobileListTile keeps inline trailing on the title line', (
+    tester,
+  ) async {
+    const subtitle = '主题、文字和提醒方式。所有修改即时保存，可以撤销。';
+    await pumpPhone(
+      tester,
+      Scaffold(
+        body: ListView(
+          children: [
+            MobileListTile(
+              icon: Icons.contrast,
+              title: '外观',
+              subtitle: subtitle,
+              inlineTrailing: const Text('跟随系统'),
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final titleTop = tester.getTopLeft(find.text('外观')).dy;
+    final inlineTop = tester.getTopLeft(find.text('跟随系统')).dy;
+    final subtitleTop = tester.getTopLeft(find.text(subtitle)).dy;
+    // 值跟标题同一行，落在副标题之上：副标题换行时不会被值插进句子中间。
+    expect(inlineTop, lessThan(subtitleTop));
+    expect((inlineTop - titleTop).abs(), lessThan(8));
+  });
+
   testWidgets('showMobileSheet opens and dismisses', (tester) async {
     await pumpPhone(
       tester,

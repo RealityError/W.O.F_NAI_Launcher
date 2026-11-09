@@ -39,6 +39,7 @@ class MobileListTile extends StatelessWidget {
     this.icon,
     this.subtitle,
     this.trailingText,
+    this.inlineTrailing,
     this.trailing,
     this.onTap,
     this.destructive = false,
@@ -49,6 +50,10 @@ class MobileListTile extends StatelessWidget {
   final IconData? icon;
   final String? subtitle;
   final String? trailingText;
+
+  /// 与标题同一行显示的状态（读数/状态点）。放在行尾（[trailing]）时它会
+  /// 沿整行垂直居中，副标题换行后就插在句子中间；设置列表用这个参数。
+  final Widget? inlineTrailing;
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool destructive;
@@ -108,6 +113,16 @@ class MobileListTile extends StatelessWidget {
                                     color: scheme.onSurfaceVariant,
                                   ),
                                 ),
+                              ),
+                            ),
+                          if (inlineTrailing != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 120,
+                                ),
+                                child: inlineTrailing,
                               ),
                             ),
                         ],
