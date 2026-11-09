@@ -311,7 +311,7 @@ systemProp.https.proxyPort=7897
 | NAI Agent（Node 运行时、MCP、Skill） | ✓ | ✗ | 依赖随包 Node 与进程管理 |
 | Krita 桥接 | ✓ | ✗ | 本地 WebSocket 服务 + 桌面插件端 |
 | 外部桥接客户端（studio-bridge.exe） | ✓ | ✗ | 桌面可执行文件 |
-| 应用内更新检查/安装 | ✓ | ✓ | 桌面：Windows 更新脚本 / macOS 核验。Android（G17）：检查 GitHub Release → 按设备 ABI 选 APK → 下载到 cache 并做大小/SHA256 校验 → 系统安装器（`REQUEST_INSTALL_PACKAGES` + 现有 FileProvider cache 路径）；未授权「未知来源」时跳到本应用系统设置页，返回后重试。**Release 必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` 等），否则会提示有新版本但无包可装 |
+| 应用内更新检查/安装 | ✓ | ✓ | 桌面：Windows 更新脚本 / macOS 核验。Android（G17）：检查 GitHub Release → 按设备 ABI 选 APK → 下载到 cache 并做大小/SHA256 校验 → 系统安装器（`REQUEST_INSTALL_PACKAGES` + 现有 FileProvider cache 路径）；未授权「未知来源」时跳到本应用系统设置页，返回后重试。**Android 读取的是本 fork（`RealityError`）的 Release**，因为上游只发布 Windows/macOS 资产；桌面仍查上游。**Release 必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` 等），否则会提示有新版本但无包可装 |
 | 分享图片到其它应用 | — | ✓ | G15：查看器「更多」、画廊长按菜单、生成结果长按菜单 → 系统分享面板；未保存的生成结果直接分享内存字节。桌面不显示该入口 |
 | 接收系统分享进图生图 | — | ✓ | G16：其它应用 `ACTION_SEND image/*`（单张）→ 拷贝到 cache 后自动打开图生图；运行中与冷启动都能收到 |
 | 生成中后台运行 / 完成通知 | — | ✓ | G10：`dataSync` 前台服务 + 通知 channel `wof_generation`，进度节流更新，完成/失败/取消各发一条通知；Android 13+ 通知权限未授予时通知不可见但生成继续。桌面应用无此机制 |
@@ -332,16 +332,16 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 3. **没有 iOS 目标**：`ios/` 未生成；`isIOSPlatform` 只是给未来移植留的判断。
 4. **存储范围**：Android 上默认图库/数据目录在应用私有空间，不能像桌面那样任意指定磁盘文件夹；导入外部图片走系统文件选择器（SAF）。手动保存生成图时会把副本镜像到系统相册 `Pictures/W.O.F NAI Studio`（MediaStore，Android 10+），自动保存的图片和图库里的其它文件仍只在应用私有目录；卸载应用会删除私有目录数据，重要作品请及时导出。
 5. **移动端交互取舍**：桌面右键 / hover / 拖拽 / 快捷键在触屏上的等价入口是长按菜单、底部弹层、选择后操作和可见按钮；图片拖拽排序、框选、部分快捷键在手机上仍没有等价入口。这是移动端 UX 取舍，不是桌面功能回归，桌面代码路径未改。
-6. **手机端布局现状**：设置页（列表 → 详情）、画廊（长按菜单 / 多选 / 详情弹层）、查看器、编辑器 / 局部重绘、导演工具与画布工具面板已完成移动分支；生成页主要触控目标已补到 ≥48dp，但全屏提示词编辑器、翻译调整浮窗等处的少量小按钮命中区仍在收尾（触控收尾任务进行中，不影响桌面渲染）。桌面布局、hover、右键路径保持不变。
+6. **手机端布局现状**：设置页（列表 → 详情）、画廊（长按菜单 / 多选 / 详情弹层）、查看器、编辑器 / 局部重绘、导演工具与画布工具面板已完成移动分支；生成页范围内的触控目标已统一到 ≥48dp（含全屏提示词编辑器、翻译调整浮窗，见 `docs/mobile-adaptation.md` §8.13），画布底部工具条在手机上合并为单条（§8.16）。桌面布局、hover、右键路径保持不变。
 7. **剪贴板/拖放差异**：Android 系统剪贴板与拖放对图片格式、文件 URI 的支持不如 Windows 宽松；Windows 专属的 PowerShell/System.Drawing 剪贴板路径只在桌面使用。
 8. **后台限制**：生成中通过 `dataSync` 前台服务降低被系统回收的概率，但厂商省电策略、极端低电量模式或用户手动“强行停止”仍可能中断生成；应用没有托盘常驻，桌面式常驻行为不存在，长时间生成建议保持通知权限开启。
 9. **通知权限未主动申请**：`POST_NOTIFICATIONS` 已在 manifest 声明，但应用没有引入运行时权限请求插件；Android 13+ 新装应用默认没有通知权限，此时后台生成的进度/完成通知不可见（前台服务与生成本身继续运行）。需要通知的用户要到系统设置里手动允许。
-10. **应用内更新的工程前提**：Android 更新只从 GitHub Release 读取，**发布时必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` / `app-armeabi-v7a-release.apk` / `app-x86_64-release.apk`，或含 `universal` 的通用包）；否则客户端会检查到新版本但报“无可安装包”。首次安装更新还需要系统里的“安装未知应用”授权；下载失败后需要重新下载（当前 Android 链路不做断点续传）。当前没有应用商店渠道。
+10. **应用内更新的工程前提**：Android 更新只从 GitHub Release 读取，**发布时必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` / `app-armeabi-v7a-release.apk` / `app-x86_64-release.apk`，或含 `universal` 的通用包）；否则客户端会检查到新版本但报“无可安装包”。Android 的更新源是本 fork `RealityError/W.O.F_NAI_Launcher` 的 Release（上游没有 APK 资产），桌面仍走上游仓库。首次安装更新还需要系统里的“安装未知应用”授权；下载失败后需要重新下载（当前 Android 链路不做断点续传）。当前没有应用商店渠道。
 11. **分享入站只处理单张图片**：manifest 只注册了 `ACTION_SEND` + `image/*`，多图 / 非图片文件 / 纯文本分享不会进入应用；收到的图片会先拷到 cache，消费后删除。
 12. **未知来源授权提示文案暂缓**：未授权“安装未知应用”时，应用当前只静默跳到系统设置页，返回后需再次点安装；原生跳转已经闭环，但缺少应用内提示文案。计划新增 ARB key `update_androidUnknownSources`（zh「请允许本应用安装未知来源应用后重试。」/ en「Allow this app to install unknown apps, then try again.」/ ja「不明なアプリのインストールを許可してから再試行してください。」/ ko「알 수 없는 앱 설치를 허용한 후 다시 시도하세요.」），为避免未引用 key 触发 l10n 回归，本轮**暂不加入**，后续补提示时与代码一起加。
 13. **明文 HTTP**：manifest 开启 `usesCleartextTraffic` 以支持局域网 ComfyUI，正式发布前应评估是否收窄。
 14. **构建所需外部资源**：首次构建要下载 NDK、Rust 目标、cargokit 预编译/编译产物，离线环境需要提前预热缓存。
-15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 重新构建 debug/release 通过（含本轮 Kotlin/manifest），但更新 / 分享 / 后台生成 / 手机布局的功能手测（3.9）尚未执行；登录、生图、图片保存等联网链路尚未端到端验证（测试环境无网络、无 NovelAI Token），release APK 也还没做真机回归。
+15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 在本机 MuMu 上补做了登录、生图、画布与手机端布局回归（画布单条工具条实测见 `docs/mobile-adaptation.md` §8.16），全程无崩溃、无 overflow。仍未覆盖：真机（arm64）回归、应用内更新的完整安装闭环（需要先有带 APK 资产的 Release）、分享出站/入站与后台生成通知的手测。release APK 目前沿用 debug 签名，还不能对外发布。
 
 ## 6. 排障
 
@@ -411,7 +411,7 @@ AGP 8.11 / Gradle 8.14 需要 JDK 17–24。若 `java -version` 是 11，用 `fl
 
 按顺序排查：
 
-1. **Release 有没有 APK 资产**：GitHub Release 的 assets 里必须有 `.apk` 且文件名能看出 ABI（`app-arm64-v8a-release.apk` 等，或含 `universal`）。没有 APK 时客户端选中不到安装包，更新卡片会进入失败状态。
+1. **Release 有没有 APK 资产**：GitHub Release 的 assets 里必须有 `.apk` 且文件名能看出 ABI（`app-arm64-v8a-release.apk` 等，或含 `universal`）。没有 APK 时客户端选中不到安装包，更新卡片会进入失败状态。Android 看的是 **fork `RealityError/W.O.F_NAI_Launcher`** 的 Release——上游 `z15087716457-stack` 的 Release 只有 Windows/macOS 资产，桌面端才查那边。
 2. **`REQUEST_INSTALL_PACKAGES` 是否在 manifest 里**：缺这行时 `canRequestPackageInstalls()` 恒为 false，只会反复跳到系统设置页。
 3. **“安装未知应用”是否允许**：`设置 → 应用 → 本应用 → 安装未知应用`；Android 8+ 这个开关是按应用授权的。允许后返回应用，**再点一次「下载并安装」**。
 4. **FileProvider 是否可用**：更新包下载在应用 cache 的 `nai_launcher_updates/`，由现有 `${applicationId}.fileprovider` 的 `cache-path` 暴露；不要新增第二个同 authority 的 provider，也不要改 provider authority。
@@ -503,10 +503,10 @@ android {
 
 后续工作（按优先级）：
 
-1. 正式签名 + 发布流程（第 7 节），并决定分发渠道（GitHub Release APK / 应用商店 AAB）；**Release 必须同时上传 Android APK 资产**（G17 应用内更新的前提，命名按 split-per-abi）。
+1. 正式签名 + 发布流程（第 7 节），并决定分发渠道（GitHub Release APK / 应用商店 AAB）；**Release 必须同时上传 Android APK 资产**（G17 应用内更新的前提，命名按 split-per-abi），且 Android 客户端读的是本 fork 的 Release。
 2. 资源瘦身与按需资产（AAB + Asset Delivery；数据库/语言包按需下载），控制 APK 体积。
 3. Android 端真实设备/模拟器回归：先按 3.9 手测应用内更新、分享出站/入站、后台生成通知、手机端布局；再在**有网络且提供 NovelAI 凭据**的环境补做登录、生图、图片保存/MediaStore 相册镜像的端到端验证，最后覆盖图库导入、ComfyUI 连接、3D 编辑器 WebView、剪贴板/拖放。
-4. 移动端交互收尾：剩余小按钮命中区（全屏提示词编辑器、翻译调整浮窗等，触控收尾任务进行中）；`update_androidUnknownSources` 提示文案与 ARB key 一起补。
+4. 移动端交互收尾：生成页范围内的触控目标已统一到 ≥48dp，画布工具条已合并为单条；剩余分类选择 / 批量元数据等次要桌面对话框未做手机重排。`update_androidUnknownSources` 提示文案与 ARB key 一起补。
 5. 后台策略与通知：如需主动申请通知权限，引入最小化的权限请求路径；继续观察前台服务在厂商省电策略下的存活情况。
 
 维护约定：修改 getter 名称或 Android 能力边界时同步更新本文第 2、4 节；改 `android/` 或构建脚本时确认 CI 触发路径仍覆盖。

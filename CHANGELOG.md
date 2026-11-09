@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-09
+
+Android 端收尾与更新链路打通（桌面布局、hover 与右键路径未改）。
+
+- 修复 Android 应用内更新永远走不到安装器：Release 里的 `.apk` 资产此前被识别为
+  `unknown` 类型，`supportsInAppInstall` 恒为 false，更新卡片只会显示「前往下载」。
+  现在新增 `android-apk` 资产类型，按设备 ABI 选包后可直接下载并由系统安装器安装。
+- Android 更新源改读本 fork 的 Release（`RealityError/W.O.F_NAI_Launcher`），
+  上游只发布 Windows/macOS 资产；桌面端仍查上游仓库，行为不变。更新说明里的
+  相对链接与「查看更新日志」入口同步指向实际更新源。
+- 画布底部工具条在手机上合并为一条，尺寸与种子收进显示设置弹层，
+  360×640 下图片可视高度 144 → 203dp（见 `docs/mobile-adaptation.md` §8.16）。
+- 版本号 2.3.1+89 → 2.4.0+90。
+
 ## [2.3.1] - 2026-11-07
 
 - 「模型与接口 → 添加服务商」可连接 ChatGPT 套餐。通过随包 Pi 为 NAI Agent 提供账号可用的模型，登录后可在服务商页刷新模型、管理用量或退出。

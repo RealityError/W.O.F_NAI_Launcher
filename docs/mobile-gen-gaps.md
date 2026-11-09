@@ -24,7 +24,7 @@
 | G1 | 画布图片长按菜单 | 图片菜单只绑了右键（`onSecondaryTapDown`，[gen_canvas.dart:645](../lib/presentation/ui/gen/gen_canvas.dart#L645-L656)），触屏无入口；菜单动作在 [generation_canvas_menu.dart:80-220](../lib/presentation/wiring/generation_canvas_menu.dart#L80-L220) | 长按图片 → `showMobileContextMenu`，动作与右键一致；补齐**删除单张 / 发送到风格参考 / 发送到精准参考 / 保存到精准参考库**（其余项工具条已有） | `gen_canvas.dart`、`generation_canvas_menu.dart` | S | ✅ |
 | G2 | 历史批次菜单 | 批次菜单只绑右键（[gen_history.dart:616](../lib/presentation/ui/gen/gen_history.dart#L616-L618)） | 长按批次或点批次右上「…」→ 同一套菜单：查看大图、复制、收藏、发送到图生图 / 风格参考 / 精准参考、保存整批 | `gen_history.dart` | S | ✅（长按） |
 | G3 | 批次封面悬停按钮 | 复核后：批次封面没有 hover 专属操作按钮，hover 只改透明度（[gen_history.dart:639-643](../lib/presentation/ui/gen/gen_history.dart#L639-L643)）；原清单引用的 `141-155` 行其实是右键菜单项 | 无需常显按钮；保存 / 复制等动作走 G2 长按菜单 | — | S | ✅（复核为不适用） |
-| G4 | 触控目标 48dp | 历史底部一排图标、画布浮动按钮、头部胶囊、参数条多为 24–32dp | 生成页范围内可点区域 ≥ 48dp（视觉可维持 32dp） | `gen_history.dart`、`gen_canvas.dart`、`gen_params.dart`、`gen_header.dart` | M | ⬜ |
+| G4 | 触控目标 48dp | 历史底部一排图标、画布浮动按钮、头部胶囊、参数条多为 24–32dp | 生成页范围内可点区域 ≥ 48dp（视觉可维持 32dp） | `gen_history.dart`、`gen_canvas.dart`、`gen_params.dart`、`gen_header.dart` | M | ✅（见 §8 第二批） |
 | G5 | 验收已有手机适配 | 提示词全屏编辑器、翻译调整浮层、查看器主界面已有 `usesMobileLayout` 分支，未系统验收 | 360×640 逐项走查无溢出、可操作，补 widget 测试 | `gen_prompt.dart`、`translation_adjust_window.dart`、`viewer_page.dart` | S | ✅ |
 
 ## 2. Android 缺失 / 桌面专属功能（P1–P2）

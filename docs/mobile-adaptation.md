@@ -347,6 +347,30 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
    改为在显示弹层里检查种子胶囊 48dp；`test/presentation/ui/gen` + `test/presentation/ui/channel`
    共 465 例、画布接线与生成页 176 例全过，桌面 golden 不变。
 
+### 8.17 应用内更新链路打通（Android 读 fork 的 Release）
+
+复查发现 Android 的应用内更新**从来走不到系统安装器**：`ReleaseAssetInfo.inferType`
+只认 Windows/macOS 文件名，`.apk` 一律落到 `unknown`，于是
+`supportsInAppInstall` 恒为 false，更新卡片只会显示「前往下载」——即使 Release 里
+真的放了 APK，用户也永远点不到安装。
+
+1. **资产类型**：新增 `ReleaseAssetType.androidApk`（`typeId` = `android-apk`，
+   `platform` = `android`，label「Android 安装包」）。`inferType` 先判 `.apk` 再走
+   桌面的文件名启发式，避免 Android 包名里出现 `windows` 之类字样时误判；
+   `parseType` 同时认 manifest 里的 `android-apk`。
+2. **平台选包**：`_findPlatformAsset` 补 `android` 分支，只返回 APK 类型候选，
+   不会把 Windows/macOS 资产当安装包；ABI 匹配仍交给
+   `AndroidUpdateLogic.selectApkAsset`（拿到设备 ABI 后按 arm64-v8a / armeabi-v7a /
+   x86_64 顺序挑，找不到再退回 `universal` 或第一个包）。
+3. **更新源**：上游 `z15087716457-stack` 的 Release 只有 Windows/macOS 资产，
+   Android 改读 fork `RealityError/W.O.F_NAI_Launcher`（`UpdateCheckService.owner`，
+   纯函数 `ownerFor(android:)` 便于测试）。**桌面仍查上游，行为不变**；更新说明里的
+   相对链接与「查看更新日志」入口跟着实际更新源走。
+4. **验证**：`flutter analyze --no-pub` 干净；`test/core/services`、`test/data/models/version`、
+   `test/data/datasources/remote` 与 4 个更新 UI 测试文件共 387 例通过（仅
+   `windows_update_launch_test` 两个已知的环境性失败，与本次改动无关）。
+   新增用例覆盖「APK 被认成可安装」「android 平台只选 APK」「owner 按平台切换」。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 手机端生成页 / 全屏编辑器 / 翻译浮层 / 查看器 / 编辑器范围内的触控目标已统一到 ≥48dp；

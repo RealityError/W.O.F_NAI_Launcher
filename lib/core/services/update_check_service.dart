@@ -208,11 +208,28 @@ class UpdateCheckService {
   bool get _supportsInAppUpdates =>
       supportsInAppUpdateInstall || isAndroidPlatform;
 
-  /// 默认仓库所有者
+  /// 默认仓库所有者（桌面更新源）。
   static const String defaultOwner = 'z15087716457-stack';
 
   /// 默认仓库名称
   static const String defaultRepo = 'W.O.F_NAI_Launcher';
+
+  /// Android 更新源仓库所有者。
+  ///
+  /// 上游只发布 Windows/macOS 资产，没有 Android APK；Android 的应用内更新
+  /// 读取 fork 的 Release（由本分支的发布流程上传 split-per-abi 安装包）。
+  /// 桌面路径仍走上游，保持原有更新行为不变。
+  static const String androidOwner = 'RealityError';
+
+  /// 按目标平台选择更新源所有者。
+  ///
+  /// 独立成纯函数，便于在测试里锁定两端的仓库归属（宿主测试跑不到
+  /// Android 分支的 [isAndroidPlatform]）。
+  static String ownerFor({required bool android}) =>
+      android ? androidOwner : defaultOwner;
+
+  /// 当前平台应使用的更新源所有者。
+  static String get owner => ownerFor(android: isAndroidPlatform);
 
   /// 默认检查间隔（24小时）
   static const Duration defaultCheckInterval = Duration(hours: 24);
@@ -309,7 +326,7 @@ class UpdateCheckService {
 
     try {
       final latestRelease = await _gitHubApiService.fetchLatestRelease(
-        owner: defaultOwner,
+        owner: owner,
         repo: defaultRepo,
         currentVersion: currentVersion,
         platform: isAndroidPlatform

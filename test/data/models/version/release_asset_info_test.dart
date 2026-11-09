@@ -49,6 +49,50 @@ void main() {
       }
     });
 
+    test('detects Android APK assets so in-app install stays available', () {
+      final asset = ReleaseAssetInfo.fromGitHubAsset({
+        'name': 'app-arm64-v8a-release.apk',
+        'browser_download_url': 'https://example.com/app.apk',
+        'size': 456,
+        'digest': 'sha256:${'b' * 64}',
+      });
+
+      expect(asset.type, ReleaseAssetType.androidApk);
+      expect(asset.platform, 'android');
+      expect(asset.typeId, 'android-apk');
+      // 之前的 unknown 类型会让 supportsInAppInstall 恒为 false，
+      // 于是 Android 更新只剩「前往下载」，永远走不到系统安装器。
+      expect(asset.supportsInAppInstall, isTrue);
+      expect(asset.requiresManualReplace, isFalse);
+    });
+
+    test('keeps APK detection ahead of desktop filename heuristics', () {
+      for (final name in [
+        'app-x86_64-release.apk',
+        'WOF_NAI_Studio_windows_2.3.3.apk',
+      ]) {
+        expect(
+          ReleaseAssetInfo.inferType(fileName: name),
+          ReleaseAssetType.androidApk,
+          reason: name,
+        );
+      }
+    });
+
+    test('parses the android-apk type id from a release manifest', () {
+      final asset = ReleaseAssetInfo.fromManifestAsset({
+        'type': 'android-apk',
+        'platform': 'android',
+        'fileName': 'app-armeabi-v7a-release.apk',
+        'downloadUrl': 'https://example.com/app.apk',
+        'sha256': 'abc123',
+      });
+
+      expect(asset.type, ReleaseAssetType.androidApk);
+      expect(asset.platform, 'android');
+      expect(asset.supportsInAppInstall, isTrue);
+    });
+
     test('merges manifest metadata with GitHub asset', () {
       final githubAsset = ReleaseAssetInfo.fromGitHubAsset({
         'name': 'NAI_Launcher_Windows_1.0.0_Setup.exe',
