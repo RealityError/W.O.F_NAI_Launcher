@@ -212,7 +212,7 @@ if ($androidBadges.Count -gt 0) {
     "",
     "> **Android：** ``app-arm64-v8a-release.apk`` 适用于绝大多数手机/平板，``app-armeabi-v7a-release.apk`` 面向老款 32 位 ARM 设备，``app-x86_64-release.apk`` 用于模拟器。应用内更新会按设备 ABI 选包，下载后交给系统安装器；首次更新需要在系统里允许「安装未知应用」。",
     "",
-    "> **Android 签名：** 当前 APK 沿用 debug 签名，仅供测试。换成正式签名后必须卸载重装，会丢失登录状态与本地图库。"
+    "> **Android 签名：** APK 由项目自签密钥签名（CI 从 Secrets 固定还原，每次构建一致），同密钥的版本可直接覆盖安装；换密钥必须卸载重装，会丢失登录状态与本地图库。当前未上架应用商店，包仅供测试。"
   )
 }
 $changelogSection = Get-ChangelogSection -Version ($Version -replace '\+.*$', '')

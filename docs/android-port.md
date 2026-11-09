@@ -520,6 +520,38 @@ gh release upload v2.5.0 -R RealityError/W.O.F_NAI_Launcher_Android `
 > `android-apk`、`supportsInAppInstall` 为 true、arm64 与 x86_64 分别选到对应包，
 > 桌面分支仍选中上游的 Windows 包。
 
+## 7.6 签名密钥（覆盖安装的前提）
+
+Android 只允许「同包名 + 同签名 + 不降 versionCode」的覆盖安装。`release` 构建原本用
+`signingConfig debug`，而 CI runner 的 `~/.android/debug.keystore` 每次都是新生成的，
+于是 CI 产物的签名和用户已装版本对不上，应用内更新会下载成功、却在安装阶段被系统以
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE` 拒绝。
+
+现在的做法：
+
+- 密钥：`android/app/wof-release.jks`（RSA 2048，alias `wof`），**不入库**
+  （`android/.gitignore` 已忽略 `**/*.jks` 与 `key.properties`）。
+- 库存：GitHub Secrets `ANDROID_KEYSTORE_BASE64`（base64 的 jks）、
+  `ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`。
+- 构建前由 CI 还原 jks 并写 `android/key.properties`：
+
+```properties
+storePassword=...
+keyPassword=...
+keyAlias=wof
+storeFile=app/wof-release.jks
+```
+
+- `android/app/build.gradle.kts` 检测到 `key.properties` 就用它，否则回退 debug 签名，
+  保证本地 `flutter build apk` 不受影响。`signingReport` 应显示
+  `Variant: release → Store: android/app/wof-release.jks, Alias: wof`。
+- `release.yml` 缺 secret 时直接失败（不带病发布）；`android-build.yml` 只做构建验证，
+  缺 secret 时告警并退回 debug 签名。
+
+轮换密钥要重新生成 jks、更新四个 secret，并让所有已安装用户卸载重装。
+本地验证签名：`apksigner verify --print-certs <apk>`，证书 SHA-256 应与
+`keytool -list -v -keystore android/app/wof-release.jks` 一致。
+
 ## 8. 相关文件与后续
 
 新增/相关文件：
