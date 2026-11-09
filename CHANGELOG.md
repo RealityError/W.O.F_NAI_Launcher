@@ -19,6 +19,13 @@ Actions 在打 tag 时自动构建并发布（桌面布局、hover 与右键路�
   现在移动端不再展示该预设。
 - 打 `v*` tag 时由 CI 构建 split-per-abi APK，与 Windows 产物一起发布到同一个
   Release，`release_manifest.json` 带上 APK 的类型、大小与 SHA256。
+- 固定 Android 签名密钥：此前 `release` 构建用 `signingConfig debug`，而 CI runner
+  的 debug keystore 每次都是新生成的，导致构建出的 APK 签名与已安装版本不一致，
+  应用内更新下载完会在安装阶段被系统拒绝（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）。
+  现在签名密钥存为 GitHub Secrets，构建前还原成 `android/app/wof-release.jks` 并写
+  `android/key.properties`（两者都不入库），本地缺配置时仍回退 debug 签名。
+  **从 2.4.0 升级到本版需要卸载重装一次**（旧版是临时 debug 签名），会丢失登录状态
+  与本地图库；之后同一密钥的版本都能直接覆盖安装。
 - 版本号 2.4.0+90 → 2.5.0+91。
 
 ## [2.4.0] - 2026-11-09
