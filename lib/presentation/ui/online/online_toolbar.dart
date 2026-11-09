@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -133,6 +134,83 @@ class OnlineToolbar extends StatelessWidget {
           padding: EdgeInsets.only(left: 18, right: reserve && chrome ? 0 : 16),
           child: Row(spacing: 8, children: children),
         ),
+      ),
+    );
+  }
+}
+
+/// 手机端工具栏 52：左栏入口 + 搜索 + 多选 / 刷新。
+///
+/// 桌面工具栏里的卡片大小、检查器开关、排行翻页在手机上改由长按菜单、
+/// 全屏查看器与横向滚动的筛选行承担，这里只留触屏每次都要用的一排。
+class OnlineMobileToolbar extends StatelessWidget {
+  const OnlineMobileToolbar({super.key, required this.login});
+
+  /// 收藏未登录：只留搜索框。
+  final bool login;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l10n = context.l10n;
+    final scope = OnlineScope.of(context);
+    final data = scope.data;
+    final a = scope.actions;
+    final ctrl = scope.controller;
+    final s = data.status;
+    final fav = data.mode == OnlineMode.favorites;
+    final booruRank = data.mode == OnlineMode.ranking && !s.promptQuery;
+    return Container(
+      key: const Key('online-toolbar-mobile'),
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        spacing: 4,
+        children: [
+          if (!login)
+            UiIconBox(
+              key: const Key('online-mobile-browse'),
+              glyph: UiGlyphs.doubleRight,
+              glyphSize: 17,
+              size: 44,
+              tooltip: l10n.online_expandSidebar,
+              onTap: () => showOnlineMobileSidebar(context),
+            ),
+          const Expanded(child: OnlineSearchBox()),
+          if (!login)
+            if (ctrl.picking)
+              UiBtn(
+                key: const Key('online-multi-done'),
+                tone: UiBtnTone.accent,
+                onTap: () => ctrl.setPicking(false),
+                children: [
+                  const UiGlyph(UiGlyphs.check, size: 14, strokeWidth: 2.4),
+                  Text(l10n.online_doneMultiSelect),
+                ],
+              )
+            else
+              UiIconBox(
+                key: const Key('online-mobile-multi'),
+                glyph: UiGlyphs.select,
+                glyphSize: 16,
+                size: 44,
+                tooltip: l10n.online_multiSelect,
+                onTap: () => ctrl.setPicking(true),
+              ),
+          if (!login && !fav && !booruRank)
+            UiIconBox(
+              key: const Key('online-mobile-refresh'),
+              glyph: UiGlyphs.refresh,
+              glyphSize: 16,
+              size: 44,
+              tooltip: l10n.online_refresh,
+              onTap: a.onRefresh,
+            ),
+        ],
       ),
     );
   }
@@ -783,7 +861,10 @@ class _OnlineFilterRowState extends State<OnlineFilterRow> {
               key: const Key('online-filter-row'),
               height: 46,
               child: Padding(
-                padding: const EdgeInsets.only(left: 18, right: 16),
+                padding: EdgeInsets.only(
+                  left: usesMobileLayout ? 12 : 18,
+                  right: usesMobileLayout ? 12 : 16,
+                ),
                 child: LayoutBuilder(
                   builder: (context, box) => SingleChildScrollView(
                     scrollDirection: Axis.horizontal,

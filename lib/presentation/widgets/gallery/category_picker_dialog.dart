@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nai_launcher/core/utils/localization_extension.dart';
 import 'package:nai_launcher/data/models/gallery/gallery_category.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
+import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
 import 'package:nai_launcher/presentation/providers/gallery_category_provider.dart';
 import 'package:nai_launcher/presentation/widgets/common/studio_icons.dart';
 import '../../utils/gallery_category_label.dart';
@@ -150,77 +151,114 @@ class _CategoryPickerDialogState extends ConsumerState<CategoryPickerDialog> {
         ) ||
         'root'.contains(_searchQuery);
 
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: l10n.localGallery_categoryFilterHint,
+            prefixIcon: const Icon(Icons.search, size: 20),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            children: [
+              if (showRootItem) ...[
+                _buildRootTile(context, theme, l10n),
+                const Divider(height: 12),
+              ],
+              if (visibleCategories.isEmpty && !showRootItem)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Text(
+                      l10n.localGallery_noMatchingResults,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...visibleCategories.map(
+                  (item) => _buildCategoryTile(
+                    context,
+                    theme,
+                    l10n,
+                    item,
+                    showExpandControls: !isSearching,
+                    hasChildren: allCategories
+                        .getChildren(item.category.id)
+                        .isNotEmpty,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+    // 手机端：整屏弹层，标题栏 + 可滚动分类列表，避免 560×700 在 360dp 上被压扁。
+    if (usesMobileLayout) {
+      return Dialog.fullscreen(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      key: const ValueKey('category_picker_close'),
+                      icon: const Icon(Icons.close),
+                      tooltip: l10n.common_close,
+                      onPressed: () => Navigator.of(context).pop(null),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: body,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return AlertDialog(
       title: Text(widget.title),
       contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      content: SizedBox(
-        width: 560,
-        height: 700,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: l10n.localGallery_categoryFilterHint,
-                prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () => _searchController.clear(),
-                      )
-                    : null,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                children: [
-                  if (showRootItem) ...[
-                    _buildRootTile(context, theme, l10n),
-                    const Divider(height: 12),
-                  ],
-                  if (visibleCategories.isEmpty && !showRootItem)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Center(
-                        child: Text(
-                          l10n.localGallery_noMatchingResults,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    ...visibleCategories.map(
-                      (item) => _buildCategoryTile(
-                        context,
-                        theme,
-                        l10n,
-                        item,
-                        showExpandControls: !isSearching,
-                        hasChildren: allCategories
-                            .getChildren(item.category.id)
-                            .isNotEmpty,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      content: SizedBox(width: 560, height: 700, child: body),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(null),
@@ -241,7 +279,10 @@ class _CategoryPickerDialogState extends ConsumerState<CategoryPickerDialog> {
       onTap: () =>
           Navigator.of(context).pop(const CategoryPickResult(category: null)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: usesMobileLayout ? 14 : 10,
+        ),
         child: Row(
           children: [
             Icon(
@@ -286,8 +327,8 @@ class _CategoryPickerDialogState extends ConsumerState<CategoryPickerDialog> {
         padding: EdgeInsets.only(
           left: 12.0 + item.depth * 16.0,
           right: 12.0,
-          top: 8.0,
-          bottom: 8.0,
+          top: usesMobileLayout ? 14.0 : 8.0,
+          bottom: usesMobileLayout ? 14.0 : 8.0,
         ),
         child: Row(
           children: [
@@ -310,14 +351,21 @@ class _CategoryPickerDialogState extends ConsumerState<CategoryPickerDialog> {
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(right: 4),
-                  child: Icon(
-                    CategoryPickerDialog._sessionExpandedIds.contains(
-                          category.id,
-                        )
-                        ? Icons.expand_more
-                        : Icons.chevron_right,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
+                  child: SizedBox(
+                    // 手机端展开按钮也要 44dp 触控区。
+                    width: usesMobileLayout ? 44 : 18,
+                    height: usesMobileLayout ? 44 : 18,
+                    child: Center(
+                      child: Icon(
+                        CategoryPickerDialog._sessionExpandedIds.contains(
+                              category.id,
+                            )
+                            ? Icons.expand_more
+                            : Icons.chevron_right,
+                        size: 18,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ),
               )

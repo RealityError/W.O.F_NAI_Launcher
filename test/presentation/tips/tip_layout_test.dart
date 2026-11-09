@@ -104,9 +104,17 @@ class _FixedDeck extends TipDeck {
     DateTime? now,
     bool shortOnly = false,
     TipKind? kind,
+    bool? mobile,
   }) =>
       forced[surface] ??
-      super.tipAt(surface, index, now: now, shortOnly: shortOnly, kind: kind);
+      super.tipAt(
+        surface,
+        index,
+        now: now,
+        shortOnly: shortOnly,
+        kind: kind,
+        mobile: mobile,
+      );
 }
 
 final _forced = StateProvider<Map<TipSurface, Tip>>((ref) => const {});

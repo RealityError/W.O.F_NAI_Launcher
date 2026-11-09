@@ -4,6 +4,7 @@ import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nai_launcher/core/utils/localization_extension.dart';
+import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
 
 import '../../../../core/utils/prompt_input_normalization.dart';
 import '../../../../data/models/character/character_prompt.dart';
@@ -1006,7 +1007,9 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
         _PromptSearchIconButton(
           key: const ValueKey('prompt_input_replace_all'),
           icon: Icons.done_all,
-          tooltip: context.l10n.prompt_replaceAll,
+          tooltip: usesMobileLayout
+              ? context.l10n.prompt_replaceAllMobile
+              : context.l10n.prompt_replaceAll,
           onPressed: canRun ? _replaceAllMatches : null,
         ),
       ],

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/utils/desktop_platform.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../core/editor_state.dart';
 import '../core/history_manager.dart';
@@ -29,6 +30,9 @@ class CloneStampTool extends EditorTool {
 
   ui.Image? _canvasSnapshot;
   ui.Image? get canvasSnapshot => _canvasSnapshot;
+
+  /// 触屏取源点：打开后下一次点画布设定源点（桌面端仍走 Alt+点击）。
+  final ValueNotifier<bool> _pickingSource = ValueNotifier<bool>(false);
 
   void setSize(double value) {
     _size = value.clamp(1.0, double.infinity);
@@ -57,8 +61,12 @@ class CloneStampTool extends EditorTool {
 
   @override
   void onPointerDown(PointerDownEvent event, EditorState state) {
-    if (state.isAltPressed) {
+    if (state.isAltPressed || _pickingSource.value) {
       _setSourcePoint(event.localPosition, state);
+      if (_pickingSource.value) {
+        _pickingSource.value = false;
+        state.notifyCanvasPreview();
+      }
       return;
     }
 
@@ -225,12 +233,33 @@ class CloneStampTool extends EditorTool {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                context.l10n.editor_sourcePoint,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              if (isMobilePlatform)
+                ValueListenableBuilder<bool>(
+                  valueListenable: _pickingSource,
+                  builder: (context, picking, _) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      key: const Key('clone-stamp-pick-source'),
+                      onPressed: () => _pickingSource.value = true,
+                      icon: const Icon(
+                        Icons.add_location_alt_outlined,
+                        size: 18,
+                      ),
+                      label: Text(
+                        picking
+                            ? context.l10n.editor_sourcePointPicking
+                            : context.l10n.editor_sourcePointPick,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  context.l10n.editor_sourcePoint,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
               if (_sourcePoint != null) ...[
                 const SizedBox(height: 4),
                 Text(

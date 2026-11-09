@@ -157,7 +157,7 @@ class RefsToolbar extends StatelessWidget {
                         Flexible(
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 300),
-                            child: _SearchBox(
+                            child: RefsSearchBox(
                               key: const Key('refs-search'),
                               enabled: !empty,
                               hint: vibe
@@ -420,16 +420,18 @@ class RefsModelCapsule extends StatelessWidget {
 }
 
 /// 搜索框 36：控件底、圆角 9；聚焦时抬起底 + 强调色环。停 300ms 回调；有字时尾部是清除。
-class _SearchBox extends StatefulWidget {
-  const _SearchBox({super.key, required this.hint, required this.enabled});
+///
+/// 手机端工具栏直接复用这个搜索框。
+class RefsSearchBox extends StatefulWidget {
+  const RefsSearchBox({super.key, required this.hint, required this.enabled});
   final String hint;
   final bool enabled;
 
   @override
-  State<_SearchBox> createState() => _SearchBoxState();
+  State<RefsSearchBox> createState() => _RefsSearchBoxState();
 }
 
-class _SearchBoxState extends State<_SearchBox> {
+class _RefsSearchBoxState extends State<RefsSearchBox> {
   final _ctrl = TextEditingController();
   Timer? _debounce;
   var _synced = '';

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_lib_controls.dart';
@@ -86,7 +87,8 @@ class OnlineViewer extends StatefulWidget {
 }
 
 class _OnlineViewerState extends State<OnlineViewer> {
-  var _info = true;
+  /// 桌面默认右侧信息栏常开；手机默认只给大图，点顶栏的「信息」再展开。
+  var _info = !usesMobileLayout;
   final _focus = FocusNode(debugLabel: 'online-viewer');
 
   @override
@@ -224,9 +226,11 @@ class _OnlineViewerState extends State<OnlineViewer> {
         SizedBox(
           height: 56,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: usesMobileLayout ? 4 : 16,
+            ),
             child: Row(
-              spacing: 10,
+              spacing: usesMobileLayout ? 4 : 10,
               children: [
                 OnlineSourceMark(data.source, size: 22, light: true),
                 Expanded(
@@ -250,29 +254,46 @@ class _OnlineViewerState extends State<OnlineViewer> {
                     ],
                   ),
                 ),
-                Text(
-                  media.length > 1 || w.mediaCount > 1
-                      ? l10n.online_viewerPosition(
-                          m + 1,
-                          w.mediaCount,
-                          index + 1,
-                          items.length,
-                        )
-                      : l10n.online_viewerWorkPosition(index + 1, items.length),
-                  key: const Key('online-viewer-position'),
-                  style: UiText.mono(12, color: const Color(0xFFAAAAAA)),
-                ),
-                UiIconBox(
-                  glyph: UiGlyphs.external,
-                  glyphSize: 16,
-                  color: const Color(0xFFCCCCCC),
-                  tooltip: l10n.online_openInBrowser,
-                  onTap: () => scope.actions.onOpenInBrowser(w.key),
-                ),
+                if (!usesMobileLayout) ...[
+                  Text(
+                    media.length > 1 || w.mediaCount > 1
+                        ? l10n.online_viewerPosition(
+                            m + 1,
+                            w.mediaCount,
+                            index + 1,
+                            items.length,
+                          )
+                        : l10n.online_viewerWorkPosition(
+                            index + 1,
+                            items.length,
+                          ),
+                    key: const Key('online-viewer-position'),
+                    style: UiText.mono(12, color: const Color(0xFFAAAAAA)),
+                  ),
+                  UiIconBox(
+                    glyph: UiGlyphs.external,
+                    glyphSize: 16,
+                    color: const Color(0xFFCCCCCC),
+                    tooltip: l10n.online_openInBrowser,
+                    onTap: () => scope.actions.onOpenInBrowser(w.key),
+                  ),
+                ] else
+                  UiIconBox(
+                    key: const Key('online-viewer-info-toggle'),
+                    glyph: UiGlyphs.info,
+                    glyphSize: 17,
+                    size: 44,
+                    color: _info
+                        ? const Color(0xFFFFFFFF)
+                        : const Color(0xFFCCCCCC),
+                    tooltip: l10n.online_inspector,
+                    onTap: () => setState(() => _info = !_info),
+                  ),
                 UiIconBox(
                   key: const Key('online-viewer-close'),
                   glyph: UiGlyphs.close,
                   glyphSize: 17,
+                  size: usesMobileLayout ? 44 : 30,
                   color: const Color(0xFFCCCCCC),
                   tooltip: l10n.online_close,
                   onTap: widget.onClose,
@@ -286,7 +307,9 @@ class _OnlineViewerState extends State<OnlineViewer> {
             children: [
               Positioned.fill(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 80),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: usesMobileLayout ? 12 : 80,
+                  ),
                   child: Center(
                     child: AspectRatio(
                       aspectRatio: current.aspect,
@@ -330,7 +353,7 @@ class _OnlineViewerState extends State<OnlineViewer> {
         ),
         SizedBox(
           key: const Key('online-viewer-strip'),
-          height: 92,
+          height: usesMobileLayout && media.length < 2 ? 0 : 92,
           child: media.length < 2
               ? null
               : Center(
@@ -381,25 +404,32 @@ class _OnlineViewerState extends State<OnlineViewer> {
                   ),
                 ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 16,
-            runSpacing: 6,
-            children: [
-              kb(['←', '→'], l10n.online_keyImage),
-              kb(['Shift', '←', '→'], l10n.online_keyWork),
-              kb(['F'], l10n.online_favorite),
-              kb(['Ctrl', 'C'], l10n.online_copyPrompt),
-              kb(['Enter'], l10n.online_send),
-              kb(['I'], l10n.online_keyInfo),
-              kb(['Esc'], l10n.online_close),
-            ],
+        if (!usesMobileLayout)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16,
+              runSpacing: 6,
+              children: [
+                kb(['←', '→'], l10n.online_keyImage),
+                kb(['Shift', '←', '→'], l10n.online_keyWork),
+                kb(['F'], l10n.online_favorite),
+                kb(['Ctrl', 'C'], l10n.online_copyPrompt),
+                kb(['Enter'], l10n.online_send),
+                kb(['I'], l10n.online_keyInfo),
+                kb(['Esc'], l10n.online_close),
+              ],
+            ),
           ),
-        ),
+        // 手机端不留键盘提示条，底部让给信息面板和手势区。
+        if (usesMobileLayout) const SizedBox(height: 8),
       ],
     );
+
+    final viewerStage = usesMobileLayout
+        ? SafeArea(top: true, bottom: false, child: stage)
+        : stage;
 
     return Focus(
       focusNode: _focus,
@@ -407,13 +437,41 @@ class _OnlineViewerState extends State<OnlineViewer> {
       child: Material(
         key: const Key('online-viewer'),
         color: const Color(0xFF0B0B0B),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: stage),
-            if (_info) const OnlineInspector(width: 380, viewer: true),
-          ],
-        ),
+        child: usesMobileLayout
+            // 手机端信息栏不能占右侧 380：改成盖在底部的大图面板，
+            // 由顶栏信息按钮开关，舞台始终占满整宽。
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  viewerStage,
+                  if (_info)
+                    const Positioned.fill(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: FractionallySizedBox(
+                          heightFactor: .62,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(14),
+                            ),
+                            child: OnlineInspector(
+                              key: Key('online-viewer-info-sheet'),
+                              width: double.infinity,
+                              viewer: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: viewerStage),
+                  if (_info) const OnlineInspector(width: 380, viewer: true),
+                ],
+              ),
       ),
     );
   }

@@ -62,10 +62,28 @@ class MainActivity : FlutterActivity() {
         handleShareIntent(intent)
     }
 
+    /**
+     * G18: 通知权限的系统回调。委托给 `NotificationPermissionHelper` 完成挂起
+     * 的 `requestNotifications` 调用；其它 requestCode 保持默认行为。
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        NotificationPermissionHelper.handleRequestPermissionsResult(
+            requestCode,
+            grantResults
+        )
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // G17: in-app APK update channel (`com.nailauncher/apk_install`).
         ApkInstallHelper.register(flutterEngine, this)
+        // G18: Android 13+ notification runtime permission channel.
+        NotificationPermissionHelper.register(flutterEngine, this)
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         channel.setMethodCallHandler { call, result ->
             when (call.method) {

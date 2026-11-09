@@ -4,14 +4,17 @@ part of 'tips_provider.dart';
 
 final Map<TipSurface, List<Tip>> _tipCatalog = {
   TipSurface.studio: [
-    Tip.guide((l) => l.tips_studio_guide_1),
+    Tip.guide((l) => l.tips_studio_guide_1, desktopOnly: true),
     Tip.guide((l) => l.tips_studio_guide_2),
     Tip.guide((l) => l.tips_studio_guide_3),
-    Tip.guide((l) => l.tips_studio_guide_4),
+    Tip.guide((l) => l.tips_studio_guide_4, desktopOnly: true),
     Tip.guide((l) => l.tips_studio_guide_5),
-    Tip.guide((l) => l.tips_studio_guide_6),
-    Tip.guide((l) => l.tips_studio_guide_7),
+    Tip.guide((l) => l.tips_studio_guide_6, desktopOnly: true),
+    Tip.guide((l) => l.tips_studio_guide_7, desktopOnly: true),
     Tip.guide((l) => l.tips_studio_guide_8),
+    Tip.guide((l) => l.tips_studio_mobile_1, mobileOnly: true),
+    Tip.guide((l) => l.tips_studio_mobile_2, mobileOnly: true),
+    Tip.guide((l) => l.tips_studio_mobile_3, mobileOnly: true),
     Tip.trick((l) => l.tips_studio_trick_1),
     Tip.trick((l) => l.tips_studio_trick_2),
     Tip.trick((l) => l.tips_studio_trick_3),

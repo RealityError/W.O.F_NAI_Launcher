@@ -2,12 +2,19 @@ import 'package:nai_launcher/core/utils/primary_activator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
+import '../../mobile/mobile_sheet.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_dialog.dart';
+import '../kit/ui_glyph.dart';
+import '../kit/ui_lib_controls.dart';
 import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
 import 'refs_contract.dart';
 import 'refs_dialogs.dart';
+import 'refs_format.dart';
 import 'refs_import.dart';
 import 'refs_inspector.dart';
 import 'refs_sidebar.dart';
@@ -400,6 +407,41 @@ class _RefsLibraryPageState extends State<RefsLibraryPage>
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final w = constraints.maxWidth;
+                  if (usesMobileLayout) {
+                    // 手机端：单列。左栏收进底部弹层，检查器换成大图详情弹层。
+                    return Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (_) {
+                        if (!_typing()) _focus.requestFocus();
+                      },
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: Stack(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const RefsMobileToolbar(),
+                                if (!_usable) const RefsModelBanner(),
+                                if (empty)
+                                  const Expanded(child: RefsEmptyState())
+                                else ...[
+                                  const RefsFilterRow(),
+                                  const Expanded(child: RefsWallArea()),
+                                  const RefsTrayBar(),
+                                ],
+                              ],
+                            ),
+                            if (data.drop case final d?)
+                              Positioned.fill(
+                                child: RefsDropOverlay(summary: d),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   var sidebar = data.sidebarOpen;
                   var inspector = data.inspectorOpen && !empty;
                   if (inspector &&
@@ -460,4 +502,171 @@ class _RefsLibraryPageState extends State<RefsLibraryPage>
       ),
     );
   }
+}
+
+/// 手机端工具栏 52：左栏入口 + 搜索 + 排序 + 更多。
+///
+/// 桌面工具栏里的模型胶囊、卡片大小分段、导入按钮、多选、检查器开关在手机上收进
+/// 「更多」菜单与底部弹层；搜索始终在第一位。
+class RefsMobileToolbar extends StatelessWidget {
+  const RefsMobileToolbar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l10n = context.l10n;
+    final scope = RefsScope.of(context);
+    final data = scope.data;
+    final a = scope.actions;
+    final ctrl = scope.controller;
+    final empty = data.libraryEmpty;
+    final vibe = data.kind == RefsKind.vibe;
+    final f = data.filter;
+    final usable = vibe ? data.model.vibeUsable : data.model.preciseUsable;
+    return Container(
+      key: const Key('refs-toolbar-mobile'),
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        spacing: 4,
+        children: [
+          UiIconBox(
+            key: const Key('refs-mobile-nav'),
+            glyph: UiGlyphs.doubleRight,
+            glyphSize: 17,
+            size: 44,
+            tooltip: l10n.refs_expandSidebar,
+            onTap: () => showRefsNavSheet(context),
+          ),
+          if (!empty)
+            Expanded(
+              child: KeyedSubtree(
+                key: const Key('refs-search'),
+                child: RefsSearchBox(
+                  hint: vibe ? l10n.refs_searchVibe : l10n.refs_searchPrecise,
+                  enabled: !empty,
+                ),
+              ),
+            )
+          else
+            const Spacer(),
+          if (!empty)
+            UiIconBox(
+              key: const Key('refs-mobile-sort'),
+              glyph: UiGlyphs.sort,
+              glyphSize: 17,
+              size: 44,
+              tooltip: RefsFormat.sort(context, f.sort),
+              onTap: () => showMobileContextMenu(
+                context,
+                title: RefsFormat.sort(context, f.sort),
+                items: [
+                  for (final s in RefsSort.values)
+                    MobileMenuItem(
+                      label: RefsFormat.sort(context, s),
+                      icon: f.sort == s ? Icons.check : null,
+                      onTap: () => a.onFilterChanged(f.copyWith(sort: s)),
+                    ),
+                ],
+              ),
+            ),
+          UiIconBox(
+            key: const Key('refs-mobile-more'),
+            glyph: UiGlyphs.more,
+            glyphSize: 17,
+            size: 44,
+            tooltip: l10n.refs_more,
+            onTap: () => showMobileContextMenu(
+              context,
+              title: vibe ? l10n.refs_vibeTitle : l10n.refs_preciseTitle,
+              items: [
+                MobileMenuItem(
+                  label: l10n.refs_import,
+                  icon: Icons.add,
+                  onTap: () => a.onImport(
+                    vibe ? RefsImportSource.files : RefsImportSource.images,
+                  ),
+                ),
+                MobileMenuItem(
+                  label: ctrl.picking ? l10n.refs_multiDone : l10n.refs_multi,
+                  icon: Icons.checklist,
+                  onTap: () => ctrl.setPicking(!ctrl.picking),
+                ),
+                MobileMenuItem(
+                  label: l10n.refs_rescan,
+                  icon: Icons.refresh,
+                  onTap: a.onRescan,
+                ),
+                MobileMenuItem(
+                  label: l10n.refs_inspector,
+                  icon: Icons.tune,
+                  enabled: data.selectedKey != null || ctrl.picking,
+                  onTap: () => showRefsInspectorSheet(context),
+                ),
+                MobileMenuItem(
+                  label: vibe ? l10n.refs_exportAll : l10n.refs_export,
+                  icon: Icons.upload_outlined,
+                  onTap: a.onExportAll,
+                ),
+                MobileMenuItem(
+                  label: l10n.refs_currentModel,
+                  icon: usable
+                      ? Icons.check_circle_outline
+                      : Icons.error_outline,
+                  enabled: false,
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 手机端左栏：整宽底部弹层；弹层是独立路由，显式补一层 [RefsScope]。
+Future<void> showRefsNavSheet(BuildContext context) {
+  final scope = RefsScope.of(context);
+  final height = MediaQuery.sizeOf(context).height * 0.78;
+  return showMobileSheet<void>(
+    context: context,
+    title: scope.data.kind == RefsKind.vibe
+        ? context.l10n.refs_vibeTitle
+        : context.l10n.refs_preciseTitle,
+    heightFactor: 0.9,
+    builder: (_) => SizedBox(
+      height: height,
+      child: RefsScope(
+        data: scope.data,
+        actions: scope.actions,
+        controller: scope.controller,
+        child: const RefsSidebar(width: double.infinity, inSheet: true),
+      ),
+    ),
+  );
+}
+
+/// 手机端检查器：整宽底部弹层（参数 / 批量操作）。
+Future<void> showRefsInspectorSheet(BuildContext context) {
+  final scope = RefsScope.of(context);
+  final height = MediaQuery.sizeOf(context).height * 0.8;
+  return showMobileSheet<void>(
+    context: context,
+    title: context.l10n.refs_inspector,
+    heightFactor: 0.9,
+    builder: (_) => SizedBox(
+      height: height,
+      child: RefsScope(
+        data: scope.data,
+        actions: scope.actions,
+        controller: scope.controller,
+        child: const RefsInspector(width: double.infinity, inSheet: true),
+      ),
+    ),
+  );
 }

@@ -1496,6 +1496,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get layer_moveDown => 'Move Down';
 
   @override
+  String get common_moveUp => 'Move Up';
+
+  @override
+  String get common_moveDown => 'Move Down';
+
+  @override
   String get vibe_title => 'Vibe Transfer';
 
   @override
@@ -5899,6 +5905,40 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tips_studio_guide_8 =>
       'Worried about burning a pile of Anlas by accident? Turn on the High Anlas cost warning in Settings, and any generation estimated above your threshold will ask before it runs.';
+
+  @override
+  String get tips_studio_mobile_1 =>
+      'One hand is enough on a phone: write a prompt, tap Generate, and images fill the canvas batch by batch. Model, size and count live in the bottom toolbar.';
+
+  @override
+  String get tips_studio_mobile_2 =>
+      'Long-press an image on the canvas for Save, Copy, Share, or sending it to img2img, Vibe, or Character Reference.';
+
+  @override
+  String get tips_studio_mobile_3 =>
+      'The library icon at the top right of the prompt overlay opens prompt blocks, Vibe, and Precise Reference — tap an item to insert it into the current prompt.';
+
+  @override
+  String get prompt_replaceAllMobile => 'Replace All';
+
+  @override
+  String get autocomplete_relatedTagsSubtitleMobile =>
+      'Search local tags from the prompt box and inspect related tags';
+
+  @override
+  String get prompt_cooccurrenceRecommendationSubtitleMobile =>
+      'Search local tags and inspect related tags';
+
+  @override
+  String get settings_outputViewer_canvasDescriptionMobile =>
+      'NAI5-style infinite canvas: every generated image laid out by batch; pinch to zoom, drag to pan';
+
+  @override
+  String get editor_sourcePointPick => 'Pick source';
+
+  @override
+  String get editor_sourcePointPicking =>
+      'Tap the canvas to set the source point';
 
   @override
   String get tips_studio_trick_1 =>
@@ -13886,6 +13926,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get imageViewer_yesterday => 'yesterday';
 
   @override
+  String get explore_mobileEditor => 'Editor';
+
+  @override
+  String get explore_mobileResults => 'Results';
+
+  @override
   String get explore_back => 'Style explore';
 
   @override
@@ -21688,6 +21734,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mp_dragHint => 'Drag to set the default order in Assignments';
 
   @override
+  String get mp_reorderHintMobile =>
+      'Use Move Up / Move Down on a model to set the default order in Assignments';
+
+  @override
   String get mp_noModels => 'No models yet';
 
   @override
@@ -22735,4 +22785,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ag_tool_agent_manage => 'Manage Agent';
+
+  @override
+  String get generation_notificationPermissionDenied =>
+      'Notifications are off, so background generation progress and completion alerts will not be visible.';
+
+  @override
+  String get generation_notificationGoToSettings => 'Open settings';
 }

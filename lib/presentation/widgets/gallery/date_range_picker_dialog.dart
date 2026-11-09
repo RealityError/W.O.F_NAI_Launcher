@@ -2,6 +2,10 @@ import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+
+/// 手机端日期格子的触控边长（>=48dp）。
+const _mobileCellSize = 48.0;
 
 /// 点选式日期范围选择状态（纯状态机，便于单元测试）
 ///
@@ -146,11 +150,14 @@ class _GalleryDateRangePickerState extends State<GalleryDateRangePicker> {
     final days = List.generate(42, (i) => gridStart.add(Duration(days: i)));
 
     final calendar = SizedBox(
-      width: 336,
+      // 手机端对话框左右只留 8：7 列各 48，正好铺满 360dp。
+      width: usesMobileLayout ? double.infinity : 336,
       child: SingleChildScrollView(
         primary: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          padding: usesMobileLayout
+              ? const EdgeInsets.fromLTRB(4, 12, 4, 12)
+              : const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -216,7 +223,9 @@ class _GalleryDateRangePickerState extends State<GalleryDateRangePicker> {
                 // Menus measure their children intrinsically. Give the calendar
                 // viewport an explicit six-row extent instead of asking a lazy
                 // shrink-wrapping viewport for intrinsic dimensions.
-                height: 6 * (336 - 32) / 7,
+                height: usesMobileLayout
+                    ? 6 * _mobileCellSize
+                    : 6 * (336 - 32) / 7,
                 child: GridView.count(
                   primary: false,
                   crossAxisCount: 7,
@@ -258,7 +267,15 @@ class _GalleryDateRangePickerState extends State<GalleryDateRangePicker> {
         ),
       ),
     );
-    if (widget.onSelected == null) return Dialog(child: calendar);
+    if (widget.onSelected == null) {
+      return Dialog(
+        // 手机端左右 inset 收窄，7 列 48dp 才放得下。
+        insetPadding: usesMobileLayout
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 24)
+            : null,
+        child: calendar,
+      );
+    }
     return ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight:
@@ -286,30 +303,38 @@ class _GalleryDateRangePickerState extends State<GalleryDateRangePicker> {
     return Center(
       child: GestureDetector(
         key: ValueKey(day),
+        behavior: HitTestBehavior.opaque,
         onTap: disabled ? null : () => _onDayTapped(day),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isSelected
-                ? theme.colorScheme.primary
-                : inRange
-                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.45)
-                : null,
-            border: isToday && !isSelected
-                ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            '${day.day}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isSelected ? theme.colorScheme.onPrimary : textColor,
-              fontWeight: isToday || isSelected
-                  ? FontWeight.w700
-                  : FontWeight.w400,
+        child: SizedBox(
+          // 手机端整格 48dp 都可点；桌面端保持原来的 36 视觉尺寸。
+          width: usesMobileLayout ? _mobileCellSize : null,
+          height: usesMobileLayout ? _mobileCellSize : null,
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              width: usesMobileLayout ? 40 : 36,
+              height: usesMobileLayout ? 40 : 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : inRange
+                    ? theme.colorScheme.primaryContainer.withValues(alpha: 0.45)
+                    : null,
+                border: isToday && !isSelected
+                    ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                    : null,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '${day.day}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isSelected ? theme.colorScheme.onPrimary : textColor,
+                  fontWeight: isToday || isSelected
+                      ? FontWeight.w700
+                      : FontWeight.w400,
+                ),
+              ),
             ),
           ),
         ),

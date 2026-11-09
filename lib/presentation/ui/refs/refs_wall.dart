@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_context_menu.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -177,6 +179,15 @@ class _RefsCardState extends State<RefsCard> {
   void _tap(RefsScope scope) {
     final e = widget.entry;
     final ctrl = scope.controller;
+    // 手机端：单击 = 打开大图详情（全屏弹层），多选时切换勾选，操作在详情 / 长按菜单里。
+    if (usesMobileLayout) {
+      if (ctrl.picking) {
+        ctrl.togglePick(e.key);
+      } else {
+        ctrl.openDetail(e.key);
+      }
+      return;
+    }
     final hw = HardwareKeyboard.instance;
     if (hw.isShiftPressed) return ctrl.pickRange(e.key);
     if (hw.isPrimaryOrWindowsMetaPressed || ctrl.picking) {
@@ -278,7 +289,7 @@ class _RefsCardState extends State<RefsCard> {
                         top: 7,
                         child: RefsInGenBadge(),
                       ),
-                    if (e.favorite || hover)
+                    if (e.favorite || hover || usesMobileLayout)
                       Positioned(
                         right: 7,
                         top: 7,
@@ -297,7 +308,7 @@ class _RefsCardState extends State<RefsCard> {
                           text: '${e.bundleCount}',
                         ),
                       ),
-                    if (hover)
+                    if (hover || usesMobileLayout)
                       Positioned(
                         left: 8,
                         right: 8,
@@ -321,6 +332,21 @@ class _RefsCardState extends State<RefsCard> {
         key: Key('refs-card-${e.key}'),
         behavior: HitTestBehavior.opaque,
         onTap: () => _tap(scope),
+        onLongPress: usesMobileLayout
+            ? () => showMobileContextMenu(
+                context,
+                title: e.name,
+                items: [
+                  for (final it in refsEntryMenu(context, e))
+                    MobileMenuItem(
+                      label: it.label,
+                      onTap: it.onTap,
+                      destructive: it.danger,
+                      enabled: it.enabled,
+                    ),
+                ],
+              )
+            : null,
         onSecondaryTapUp: (d) => ctrl.openMenu(
           UiPopoverAnchor(d.globalPosition),
           refsEntryMenu(context, e),
@@ -466,16 +492,19 @@ class _HoverBar extends StatelessWidget {
     final vibe = data.kind == RefsKind.vibe;
     final usable = vibe ? data.model.vibeUsable : data.model.preciseUsable;
     final e = entry;
+    final compact = usesMobileLayout;
     return RefsDarkBar(
       children: [
         RefsBarButton(
           key: const Key('refs-card-add'),
           primary: true,
           glyph: UiGlyphs.plus,
-          label: vibe ? l10n.refs_addShort : l10n.refs_sendPrecise,
+          label: compact
+              ? null
+              : (vibe ? l10n.refs_addShort : l10n.refs_sendPrecise),
           onTap: usable ? () => ctrl.add([e.key]) : null,
         ),
-        if (vibe)
+        if (vibe || compact)
           RefsBarButton(
             key: const Key('refs-card-detail'),
             glyph: UiGlyphs.eye,

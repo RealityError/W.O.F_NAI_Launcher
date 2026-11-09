@@ -2808,6 +2808,18 @@ abstract class AppLocalizations {
   /// **'Move Down'**
   String get layer_moveDown;
 
+  /// No description provided for @common_moveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Up'**
+  String get common_moveUp;
+
+  /// No description provided for @common_moveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Down'**
+  String get common_moveDown;
+
   /// No description provided for @vibe_title.
   ///
   /// In en, this message translates to:
@@ -10335,6 +10347,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Worried about burning a pile of Anlas by accident? Turn on the High Anlas cost warning in Settings, and any generation estimated above your threshold will ask before it runs.'**
   String get tips_studio_guide_8;
+
+  /// Touch counterpart of tips_studio_guide_1 for the studio welcome card.
+  ///
+  /// In en, this message translates to:
+  /// **'One hand is enough on a phone: write a prompt, tap Generate, and images fill the canvas batch by batch. Model, size and count live in the bottom toolbar.'**
+  String get tips_studio_mobile_1;
+
+  /// Mobile long-press menu; same actions as the desktop right-click menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press an image on the canvas for Save, Copy, Share, or sending it to img2img, Vibe, or Character Reference.'**
+  String get tips_studio_mobile_2;
+
+  /// Mobile resource library entry in the editor overlay header.
+  ///
+  /// In en, this message translates to:
+  /// **'The library icon at the top right of the prompt overlay opens prompt blocks, Vibe, and Precise Reference — tap an item to insert it into the current prompt.'**
+  String get tips_studio_mobile_3;
+
+  /// No description provided for @prompt_replaceAllMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace All'**
+  String get prompt_replaceAllMobile;
+
+  /// No description provided for @autocomplete_relatedTagsSubtitleMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Search local tags from the prompt box and inspect related tags'**
+  String get autocomplete_relatedTagsSubtitleMobile;
+
+  /// No description provided for @prompt_cooccurrenceRecommendationSubtitleMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Search local tags and inspect related tags'**
+  String get prompt_cooccurrenceRecommendationSubtitleMobile;
+
+  /// No description provided for @settings_outputViewer_canvasDescriptionMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'NAI5-style infinite canvas: every generated image laid out by batch; pinch to zoom, drag to pan'**
+  String get settings_outputViewer_canvasDescriptionMobile;
+
+  /// No description provided for @editor_sourcePointPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick source'**
+  String get editor_sourcePointPick;
+
+  /// No description provided for @editor_sourcePointPicking.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the canvas to set the source point'**
+  String get editor_sourcePointPicking;
 
   /// NovelAI output is deterministic for identical parameters and seed.
   ///
@@ -24127,6 +24193,18 @@ abstract class AppLocalizations {
   /// **'yesterday'**
   String get imageViewer_yesterday;
 
+  /// No description provided for @explore_mobileEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get explore_mobileEditor;
+
+  /// No description provided for @explore_mobileResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Results'**
+  String get explore_mobileResults;
+
   /// No description provided for @explore_back.
   ///
   /// In en, this message translates to:
@@ -37642,6 +37720,12 @@ abstract class AppLocalizations {
   /// **'Drag to set the default order in Assignments'**
   String get mp_dragHint;
 
+  /// No description provided for @mp_reorderHintMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Move Up / Move Down on a model to set the default order in Assignments'**
+  String get mp_reorderHintMobile;
+
   /// No description provided for @mp_noModels.
   ///
   /// In en, this message translates to:
@@ -39471,6 +39555,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage Agent'**
   String get ag_tool_agent_manage;
+
+  /// No description provided for @generation_notificationPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are off, so background generation progress and completion alerts will not be visible.'**
+  String get generation_notificationPermissionDenied;
+
+  /// No description provided for @generation_notificationGoToSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get generation_notificationGoToSettings;
 }
 
 class _AppLocalizationsDelegate

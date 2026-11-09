@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -123,60 +124,101 @@ class _RefsTrayBarState extends State<RefsTrayBar> {
               : c.panel,
           border: Border(top: BorderSide(color: _over ? c.accent : c.line)),
         ),
-        child: Row(
-          spacing: 12,
-          children: [
-            head,
-            // 缩略图按实际宽度排（最多占 70%，再多横向滚动）；提示文字吃剩下的空间，窄了先省略它。
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, box) => Row(
-                  spacing: 12,
-                  children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: box.maxWidth * .7),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: thumbs,
+        child: usesMobileLayout
+            // 手机端：标题 / 费用那一段放不下，改成整行缩略图横向滚动 + 去生成。
+            ? Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: 12,
+                        children: [thumbs],
                       ),
                     ),
-                    if (vibe)
-                      Flexible(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 250),
-                          child: Text(
-                            l10n.refs_trayHint,
-                            key: const Key('refs-tray-hint'),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: UiText.sans(11, color: c.faint, height: 1.5),
+                  ),
+                  if (vibe && n > 0)
+                    UiBtn(
+                      key: const Key('refs-tray-clear'),
+                      size: UiBtnSize.small,
+                      tone: UiBtnTone.ghost,
+                      onTap: a.onTrayClear,
+                      children: [Text(l10n.refs_clear)],
+                    ),
+                  UiBtn(
+                    key: const Key('refs-go-generation'),
+                    onTap: a.onGoGeneration,
+                    children: [
+                      Text(l10n.refs_goGeneration),
+                      const UiGlyph(UiGlyphs.arrowRight, size: 14),
+                    ],
+                  ),
+                ],
+              )
+            : Row(
+                spacing: 12,
+                children: [
+                  head,
+                  // 缩略图按实际宽度排（最多占 70%，再多横向滚动）；提示文字吃剩下的空间，窄了先省略它。
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, box) => Row(
+                        spacing: 12,
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: box.maxWidth * .7,
+                            ),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: thumbs,
+                            ),
                           ),
-                        ),
-                      )
-                    else if (conflict != null)
-                      Flexible(child: conflict),
-                  ],
-                ),
+                          if (vibe)
+                            Flexible(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 250,
+                                ),
+                                child: Text(
+                                  l10n.refs_trayHint,
+                                  key: const Key('refs-tray-hint'),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: UiText.sans(
+                                    11,
+                                    color: c.faint,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else if (conflict != null)
+                            Flexible(child: conflict),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (vibe && n > 0)
+                    UiBtn(
+                      key: const Key('refs-tray-clear'),
+                      size: UiBtnSize.small,
+                      tone: UiBtnTone.ghost,
+                      onTap: a.onTrayClear,
+                      children: [Text(l10n.refs_clear)],
+                    ),
+                  UiBtn(
+                    key: const Key('refs-go-generation'),
+                    onTap: a.onGoGeneration,
+                    children: [
+                      Text(l10n.refs_goGeneration),
+                      const UiGlyph(UiGlyphs.arrowRight, size: 14),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            if (vibe && n > 0)
-              UiBtn(
-                key: const Key('refs-tray-clear'),
-                size: UiBtnSize.small,
-                tone: UiBtnTone.ghost,
-                onTap: a.onTrayClear,
-                children: [Text(l10n.refs_clear)],
-              ),
-            UiBtn(
-              key: const Key('refs-go-generation'),
-              onTap: a.onGoGeneration,
-              children: [
-                Text(l10n.refs_goGeneration),
-                const UiGlyph(UiGlyphs.arrowRight, size: 14),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

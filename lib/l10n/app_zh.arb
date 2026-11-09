@@ -1298,6 +1298,8 @@
   "layer_rename": "重命名",
   "layer_moveUp": "上移",
   "layer_moveDown": "下移",
+  "common_moveUp": "上移",
+  "common_moveDown": "下移",
   "localGallery_group_today": "今天",
   "localGallery_group_yesterday": "昨天",
   "localGallery_groupImageCount": "{formatted} 张",
@@ -3175,6 +3177,24 @@
   "@tips_studio_guide_8": {
     "description": "settings_warnHighAnlasCostTitle."
   },
+  "tips_studio_mobile_1": "手机上一只手就能出图：写好提示词点生成，图会一批批铺在画布上，模型、尺寸、张数都在底部工具条里改。",
+  "@tips_studio_mobile_1": {
+    "description": "Touch counterpart of tips_studio_guide_1 for the studio welcome card."
+  },
+  "tips_studio_mobile_2": "长按画布上的图片：保存、复制、分享，以及送去图生图、Vibe、角色参考，都在这个菜单里。",
+  "@tips_studio_mobile_2": {
+    "description": "Mobile long-press menu; same actions as the desktop right-click menu."
+  },
+  "tips_studio_mobile_3": "提示词浮层右上角的资源库图标能打开提示词块、Vibe 和精准参考库，点一下就插进当前提示词。",
+  "@tips_studio_mobile_3": {
+    "description": "Mobile resource library entry in the editor overlay header."
+  },
+  "prompt_replaceAllMobile": "全部替换",
+  "autocomplete_relatedTagsSubtitleMobile": "在提示词里搜索本地标签，并可查看关联标签",
+  "prompt_cooccurrenceRecommendationSubtitleMobile": "搜索本地标签并查看关联标签",
+  "settings_outputViewer_canvasDescriptionMobile": "NAI5 官网式无限画布：全部生成图按批铺开，双指缩放、拖动平移",
+  "editor_sourcePointPick": "取源点",
+  "editor_sourcePointPicking": "点一下画布选取源点",
   "tips_studio_trick_1": "种子决定了这张图「抽」到什么。参数和种子都不变，出来的就是同一张。所以想复现神图，记得把种子一起留下；想换运气，就别再盯着那个种子了。",
   "@tips_studio_trick_1": {
     "description": "NovelAI output is deterministic for identical parameters and seed."
@@ -7505,6 +7525,8 @@
     }
   },
   "imageViewer_yesterday": "昨天",
+  "explore_mobileEditor": "编辑",
+  "explore_mobileResults": "结果",
   "explore_back": "画风探索",
   "explore_close": "关闭",
   "explore_cancel": "取消",
@@ -11121,6 +11143,7 @@
   "mp_filter": "筛选",
   "mp_manualAdd": "手动添加",
   "mp_dragHint": "拖动排序决定功能分配里的默认顺序",
+  "mp_reorderHintMobile": "用模型右侧的上移、下移调整功能分配里的默认顺序",
   "mp_noModels": "还没有模型",
   "mp_noModelsSub": "从服务商目录添加，或手动输入模型 ID",
   "mp_manualHint": "输入模型 ID，回车添加",
@@ -11631,5 +11654,7 @@
   "set_agMcpTest": "测试连接",
   "set_agMcpJsonOne": "请一次导入一个 MCP 服务器。",
   "set_agMcpPending": "下轮生效",
-  "ag_tool_agent_manage": "管理 Agent"
+  "ag_tool_agent_manage": "管理 Agent",
+  "generation_notificationPermissionDenied": "通知权限未开启，后台生成的进度和完成提醒将不可见。",
+  "generation_notificationGoToSettings": "去设置"
 }

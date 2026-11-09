@@ -647,6 +647,8 @@
   "layer_rename": "名前の変更",
   "layer_moveUp": "上に移動",
   "layer_moveDown": "下に移動",
+  "common_moveUp": "上に移動",
+  "common_moveDown": "下に移動",
   "vibe_title": "バイブストランスファー",
   "vibe_description": "イメージを変えて、ビジョンを維持します。",
   "vibe_addFromFileTitle": "ファイルから追加",
@@ -3175,6 +3177,24 @@
   "@tips_studio_guide_8": {
     "description": "settings_warnHighAnlasCostTitle."
   },
+  "tips_studio_mobile_1": "スマホなら片手で生成できます。プロンプトを書いて生成を押すと、画像がキャンバスにバッチごとに並びます。モデル・サイズ・枚数は下部ツールバーで変更できます。",
+  "@tips_studio_mobile_1": {
+    "description": "Touch counterpart of tips_studio_guide_1 for the studio welcome card."
+  },
+  "tips_studio_mobile_2": "キャンバス上の画像を長押しすると、保存・コピー・共有、img2img・Vibe・キャラクター参照への送信ができます。",
+  "@tips_studio_mobile_2": {
+    "description": "Mobile long-press menu; same actions as the desktop right-click menu."
+  },
+  "tips_studio_mobile_3": "プロンプト入力の右上にあるライブラリアイコンから、プロンプトブロック・Vibe・高精度リファレンスを開けます。タップすると現在のプロンプトに挿入されます。",
+  "@tips_studio_mobile_3": {
+    "description": "Mobile resource library entry in the editor overlay header."
+  },
+  "prompt_replaceAllMobile": "すべて置換",
+  "autocomplete_relatedTagsSubtitleMobile": "プロンプトからローカルタグを検索し、関連タグを確認できます",
+  "prompt_cooccurrenceRecommendationSubtitleMobile": "ローカルタグを検索して関連タグを確認",
+  "settings_outputViewer_canvasDescriptionMobile": "NAI5 風の無限キャンバス：生成画像をバッチごとに並べます。ピンチでズーム、ドラッグで移動。",
+  "editor_sourcePointPick": "ソースを取得",
+  "editor_sourcePointPicking": "キャンバスをタップしてソース点を指定",
   "tips_studio_trick_1": "シードが「何を引くか」を決めます。パラメーターとシードが同じなら、出てくるのも同じ一枚。神絵を再現したいならシードも控えておくこと。運を変えたいなら、そのシードはもう見つめないこと。",
   "@tips_studio_trick_1": {
     "description": "NovelAI output is deterministic for identical parameters and seed."
@@ -7505,6 +7525,8 @@
     }
   },
   "imageViewer_yesterday": "昨日",
+  "explore_mobileEditor": "編集",
+  "explore_mobileResults": "結果",
   "explore_back": "画風探索",
   "explore_close": "閉じる",
   "explore_cancel": "キャンセル",
@@ -11121,6 +11143,7 @@
   "mp_filter": "絞り込み",
   "mp_manualAdd": "手動で追加",
   "mp_dragHint": "ドラッグで割り当ての既定順を変更",
+  "mp_reorderHintMobile": "モデル右側の「上に移動」「下に移動」で割り当ての既定順を変更",
   "mp_noModels": "モデルがありません",
   "mp_noModelsSub": "カタログから追加するか、モデル ID を入力",
   "mp_manualHint": "モデル ID を入力して Enter",
@@ -11631,5 +11654,7 @@
   "set_agMcpTest": "接続テスト",
   "set_agMcpJsonOne": "MCP サーバーを 1 つずつインポートしてください。",
   "set_agMcpPending": "次のターンで適用",
-  "ag_tool_agent_manage": "Agent を管理"
+  "ag_tool_agent_manage": "Agent を管理",
+  "generation_notificationPermissionDenied": "通知が許可されていないため、バックグラウンド生成の進捗と完了通知は表示されません。",
+  "generation_notificationGoToSettings": "設定を開く"
 }

@@ -107,6 +107,8 @@ class _SettingsModelsPageState extends State<SettingsModelsPage> {
     );
     final wb = m.workbench;
     if (wb == null) return page;
+    // 手机端工作台自带服务商列表 / 全屏编辑页与保存条，不再叠桌面那套浮层。
+    if (usesMobileLayout || debugForceMobileSettingsLayout) return page;
     return Stack(
       children: [
         Positioned.fill(child: page),

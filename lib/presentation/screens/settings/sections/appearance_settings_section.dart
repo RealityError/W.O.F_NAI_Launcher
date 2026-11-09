@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/app_language.dart';
 import '../../../../core/utils/localization_extension.dart';
+import 'package:nai_launcher/presentation/mobile/mobile_breakpoints.dart';
 import '../../../providers/canvas_settings_provider.dart';
 import '../../../providers/font_provider.dart';
 import '../../../providers/settings_font_scale_provider.dart';
@@ -86,6 +87,8 @@ class _AppearanceSettingsSectionState
                   subtitle: Text(
                     simple
                         ? l10n.settings_outputViewer_simpleDescription
+                        : usesMobileLayout
+                        ? l10n.settings_outputViewer_canvasDescriptionMobile
                         : l10n.settings_outputViewer_canvasDescription,
                   ),
                   trailing: _valueControl(
@@ -217,7 +220,9 @@ class _AppearanceSettingsSectionState
         SettingsChoice(
           false,
           context.l10n.settings_outputViewer_canvas,
-          description: context.l10n.settings_outputViewer_canvasDescription,
+          description: usesMobileLayout
+              ? context.l10n.settings_outputViewer_canvasDescriptionMobile
+              : context.l10n.settings_outputViewer_canvasDescription,
           icon: Icons.dashboard_outlined,
         ),
         SettingsChoice(

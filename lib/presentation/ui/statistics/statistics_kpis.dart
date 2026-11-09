@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_card.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_glyph.dart';
@@ -178,7 +179,11 @@ class StatsKpiRow extends StatelessWidget {
     return UiCard(
       key: const Key('stats-kpis'),
       padding: EdgeInsets.zero,
-      child: StatsKpiFrame(cells: [images, favorites, anlas, streak, storage]),
+      child: StatsKpiFrame(
+        cells: [images, favorites, anlas, streak, storage],
+        columns: usesMobileLayout ? 2 : 5,
+        compact: usesMobileLayout,
+      ),
     );
   }
 

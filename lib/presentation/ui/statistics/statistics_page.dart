@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
+import '../../mobile/mobile_scaffold.dart';
 import '../kit/ui_colors.dart';
+import '../kit/ui_controls.dart';
 import '../kit/ui_text.dart';
 import 'statistics_calendar.dart';
 import 'statistics_cards.dart';
@@ -37,6 +40,29 @@ class StatisticsPage extends StatelessWidget {
         child: _Report(data: data, snapshot: snapshot, actions: actions),
       );
     }
+    if (usesMobileLayout) {
+      return MobilePageScaffold(
+        key: const Key('stats-mobile-page'),
+        title: context.l10n.stats_title,
+        showBack: false,
+        backgroundColor: context.ui.page,
+        actions: [
+          MobileHeaderAction(
+            key: const Key('stats-mobile-refresh'),
+            icon: Icons.refresh_rounded,
+            tooltip: context.l10n.stats_refresh,
+            onTap: actions.onRefresh,
+          ),
+        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _StatsMobileFilters(data: data, actions: actions),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
     return ColoredBox(
       color: context.ui.page,
       child: Column(
@@ -44,6 +70,71 @@ class StatisticsPage extends StatelessWidget {
           StatsHeader(data: data, actions: actions),
           Expanded(child: body),
         ],
+      ),
+    );
+  }
+}
+
+/// 手机端顶栏下的筛选条：时间范围与「仅 NAI」改成横向可滚动的一行，
+/// 不再挤在标题右侧；桌面顶栏（[StatsHeader]）保持原样。
+class _StatsMobileFilters extends StatelessWidget {
+  const _StatsMobileFilters({required this.data, required this.actions});
+
+  final StatsViewData data;
+  final StatsActions actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l10n = context.l10n;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.bg,
+        border: Border(bottom: BorderSide(color: c.border)),
+      ),
+      child: SizedBox(
+        height: 52,
+        child: SingleChildScrollView(
+          key: const Key('stats-mobile-filters'),
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            children: [
+              UiSegmented<StatsRange>(
+                key: const Key('stats-range'),
+                height: 40,
+                itemPadding: 12,
+                values: StatsRange.values,
+                selected: data.range,
+                labelOf: (r) => switch (r) {
+                  StatsRange.thisYear => l10n.stats_rangeThisYear,
+                  StatsRange.all => l10n.stats_rangeAll,
+                  _ => l10n.stats_rangeDays('${r.days}'),
+                },
+                onChanged: actions.onRangeChanged,
+              ),
+              const SizedBox(width: 10),
+              UiChipButton(
+                key: const Key('stats-nai-only'),
+                height: 40,
+                semanticLabel: l10n.stats_naiOnly,
+                onPressed: () => actions.onNaiOnlyChanged(!data.naiOnly),
+                children: [
+                  Text(l10n.stats_naiOnly),
+                  UiSwitch(value: data.naiOnly),
+                ],
+              ),
+              if (data.sync == StatsSyncState.updating) ...[
+                const SizedBox(width: 12),
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

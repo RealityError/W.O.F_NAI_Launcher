@@ -648,6 +648,8 @@
   "layer_rename": "Rename",
   "layer_moveUp": "Move Up",
   "layer_moveDown": "Move Down",
+  "common_moveUp": "Move Up",
+  "common_moveDown": "Move Down",
   "vibe_title": "Vibe Transfer",
   "vibe_description": "Change the image, keep the vision.",
   "vibe_addFromFileTitle": "Add from File",
@@ -3175,6 +3177,24 @@
   "@tips_studio_guide_8": {
     "description": "settings_warnHighAnlasCostTitle."
   },
+  "tips_studio_mobile_1": "One hand is enough on a phone: write a prompt, tap Generate, and images fill the canvas batch by batch. Model, size and count live in the bottom toolbar.",
+  "@tips_studio_mobile_1": {
+    "description": "Touch counterpart of tips_studio_guide_1 for the studio welcome card."
+  },
+  "tips_studio_mobile_2": "Long-press an image on the canvas for Save, Copy, Share, or sending it to img2img, Vibe, or Character Reference.",
+  "@tips_studio_mobile_2": {
+    "description": "Mobile long-press menu; same actions as the desktop right-click menu."
+  },
+  "tips_studio_mobile_3": "The library icon at the top right of the prompt overlay opens prompt blocks, Vibe, and Precise Reference — tap an item to insert it into the current prompt.",
+  "@tips_studio_mobile_3": {
+    "description": "Mobile resource library entry in the editor overlay header."
+  },
+  "prompt_replaceAllMobile": "Replace All",
+  "autocomplete_relatedTagsSubtitleMobile": "Search local tags from the prompt box and inspect related tags",
+  "prompt_cooccurrenceRecommendationSubtitleMobile": "Search local tags and inspect related tags",
+  "settings_outputViewer_canvasDescriptionMobile": "NAI5-style infinite canvas: every generated image laid out by batch; pinch to zoom, drag to pan",
+  "editor_sourcePointPick": "Pick source",
+  "editor_sourcePointPicking": "Tap the canvas to set the source point",
   "tips_studio_trick_1": "The seed decides which image you pull. Same settings plus the same seed means the same picture. Want to recreate a masterpiece? Keep the seed. Want new luck? Stop staring at that seed.",
   "@tips_studio_trick_1": {
     "description": "NovelAI output is deterministic for identical parameters and seed."
@@ -7505,6 +7525,8 @@
     }
   },
   "imageViewer_yesterday": "yesterday",
+  "explore_mobileEditor": "Editor",
+  "explore_mobileResults": "Results",
   "explore_back": "Style explore",
   "explore_close": "Close",
   "explore_cancel": "Cancel",
@@ -11133,6 +11155,7 @@
   "mp_filter": "Filter",
   "mp_manualAdd": "Add manually",
   "mp_dragHint": "Drag to set the default order in Assignments",
+  "mp_reorderHintMobile": "Use Move Up / Move Down on a model to set the default order in Assignments",
   "mp_noModels": "No models yet",
   "mp_noModelsSub": "Add from the catalog or enter a model ID",
   "mp_manualHint": "Model ID, Enter to add",
@@ -11643,5 +11666,7 @@
   "set_agMcpTest": "Test connection",
   "set_agMcpJsonOne": "Import one MCP server at a time.",
   "set_agMcpPending": "Applies next turn",
-  "ag_tool_agent_manage": "Manage Agent"
+  "ag_tool_agent_manage": "Manage Agent",
+  "generation_notificationPermissionDenied": "Notifications are off, so background generation progress and completion alerts will not be visible.",
+  "generation_notificationGoToSettings": "Open settings"
 }

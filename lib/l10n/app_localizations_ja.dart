@@ -1467,6 +1467,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get layer_moveDown => '下に移動';
 
   @override
+  String get common_moveUp => '上に移動';
+
+  @override
+  String get common_moveDown => '下に移動';
+
+  @override
   String get vibe_title => 'バイブストランスファー';
 
   @override
@@ -5757,6 +5763,39 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get tips_studio_guide_8 =>
       'うっかり Anlas を大量に使うのが心配なら、設定で Anlas の高コスト警告をオンに。1 回の見積もりが設定値を超えると、生成前に確認が入ります。';
+
+  @override
+  String get tips_studio_mobile_1 =>
+      'スマホなら片手で生成できます。プロンプトを書いて生成を押すと、画像がキャンバスにバッチごとに並びます。モデル・サイズ・枚数は下部ツールバーで変更できます。';
+
+  @override
+  String get tips_studio_mobile_2 =>
+      'キャンバス上の画像を長押しすると、保存・コピー・共有、img2img・Vibe・キャラクター参照への送信ができます。';
+
+  @override
+  String get tips_studio_mobile_3 =>
+      'プロンプト入力の右上にあるライブラリアイコンから、プロンプトブロック・Vibe・高精度リファレンスを開けます。タップすると現在のプロンプトに挿入されます。';
+
+  @override
+  String get prompt_replaceAllMobile => 'すべて置換';
+
+  @override
+  String get autocomplete_relatedTagsSubtitleMobile =>
+      'プロンプトからローカルタグを検索し、関連タグを確認できます';
+
+  @override
+  String get prompt_cooccurrenceRecommendationSubtitleMobile =>
+      'ローカルタグを検索して関連タグを確認';
+
+  @override
+  String get settings_outputViewer_canvasDescriptionMobile =>
+      'NAI5 風の無限キャンバス：生成画像をバッチごとに並べます。ピンチでズーム、ドラッグで移動。';
+
+  @override
+  String get editor_sourcePointPick => 'ソースを取得';
+
+  @override
+  String get editor_sourcePointPicking => 'キャンバスをタップしてソース点を指定';
 
   @override
   String get tips_studio_trick_1 =>
@@ -13486,6 +13525,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get imageViewer_yesterday => '昨日';
 
   @override
+  String get explore_mobileEditor => '編集';
+
+  @override
+  String get explore_mobileResults => '結果';
+
+  @override
   String get explore_back => '画風探索';
 
   @override
@@ -20931,6 +20976,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mp_dragHint => 'ドラッグで割り当ての既定順を変更';
 
   @override
+  String get mp_reorderHintMobile => 'モデル右側の「上に移動」「下に移動」で割り当ての既定順を変更';
+
+  @override
   String get mp_noModels => 'モデルがありません';
 
   @override
@@ -21953,4 +22001,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get ag_tool_agent_manage => 'Agent を管理';
+
+  @override
+  String get generation_notificationPermissionDenied =>
+      '通知が許可されていないため、バックグラウンド生成の進捗と完了通知は表示されません。';
+
+  @override
+  String get generation_notificationGoToSettings => '設定を開く';
 }

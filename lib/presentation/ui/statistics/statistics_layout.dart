@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_colors.dart';
 
 /// 按页面实际可用宽度排版：≥ 1150 三列，≥ 710 两列，再窄一列（窗口宽 1200 / 760 减去主导航）。
 class StatsLayout {
   const StatsLayout(this.pageWidth);
+
   final double pageWidth;
 
   int get columns => pageWidth >= 1150
@@ -16,9 +18,17 @@ class StatsLayout {
   /// 三列时的宽排版：日历小结和模型排行放右侧、总数行显示迷你图。
   bool get wide => columns == 3;
 
+  /// 手机端页面左右内边距更小（12 而不是 24）。
+  bool get mobile => usesMobileLayout;
+
+  double get horizontalPadding => mobile ? 12 : 24;
+
   /// 小卡片网格里一张卡片的外宽。
   double get cardWidth {
-    final content = (pageWidth - 48).clamp(0.0, maxContentWidth);
+    final content = (pageWidth - horizontalPadding * 2).clamp(
+      0.0,
+      maxContentWidth,
+    );
     return (content - gap * (columns - 1)) / columns;
   }
 
@@ -39,8 +49,9 @@ class StatsPageFrame extends StatelessWidget {
       builder: (context, constraints) {
         final layout = StatsLayout(constraints.maxWidth);
         final children = builder(layout);
+        final pad = layout.horizontalPadding;
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          padding: EdgeInsets.fromLTRB(pad, layout.mobile ? 12 : 20, pad, 24),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(
@@ -120,31 +131,75 @@ class StatsCardGrid extends StatelessWidget {
 }
 
 /// 总数行的五格：格间 1px 竖线，每格内边距 16 / 18 / 14。
+///
+/// 手机端用 `columns: 2` 折成多行（最后一行不足时留空），避免 5 格在 360dp 下
+/// 挤成每格 20 多 dp。
 class StatsKpiFrame extends StatelessWidget {
-  const StatsKpiFrame({super.key, required this.cells});
+  const StatsKpiFrame({
+    super.key,
+    required this.cells,
+    this.columns = 5,
+    this.compact = false,
+  });
+
   final List<Widget> cells;
+  final int columns;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (i, cell) in cells.indexed)
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-                decoration: i == 0
-                    ? null
-                    : BoxDecoration(
-                        border: Border(left: BorderSide(color: c.border)),
-                      ),
-                child: cell,
+    if (columns >= cells.length) {
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, cell) in cells.indexed)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                  decoration: i == 0
+                      ? null
+                      : BoxDecoration(
+                          border: Border(left: BorderSide(color: c.border)),
+                        ),
+                  child: cell,
+                ),
               ),
+          ],
+        ),
+      );
+    }
+
+    final rows = <List<Widget>>[];
+    for (var i = 0; i < cells.length; i += columns) {
+      rows.add(cells.sublist(i, (i + columns).clamp(0, cells.length)));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (r, row) in rows.indexed) ...[
+          if (r > 0) Container(height: 1, color: c.border),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var j = 0; j < columns; j++) ...[
+                  if (j > 0) Container(width: 1, color: c.border),
+                  Expanded(
+                    child: Container(
+                      padding: compact
+                          ? const EdgeInsets.fromLTRB(14, 12, 14, 12)
+                          : const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                      child: j < row.length ? row[j] : const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ],
             ),
+          ),
         ],
-      ),
+      ],
     );
   }
 }

@@ -1441,6 +1441,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get layer_moveDown => '下移';
 
   @override
+  String get common_moveUp => '上移';
+
+  @override
+  String get common_moveDown => '下移';
+
+  @override
   String get vibe_title => '风格迁移';
 
   @override
@@ -5663,6 +5669,37 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get tips_studio_guide_8 =>
       '担心一不小心花掉一大笔 Anlas？在设置里打开「Anlas 高消耗警告」，单次预计消耗超过你设定的数值时，生成前会先问你一句。';
+
+  @override
+  String get tips_studio_mobile_1 =>
+      '手机上一只手就能出图：写好提示词点生成，图会一批批铺在画布上，模型、尺寸、张数都在底部工具条里改。';
+
+  @override
+  String get tips_studio_mobile_2 =>
+      '长按画布上的图片：保存、复制、分享，以及送去图生图、Vibe、角色参考，都在这个菜单里。';
+
+  @override
+  String get tips_studio_mobile_3 =>
+      '提示词浮层右上角的资源库图标能打开提示词块、Vibe 和精准参考库，点一下就插进当前提示词。';
+
+  @override
+  String get prompt_replaceAllMobile => '全部替换';
+
+  @override
+  String get autocomplete_relatedTagsSubtitleMobile => '在提示词里搜索本地标签，并可查看关联标签';
+
+  @override
+  String get prompt_cooccurrenceRecommendationSubtitleMobile => '搜索本地标签并查看关联标签';
+
+  @override
+  String get settings_outputViewer_canvasDescriptionMobile =>
+      'NAI5 官网式无限画布：全部生成图按批铺开，双指缩放、拖动平移';
+
+  @override
+  String get editor_sourcePointPick => '取源点';
+
+  @override
+  String get editor_sourcePointPicking => '点一下画布选取源点';
 
   @override
   String get tips_studio_trick_1 =>
@@ -13284,6 +13321,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imageViewer_yesterday => '昨天';
 
   @override
+  String get explore_mobileEditor => '编辑';
+
+  @override
+  String get explore_mobileResults => '结果';
+
+  @override
   String get explore_back => '画风探索';
 
   @override
@@ -20689,6 +20732,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mp_dragHint => '拖动排序决定功能分配里的默认顺序';
 
   @override
+  String get mp_reorderHintMobile => '用模型右侧的上移、下移调整功能分配里的默认顺序';
+
+  @override
   String get mp_noModels => '还没有模型';
 
   @override
@@ -21699,6 +21745,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ag_tool_agent_manage => '管理 Agent';
+
+  @override
+  String get generation_notificationPermissionDenied =>
+      '通知权限未开启，后台生成的进度和完成提醒将不可见。';
+
+  @override
+  String get generation_notificationGoToSettings => '去设置';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -23136,6 +23189,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get layer_moveDown => '下移';
+
+  @override
+  String get common_moveUp => '上移';
+
+  @override
+  String get common_moveDown => '下移';
 
   @override
   String get vibe_title => '風格遷移';
@@ -27360,6 +27419,37 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   @override
   String get tips_studio_guide_8 =>
       '擔心一不小心花掉一大筆 Anlas？在設定裡開啟「Anlas 高消耗警告」，單次預計消耗超過你設定的數值時，生成前會先問你一句。';
+
+  @override
+  String get tips_studio_mobile_1 =>
+      '手機上一隻手就能出圖：寫好提示詞點生成，圖會一批批鋪在畫布上，模型、尺寸、張數都在底部工具條裡改。';
+
+  @override
+  String get tips_studio_mobile_2 =>
+      '長按畫布上的圖片：儲存、複製、分享，以及送去圖生圖、Vibe、角色參考，都在這個選單裡。';
+
+  @override
+  String get tips_studio_mobile_3 =>
+      '提示詞浮層右上角的資源庫圖示能開啟提示詞塊、Vibe 和精準參考庫，點一下就插進當前提示詞。';
+
+  @override
+  String get prompt_replaceAllMobile => '全部替換';
+
+  @override
+  String get autocomplete_relatedTagsSubtitleMobile => '在提示詞裡搜尋本地標籤，並可檢視關聯標籤';
+
+  @override
+  String get prompt_cooccurrenceRecommendationSubtitleMobile => '搜尋本地標籤並檢視關聯標籤';
+
+  @override
+  String get settings_outputViewer_canvasDescriptionMobile =>
+      'NAI5 官網式無限畫布：全部生成圖按批鋪開，雙指縮放、拖動平移';
+
+  @override
+  String get editor_sourcePointPick => '取源點';
+
+  @override
+  String get editor_sourcePointPicking => '點一下畫布選取源點';
 
   @override
   String get tips_studio_trick_1 =>
@@ -34981,6 +35071,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get imageViewer_yesterday => '昨天';
 
   @override
+  String get explore_mobileEditor => '編輯';
+
+  @override
+  String get explore_mobileResults => '結果';
+
+  @override
   String get explore_back => '畫風探索';
 
   @override
@@ -42386,6 +42482,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get mp_dragHint => '拖動排序決定功能分配裡的預設順序';
 
   @override
+  String get mp_reorderHintMobile => '用模型右側的上移、下移調整功能分配裡的預設順序';
+
+  @override
   String get mp_noModels => '還沒有模型';
 
   @override
@@ -43396,4 +43495,11 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get ag_tool_agent_manage => '管理 Agent';
+
+  @override
+  String get generation_notificationPermissionDenied =>
+      '通知權限未開啟，後臺生成的進度和完成提醒將不可見。';
+
+  @override
+  String get generation_notificationGoToSettings => '去設定';
 }

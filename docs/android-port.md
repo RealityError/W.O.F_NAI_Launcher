@@ -27,7 +27,7 @@
 - **应用身份**：`android:label="W.O.F NAI Studio"`，`MainActivity` 单 `singleTop` 启动、`taskAffinity=""`（不与其它任务混用）、`windowSoftInputMode="adjustResize"`。
 - **启动画面**：`LaunchTheme` / `NormalTheme` 使用深色 `#121218` 背景和 `ic_launcher_foreground`，避免 Flutter UI 起来前的白闪；`values-night` 与日间一致维持深色。
 - **图标**：mipmap 各密度 PNG + `mipmap-anydpi-v26` 自适应图标，前景/背景取自桌面版品牌图形。
-- **Manifest 权限**：`INTERNET`、`ACCESS_NETWORK_STATE`（NovelAI、ComfyUI、第三方桥接均为网络服务）、`POST_NOTIFICATIONS`（后台生成的前台服务进度/完成通知；见 1.3 与第 5 节，应用不主动请求运行时权限）、`REQUEST_INSTALL_PACKAGES`（应用内 APK 更新交给系统安装器）、`FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_DATA_SYNC`（生成中后台保活）、`READ_EXTERNAL_STORAGE`（`maxSdkVersion=32`）、`READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`（Android 13+ 导入图片/视频）。
+- **Manifest 权限**：`INTERNET`、`ACCESS_NETWORK_STATE`（NovelAI、ComfyUI、第三方桥接均为网络服务）、`POST_NOTIFICATIONS`（后台生成的前台服务进度/完成通知；Android 13+ 第一次开始生成时按需申请运行时权限，见 1.3 与第 5 节）、`REQUEST_INSTALL_PACKAGES`（应用内 APK 更新交给系统安装器）、`FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_DATA_SYNC`（生成中后台保活）、`READ_EXTERNAL_STORAGE`（`maxSdkVersion=32`）、`READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`（Android 13+ 导入图片/视频）。
 - **后台生成前台服务**：`GenerationForegroundService`（`android:foregroundServiceType="dataSync"`、不导出），由 `com.nailauncher/generation` 通道的 `start` / `update` / `stop` 驱动；通知 channel 固定为 `wof_generation`。
 - **接收系统分享**：`MainActivity` 增加 `ACTION_SEND` + `image/*` intent-filter（G16），只处理单张图片；收到的图片先拷到 cache 的 `incoming_shares/`，再由 Dart 侧消费并送进图生图。
 - **`usesCleartextTraffic="true"`**：允许局域网内的 ComfyUI、自建服务或本地桥接使用 `http://`。这是便利性与安全性的取舍；不要用它访问不可信网络上的明文服务。
@@ -52,11 +52,12 @@
 - Android 平台通道（原生实现都在 `android/app/src/main/kotlin/com/wof/nai_launcher/`）：
   - `com.nailauncher/platform`（`MainActivity.kt`）：`openFile` / `shareFile` / `saveImageToMediaStore` / `openDirectory` / `getSystemProxy`，以及分享入站的 `getSharedImage` / `shareImageReceived`；
   - `com.nailauncher/generation`（`MainActivity.kt` → `GenerationForegroundService.kt`）：`start` / `update` / `stop`，通知 channel `wof_generation`；
-  - `com.nailauncher/apk_install`（`ApkInstallHelper.kt`）：`supportedAbis` / `installApk` / `canRequestPackageInstalls` / `openUnknownSourcesSettings`。
+  - `com.nailauncher/apk_install`（`ApkInstallHelper.kt`）：`supportedAbis` / `installApk` / `canRequestPackageInstalls` / `openUnknownSourcesSettings`；
+  - `com.nailauncher/notifications`（`NotificationPermissionHelper.kt`）：`areNotificationsEnabled` / `requestNotifications` / `openNotificationSettings`，Android 13+ 通知运行时权限（API < 33 直接视为已授权；设置页跳转失败退回应用详情页）。
 - 分享（G15 / G16）：
   - **出站**：统一走 `AndroidShareService`（有文件路径就分享文件；未保存的生成结果先把内存字节写到 cache 再分享），入口在手机查看器「更多」、画廊长按菜单、生成结果长按菜单；桌面不显示分享行。
   - **入站**：`AndroidShareIntake` 消费 `ACTION_SEND image/*`（单张，拷贝到 cache 的 `incoming_shares/`），启动时轮询、运行中通过 `shareImageReceived` 信号触发，随后打开图生图并提示；桌面无该入口。
-- 后台生成（G10）：`GenerationBackgroundSync` 监听生成状态，开始时启动 dataSync 前台服务、按进度节流更新通知，完成 / 失败 / 取消时停止服务并发一条完成通知；桌面平台所有调用 no-op。
+- 后台生成（G10）：`GenerationBackgroundSync` 监听生成状态，开始时启动 dataSync 前台服务、按进度节流更新通知，完成 / 失败 / 取消时停止服务并发一条完成通知；桌面平台所有调用 no-op。通知权限由 G18 补充：第一次开始生成时经 `com.nailauncher/notifications` 按需申请（不冷启动弹窗），用户拒绝后不再重复申请，只在首次拒绝后给一次「去设置」引导（`NotificationPermissionService` + `NotificationPermissionWiring`）。
 - 应用内更新（G17）：`AndroidUpdateService` 检查 GitHub Release → 按设备 ABI 选 APK → 下载到 cache 的 `nai_launcher_updates/`（`.part` + rename、大小/SHA256 校验；不做断点续传）→ `ApkInstallHelper` 通过现有 `${applicationId}.fileprovider` 拉起系统安装器；桌面更新链路逐字节不变。更新源与桌面共用 `z15087716457-stack/W.O.F_NAI_Launcher`（保留原项目归属说明）。入口在「设置 → 关于」：头部按钮手动检查更新，更新卡片显示版本/大小/notes 与下载进度，有新版本时提供「下载并安装」；发现新版本时底栏「设置」显示红点，Android 上不显示会打开桌面更新对话框的全局横幅。自动检查与桌面共用启动后 3 秒的检查逻辑。
 - 手机端布局：`lib/presentation/mobile/` 提供地基；设置页 `settings_mobile.dart`（列表 → 详情）、画廊 `mobile_local_gallery.dart`（长按菜单 / 多选 / 详情弹层）、查看器与编辑器/局部重绘页的移动分支都按 `usesMobileLayout` 进入，桌面布局不变。细节见 `docs/mobile-adaptation.md`。
 - 构建工具：`scripts/build_android.ps1`（本地一键构建 + 预检）。
@@ -290,7 +291,7 @@ systemProp.https.proxyPort=7897
    - 失败路径：Release 没有 APK 资产时卡片进入失败状态；日志过滤 `flutter` / `WofApkInstall` / `AndroidRuntime`。
 2. **分享出站（G15）**：查看器「更多」、画廊长按菜单、生成结果长按菜单点「分享」→ 系统分享面板出现 → 发送到图片/文件类应用后能被正常打开。
 3. **分享入站（G16）**：在系统相册 / 浏览器对一张图片点「分享」选择本应用 → 应用切到生成页且该图已作为图生图输入（提示“已送入图生图”）；再试一次冷启动分享（先杀掉应用再分享）。
-4. **后台生成（G10）**：开始一次生成后按 Home 键 → 已授予通知权限时，通知栏出现「后台生成」进度通知；完成 / 失败 / 取消后收到对应完成通知；回到应用状态与通知一致。Android 13+ 未授予通知权限时通知不可见，但生成继续（见第 5 节）。
+4. **后台生成（G10 / G18）**：开始一次生成后按 Home 键 → 已授予通知权限时，通知栏出现「后台生成」进度通知；完成 / 失败 / 取消后收到对应完成通知；回到应用状态与通知一致。Android 13+ 新装后第一次开始生成会弹一次系统通知权限框：允许则通知可见；拒绝则通知不可见但生成继续，且底部只出现一次带「去设置」的 SnackBar（再次生成不会重复弹权限框）。
 5. **手机端布局**：设置页列表 → 详情、画廊长按菜单 / 多选 / 详情弹层、查看器手机顶栏 + 底部弹层菜单、编辑器 / 局部重绘页在 360–430dp 宽度下无 overflow、无 hover-only 操作；外接键盘之外的快捷键入口可忽略。
 6. **桌面回归**：同一套代码在 Windows/macOS 上确认更新检查/安装与设置/画廊布局与改动前一致（本轮桌面分支未改），且桌面查看器/画廊不出现分享入口。
 
@@ -314,7 +315,7 @@ systemProp.https.proxyPort=7897
 | 应用内更新检查/安装 | ✓ | ✓ | 桌面：Windows 更新脚本 / macOS 核验。Android（G17）：检查 GitHub Release → 按设备 ABI 选 APK → 下载到 cache 并做大小/SHA256 校验 → 系统安装器（`REQUEST_INSTALL_PACKAGES` + 现有 FileProvider cache 路径）；未授权「未知来源」时跳到本应用系统设置页，返回后重试。**Android 读取的是本 fork（`RealityError`）的 Release**，因为上游只发布 Windows/macOS 资产；桌面仍查上游。**Release 必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` 等），否则会提示有新版本但无包可装 |
 | 分享图片到其它应用 | — | ✓ | G15：查看器「更多」、画廊长按菜单、生成结果长按菜单 → 系统分享面板；未保存的生成结果直接分享内存字节。桌面不显示该入口 |
 | 接收系统分享进图生图 | — | ✓ | G16：其它应用 `ACTION_SEND image/*`（单张）→ 拷贝到 cache 后自动打开图生图；运行中与冷启动都能收到 |
-| 生成中后台运行 / 完成通知 | — | ✓ | G10：`dataSync` 前台服务 + 通知 channel `wof_generation`，进度节流更新，完成/失败/取消各发一条通知；Android 13+ 通知权限未授予时通知不可见但生成继续。桌面应用无此机制 |
+| 生成中后台运行 / 完成通知 | — | ✓ | G10：`dataSync` 前台服务 + 通知 channel `wof_generation`，进度节流更新，完成/失败/取消各发一条通知；G18：Android 13+ 第一次开始生成时按需申请通知权限，拒绝后不再重复申请、只给一次「去设置」引导，通知仍不可见但生成继续。桌面应用无此机制 |
 | 手机端页面布局（设置/画廊/查看器/编辑器） | 桌面布局不变 | ✓ | 按 `usesMobileLayout` 进入移动分支：设置列表→详情、画廊长按菜单/多选/详情弹层、查看器手机顶栏 + 底部弹层菜单、编辑器（局部重绘）底部工具条 + 参数/图层弹层；桌面布局与右键/hover 路径不改 |
 | 系统托盘、多窗口/独立资源小窗 | ✓ | ✗ | Android 无对应插件能力 |
 | Windows 系统代理 / GPU 诊断 | ✓ | ✗ | 注册表 / `nvidia-smi` 专属 |
@@ -337,7 +338,7 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 6. **手机端布局现状**：设置页（列表 → 详情）、画廊（长按菜单 / 多选 / 详情弹层）、查看器、编辑器 / 局部重绘、导演工具与画布工具面板已完成移动分支；生成页范围内的触控目标已统一到 ≥48dp（含全屏提示词编辑器、翻译调整浮窗，见 `docs/mobile-adaptation.md` §8.13），画布底部工具条在手机上合并为单条（§8.16）。桌面布局、hover、右键路径保持不变。
 7. **剪贴板/拖放差异**：Android 系统剪贴板与拖放对图片格式、文件 URI 的支持不如 Windows 宽松；Windows 专属的 PowerShell/System.Drawing 剪贴板路径只在桌面使用。
 8. **后台限制**：生成中通过 `dataSync` 前台服务降低被系统回收的概率，但厂商省电策略、极端低电量模式或用户手动“强行停止”仍可能中断生成；应用没有托盘常驻，桌面式常驻行为不存在，长时间生成建议保持通知权限开启。
-9. **通知权限未主动申请**：`POST_NOTIFICATIONS` 已在 manifest 声明，但应用没有引入运行时权限请求插件；Android 13+ 新装应用默认没有通知权限，此时后台生成的进度/完成通知不可见（前台服务与生成本身继续运行）。需要通知的用户要到系统设置里手动允许。
+9. **通知权限按需申请、拒绝后不重复打扰**：Android 13+ 的 `POST_NOTIFICATIONS` 在第一次开始生成时经 `com.nailauncher/notifications` 申请（冷启动不弹窗）；拒绝一次后不再重复申请，只在首次拒绝后给一次带「去设置」按钮的 SnackBar，用户仍需在系统设置里手动开启后通知才可见（前台服务与生成本身继续运行）。Android 12 及以下没有该运行时权限，由系统通知开关决定，应用不做额外弹窗。
 10. **应用内更新的工程前提**：Android 更新只从 GitHub Release 读取，**发布时必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` / `app-armeabi-v7a-release.apk` / `app-x86_64-release.apk`，或含 `universal` 的通用包）；否则客户端会检查到新版本但报“无可安装包”。Android 的更新源是本 fork `RealityError/W.O.F_NAI_Launcher_Android` 的 Release（上游没有 APK 资产），桌面仍走上游仓库；改名前的老地址由 GitHub 301 到新地址，旧版本客户端不受影响。首次安装更新还需要系统里的“安装未知应用”授权；下载失败后需要重新下载（当前 Android 链路不做断点续传）。当前没有应用商店渠道。
 11. **分享入站只处理单张图片**：manifest 只注册了 `ACTION_SEND` + `image/*`，多图 / 非图片文件 / 纯文本分享不会进入应用；收到的图片会先拷到 cache，消费后删除。
 12. **未知来源授权提示文案暂缓**：未授权“安装未知应用”时，应用当前只静默跳到系统设置页，返回后需再次点安装；原生跳转已经闭环，但缺少应用内提示文案。计划新增 ARB key `update_androidUnknownSources`（zh「请允许本应用安装未知来源应用后重试。」/ en「Allow this app to install unknown apps, then try again.」/ ja「不明なアプリのインストールを許可してから再試行してください。」/ ko「알 수 없는 앱 설치를 허용한 후 다시 시도하세요.」），为避免未引用 key 触发 l10n 回归，本轮**暂不加入**，后续补提示时与代码一起加。
@@ -421,9 +422,9 @@ AGP 8.11 / Gradle 8.14 需要 JDK 17–24。若 `java -version` 是 11，用 `fl
 
 ### 6.11 后台生成通知不显示 / 生成被中断
 
-- **通知不显示**：先确认系统通知权限。应用没有主动申请 `POST_NOTIFICATIONS`（见第 5 节第 9 条），Android 13+ 需要到系统设置里手动打开本应用通知；未开启时前台服务仍运行，只是通知不可见。
+- **通知不显示**：先确认系统通知权限。Android 13+ 新装后第一次开始生成会弹一次权限框；若当时点了「不允许」，之后不会重复弹框，可点拒绝后出现的那一次「去设置」SnackBar，或到「系统设置 → 应用 → 本应用 → 通知」手动打开（见第 5 节第 9 条）。未开启时前台服务仍运行，只是通知不可见。
 - **通知栏有前台服务但生成停止**：检查是否被厂商省电策略/低电量模式限制，Android 14+ 对 `dataSync` 前台服务也有时长与启动时机限制；把应用加入电池优化白名单后重试。
-- **日志**：`adb logcat -s flutter WofGenerationService AndroidRuntime`；Dart 侧 channel 失败会在 flutter 日志里出现 `GenerationForegroundService` 前缀的警告。
+- **日志**：`adb logcat -s flutter WofGenerationService WofNotifications AndroidRuntime`；Dart 侧 channel 失败会在 flutter 日志里出现 `GenerationForegroundService` / `NotificationPermission` 前缀的警告。
 - 前台服务通知 channel 固定为 `wof_generation`，标题/文案由 Dart 传入；只改文案不需要动 Kotlin。
 
 ### 6.12 分享入口 / 接收分享异常
@@ -542,11 +543,13 @@ storeFile=app/wof-release.jks
 - `android/`：Android 工程；`android/README.md` 是同一目录的简版说明。
 - `lib/core/utils/desktop_platform.dart`：平台能力 getter。
 - `android/app/src/main/kotlin/com/wof/nai_launcher/`：
-  - `MainActivity.kt`：`com.nailauncher/platform` 与 `com.nailauncher/generation` 通道（打开/分享/另存相册/打开目录/系统代理、分享入站、前台服务）；
+  - `MainActivity.kt`：`com.nailauncher/platform` 与 `com.nailauncher/generation` 通道（打开/分享/另存相册/打开目录/系统代理、分享入站、前台服务），并把权限结果转发给通知权限桥；
   - `GenerationForegroundService.kt`：G10 后台生成前台服务与通知（channel `wof_generation`）；
-  - `ApkInstallHelper.kt`：G17 APK 安装桥（`com.nailauncher/apk_install`，FileProvider + `ACTION_VIEW` + 未知来源授权）。
-- `lib/core/services/`：`android_update_service.dart` / `android_update_logic.dart`（G17 下载、校验、选包与版本比较）、`android_share_service.dart` / `android_share_intake.dart`（G15/G16）；`lib/core/utils/file_explorer_utils.dart` 里的 `PlatformFileChannel` 是现有 `com.nailauncher/platform` 通道的 Dart 封装。
-- `lib/data/services/generation_foreground_service.dart` + `lib/presentation/wiring/generation_background_sync.dart`：G10 Dart 侧前台服务与生成状态联动。
+  - `ApkInstallHelper.kt`：G17 APK 安装桥（`com.nailauncher/apk_install`，FileProvider + `ACTION_VIEW` + 未知来源授权）；
+  - `NotificationPermissionHelper.kt`：G18 通知权限桥（`com.nailauncher/notifications`，运行时申请 + 通知设置页跳转）。
+- `lib/core/services/`：`android_update_service.dart` / `android_update_logic.dart`（G17 下载、校验、选包与版本比较）、`android_share_service.dart` / `android_share_intake.dart`（G15/G16）、`notification_permission_service.dart`（G18 通知权限与拒绝状态落盘）；`lib/core/utils/file_explorer_utils.dart` 里的 `PlatformFileChannel` 是现有 `com.nailauncher/platform` 通道的 Dart 封装。
+- `lib/data/services/generation_foreground_service.dart` + `lib/presentation/wiring/generation_background_sync.dart`：G10 Dart 侧前台服务与生成状态联动（生成开始时触发 G18 权限检查）。
+- `lib/presentation/wiring/notification_permission_wiring.dart`：G18 通知权限接线与「去设置」SnackBar。
 - `lib/presentation/wiring/android_share_wiring.dart`：G16 分享入站接线。
 - `lib/presentation/mobile/`、`lib/presentation/ui/settings/settings_mobile.dart`、`lib/presentation/screens/local_gallery/mobile_local_gallery.dart`：手机端布局地基与设置/画廊移动页。
 - `scripts/build_android.ps1`：本地构建 + 预检。
@@ -559,6 +562,6 @@ storeFile=app/wof-release.jks
 2. 资源瘦身与按需资产（AAB + Asset Delivery；数据库/语言包按需下载），控制 APK 体积。
 3. Android 端真实设备/模拟器回归：先按 3.9 手测应用内更新、分享出站/入站、后台生成通知、手机端布局；再在**有网络且提供 NovelAI 凭据**的环境补做登录、生图、图片保存/MediaStore 相册镜像的端到端验证，最后覆盖图库导入、ComfyUI 连接、3D 编辑器 WebView、剪贴板/拖放。
 4. 移动端交互收尾：生成页范围内的触控目标已统一到 ≥48dp，画布工具条已合并为单条；剩余分类选择 / 批量元数据等次要桌面对话框未做手机重排。`update_androidUnknownSources` 提示文案与 ARB key 一起补。
-5. 后台策略与通知：如需主动申请通知权限，引入最小化的权限请求路径；继续观察前台服务在厂商省电策略下的存活情况。
+5. 后台策略与通知：通知权限已在首次生成时按需申请（拒绝后不重复申请，只给一次「去设置」引导）；继续观察前台服务在厂商省电策略下的存活情况。
 
 维护约定：修改 getter 名称或 Android 能力边界时同步更新本文第 2、4 节；改 `android/` 或构建脚本时确认 CI 触发路径仍覆盖。

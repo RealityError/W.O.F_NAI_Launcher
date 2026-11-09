@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_card.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -92,10 +93,17 @@ class _StatsProductionCardState extends State<StatsProductionCard> {
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = widget.layout.wide;
+              final mobile = usesMobileLayout;
+              // 手机端按天粒度时柱太密：给每天至少 14dp，超出可用宽度就横向滚动。
               final chartWidth = wide
                   ? ((constraints.maxWidth - 28) * .65).floorToDouble()
+                  : mobile
+                  ? math.max(
+                      constraints.maxWidth,
+                      _axisWidth + buckets.length * 14 + 4,
+                    )
                   : constraints.maxWidth;
-              final chart = _ProductionChart(
+              Widget chart = _ProductionChart(
                 buckets: buckets,
                 granularity: g,
                 width: chartWidth,
@@ -103,6 +111,13 @@ class _StatsProductionCardState extends State<StatsProductionCard> {
                   StatsDateFilter(p.start, p.end),
                 ),
               );
+              if (mobile && chartWidth > constraints.maxWidth + .5) {
+                chart = SingleChildScrollView(
+                  key: const Key('stats-production-scroll'),
+                  scrollDirection: Axis.horizontal,
+                  child: chart,
+                );
+              }
               final ranking = _ModelRanking(
                 snapshot: widget.snapshot,
                 onOpen: (m) =>

@@ -17,8 +17,17 @@ import 'blocks_page.dart';
 
 /// 左栏 240：标题 52 · 全部 / 最近使用 / 收藏 · 收藏集 · 文件夹（未分类 + 树）· 标签 · 底部“导入 / 导出”44。
 /// 卡片可以拖到收藏集和文件夹上（松手选移动还是复制），文件夹可以拖进别的文件夹。
+///
+/// 手机端整宽放进底部弹层（`inSheet: true`），收起按钮换成关闭。
 class BlocksNav extends StatefulWidget {
-  const BlocksNav({super.key});
+  const BlocksNav({
+    super.key,
+    this.width = BlocksLibraryPage.sidebarWidth,
+    this.inSheet = false,
+  });
+
+  final double width;
+  final bool inSheet;
 
   @override
   State<BlocksNav> createState() => _BlocksNavState();
@@ -504,16 +513,18 @@ class _BlocksNavState extends State<BlocksNav> {
 
     return Container(
       key: const Key('blocks-nav'),
-      width: BlocksLibraryPage.sidebarWidth,
+      width: widget.width,
       decoration: BoxDecoration(
         color: c.panel,
-        border: Border(right: BorderSide(color: c.line)),
+        border: widget.inSheet
+            ? null
+            : Border(right: BorderSide(color: c.line)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 52,
+            height: widget.inSheet ? 56 : 52,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 8),
               child: Row(
@@ -529,12 +540,22 @@ class _BlocksNavState extends State<BlocksNav> {
                     ),
                   ),
                   const Spacer(),
-                  UiIconBox(
-                    key: const Key('blocks-collapse-nav'),
-                    glyph: UiGlyphs.doubleLeft,
-                    tooltip: l10n.blocks_collapseSidebar,
-                    onTap: () => a.onSidebarChanged(false),
-                  ),
+                  if (widget.inSheet)
+                    UiIconBox(
+                      key: const Key('blocks-nav-close'),
+                      glyph: UiGlyphs.close,
+                      glyphSize: 16,
+                      size: 40,
+                      tooltip: l10n.common_close,
+                      onTap: () => Navigator.maybePop(context),
+                    )
+                  else
+                    UiIconBox(
+                      key: const Key('blocks-collapse-nav'),
+                      glyph: UiGlyphs.doubleLeft,
+                      tooltip: l10n.blocks_collapseSidebar,
+                      onTap: () => a.onSidebarChanged(false),
+                    ),
                 ],
               ),
             ),

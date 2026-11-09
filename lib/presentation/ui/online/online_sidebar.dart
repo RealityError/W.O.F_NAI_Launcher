@@ -17,8 +17,14 @@ import 'online_popovers.dart';
 enum _SidePop { none, source, blacklist }
 
 /// 左栏 240：标题行、来源卡、浏览方式、最近搜索或收藏的子集 / 作者、底部黑名单。
+///
+/// 手机端把它整宽放进底部弹层（`inSheet: true`，[width] 传 `double.infinity`），
+/// 收起按钮换成关闭弹层；桌面默认宽度与行为不变。
 class OnlineSidebar extends StatefulWidget {
-  const OnlineSidebar({super.key});
+  const OnlineSidebar({super.key, this.width = 240, this.inSheet = false});
+
+  final double width;
+  final bool inSheet;
 
   @override
   State<OnlineSidebar> createState() => _OnlineSidebarState();
@@ -56,16 +62,18 @@ class _OnlineSidebarState extends State<OnlineSidebar> {
           : const _BlacklistPopover(),
       child: Container(
         key: const Key('online-sidebar'),
-        width: 240,
+        width: widget.width,
         decoration: BoxDecoration(
           color: c.panel,
-          border: Border(right: BorderSide(color: c.line)),
+          border: widget.inSheet
+              ? null
+              : Border(right: BorderSide(color: c.line)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 52,
+              height: widget.inSheet ? 56 : 52,
               child: Padding(
                 padding: const EdgeInsets.only(left: 16, right: 8),
                 child: Row(
@@ -79,12 +87,22 @@ class _OnlineSidebarState extends State<OnlineSidebar> {
                       ),
                     ),
                     const Spacer(),
-                    UiIconBox(
-                      glyph: UiGlyphs.doubleLeft,
-                      glyphSize: 16,
-                      tooltip: l10n.online_collapseSidebar,
-                      onTap: () => a.onSidebarChanged(false),
-                    ),
+                    if (widget.inSheet)
+                      UiIconBox(
+                        key: const Key('online-sidebar-close'),
+                        glyph: UiGlyphs.close,
+                        glyphSize: 16,
+                        size: 40,
+                        tooltip: l10n.common_close,
+                        onTap: () => Navigator.maybePop(context),
+                      )
+                    else
+                      UiIconBox(
+                        glyph: UiGlyphs.doubleLeft,
+                        glyphSize: 16,
+                        tooltip: l10n.online_collapseSidebar,
+                        onTap: () => a.onSidebarChanged(false),
+                      ),
                   ],
                 ),
               ),

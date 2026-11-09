@@ -390,13 +390,90 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 后两项不是整页隐藏，分别用 `isMobilePlatform` 与 `supportsNaiAgentRuntime` 做局部门控。
 `settings_mobile_page_test` 的可见页清单改为按生产口径过滤，避免手写清单与实现漂移。
 
+### 8.19 手机端桌面残留清理（2.6.0）
+
+2.5.0 发布后用户走查发现三类「手机上看得到、但属于桌面」的残留，一并清掉。
+
+**1）小贴士按平台分池**
+`Tip` 新增 `desktopOnly` / `mobileOnly`（`lib/presentation/providers/tips_provider.dart`），
+`TipDeck.tipAt(..., mobile:)` 按平台过滤，`mobile` 缺省取 `isMobilePlatform`（测试可注入）。
+生成页空画布欢迎页（`TipSurface.studio`）原来 8 条里 4 条讲键盘/鼠标：
+
+| 桌面专属（手机不再出现） | 原因 |
+| --- | --- |
+| `tips_studio_guide_1` | Ctrl+Enter 生成、中键平移、Ctrl+滚轮缩放、WASD |
+| `tips_studio_guide_4` | 「把一张图拖进窗口」 |
+| `tips_studio_guide_6` | Alt+滚轮调权重 |
+| `tips_studio_guide_7` | F1 快捷键帮助、Ctrl+1/2/3 切页、Ctrl+, 设置 |
+
+手机补 3 条触屏说明 `tips_studio_mobile_1..3`（底部工具条改参数、长按画布图片的菜单、
+提示词浮层右上角资源库图标），与桌面池互不串台（`tips_provider_test` 有专门断言）。
+
+**2）其它残留快捷键文案**
+
+| 位置 | 桌面键 | 手机键 |
+| --- | --- | --- |
+| 提示词搜索「全部替换」tooltip | `prompt_replaceAll` | `prompt_replaceAllMobile` |
+| 设置 · 自动补全「关联标签」副标题 | `autocomplete_relatedTagsSubtitle` | `autocomplete_relatedTagsSubtitleMobile` |
+| 提示词菜单「共现推荐」副标题 | `prompt_cooccurrenceRecommendationSubtitle` | `prompt_cooccurrenceRecommendationSubtitleMobile` |
+| 设置 · 输出查看器「画布」说明（卡片与选择对话框两处） | `settings_outputViewer_canvasDescription` | `settings_outputViewer_canvasDescriptionMobile` |
+
+**3）设置行尾部状态标签**
+`MobileListTile.trailingText` 限宽 120dp、单行省略、右对齐（`lib/presentation/mobile/mobile_list.dart`）。
+360dp 下不再与标题/副标题抢宽度，也不再顶出行尾；`mobile_components_test` 用超长状态文案压测。
+
+**4）仿制图章在手机上不可用（顺手修）**
+源点只能 Alt+点击设置，手机没有硬件 Alt，等于工具点了没反应。改为手机端设置面板给一个
+「取源点」按钮（`clone-stamp-pick-source`）：按下进入取点态，再点画布设定源点；
+桌面仍走 Alt+点击（`handlesAltKey` 未变）。
+
+**5）相册顺序（触屏没有拖拽）**
+手机图库「浏览范围」弹层里每个相册/收藏夹行尾加「⋯」菜单，提供「上移 / 下移」
+（`common_moveUp` / `common_moveDown`），复用桌面拖拽同一个 `CollectionNotifier.reorder`；
+桌面侧栏的拖拽排序一行未改。
+
+### 8.20 次级页面手机竖屏布局（2.6.0）
+
+判定方式统一为 `usesMobileLayout`（测试用 `debugForceMobileLayout = true`），桌面分支保持原渲染。
+
+| 页面 | 手机形态 | 关键改动 |
+| --- | --- | --- |
+| 统计 | 单列滚动、KPI 两列窄卡、日历点格 ≥44dp | `ui/statistics/*`；EN 下隐藏图例避免溢出 |
+| 在线画廊 | 单列（工具栏 + 横向滚动筛选 chip + 墙） | `ui/online/*`；左栏/检查器进底部弹层，卡片操作条常显，多选条整宽图标化，全选/反选进「更多」 |
+| 标签 Wiki | 单栏列表默认不落正文 | `screens/tag_wiki/*`；行内书签常显、行高 ≥44、文章全屏、目录弹层 |
+| 块库 | 单列墙 + 手机工具栏 | `ui/blocks/*`；导航/详情进弹层，长按=右键菜单，筛选行横向滚动 |
+| 精准参考库 | 单列墙 + 手机工具栏 | `ui/refs/*`；左栏/检查器弹层、hover 操作条常显、tray 手机整行 |
+| 风格探索 | 编辑/结果分段切换 + 单列 | `ui/explore/*`；结果工具栏精简、页签与筛选胶囊合并横向滚动、检查器整宽覆盖 |
+| 次要对话框 | 分类选择整屏、日期格 36→48dp、批量元数据全宽 82vh | `widgets/gallery/category_picker_dialog.dart`、`date_range_picker_dialog.dart`、`widgets/bulk_metadata_edit_dialog.dart` |
+
+360dp 回归测试在 `test/presentation/ui/{statistics,online,blocks,refs,explore}/*_mobile_test.dart`、
+`test/presentation/screens/tag_wiki_mobile_test.dart`（每页都有无异常 + 关键入口可点断言），
+桌面 golden（online/explore/blocks/refs、`settings_golden_test`）保持通过。
+
+设置详情两页：
+
+- **模型与接口**：手机端不再叠桌面浮层（`settings_models.dart` 一行门控），改为服务商列表
+  （`MobileSectionHeader` + 48dp 添加按钮，行高 ≥60dp）→ 点行推全屏编辑页（单列滚动 +
+  底部 48dp 保存条）→ 点模型行弹底部参数 sheet；模型行内「上移 / 下移」48×48 按钮复用
+  `ProvidersActions.onReorderModels`（服务商级排序线上无 reorder 契约，未做）。
+  新增文件 `ui/model_providers/model_providers_mobile.dart`；360dp 四处 overflow 消除。
+- **桥接与集成**：状态卡置顶 → Krita → 外部 Agent → ComfyUI（地址整宽、测试按钮下一行），
+  桌面仍走右侧 aside；Krita 段保持 `supportsKritaBridge` 门控。
+
+Android 13+ 通知权限（首次生成时申请、拒绝后只引导一次、不影响生成本身）见
+[android-port.md](android-port.md) §1.1/§1.3(G18)/§6.11。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 手机端生成页 / 全屏编辑器 / 翻译浮层 / 查看器 / 编辑器范围内的触控目标已统一到 ≥48dp；
-   仍有个别桌面对话框未做手机重排（见第 3 条）；
+   次级页面里个别次级图标仍是 32–40dp（如风格探索舞台内的小图标），未逐一抬到 48；
 2. "保存到相册"沿用现有 l10n `common_export`（"导出"）文案，精确文案需补 ARB key；
-3. 分类选择/批量元数据等次要桌面对话框未做手机重排；日期选择沿用现有日历（日期格 36dp）；
+3. 分类选择 / 日期选择 / 批量元数据对话框已做手机布局（2.6.0），但只有桌面回归测试，
+   没有 360dp 专用 widget 测试；批量元数据对话框内的英文硬编码文案属既有问题，未国际化；
 4. 生成请求在代理链路上偶发 `HandshakeException`（代理节点对 image.novelai.net 不稳定），属环境网络问题，非 App 逻辑；首次冷启动自动登录失败时点"一键登录"可重试成功；
+5. 平板/横屏与桌面端未适配的次要页面（如部分管理类对话框）仍未开始；手机竖屏为主场景；
+6. 鼠标/键盘修饰键在触屏的等价入口仍未覆盖（Alt 取色、Shift 约束角度、Ctrl 权重滚轮），
+   2.6.0 只补了仿制图章的「取源点」按钮，其余工具仍是桌面手势。
 5. 平板/横屏与桌面端未适配的次要页面（如部分管理类对话框）仍未开始；手机竖屏为主场景。
 
 > 生成页与桌面版的逐项差距、优先级和可复用工具，见 [mobile-gen-gaps.md](mobile-gen-gaps.md)。

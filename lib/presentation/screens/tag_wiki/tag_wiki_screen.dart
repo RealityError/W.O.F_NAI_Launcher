@@ -29,6 +29,7 @@ import '../../../core/wiki/wiki_directory.dart';
 import '../../../core/wiki/wiki_directory_labels.dart';
 import '../../../core/wiki/wiki_example_repository.dart';
 import '../../providers/data_source_cache_provider.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../../core/database/dictionary_revision.dart';
 import '../../themes/studio_typography.dart';
 import '../../wiring/blocks_edit_wiring.dart';
@@ -572,10 +573,11 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
         unawaited(_loadRag(epoch, query, scoped, ordinary));
       }
       if (!append && _selected == null && page.isNotEmpty) {
+        // 手机 / 单栏只显示列表：首次加载不要自动翻开文章，否则会直接落在正文页。
         _selectTag(
           page.first.canonicalTag,
           remember: false,
-          reveal: !_singlePane,
+          reveal: !_singlePane && !usesMobileLayout,
         );
       }
     } catch (error) {
@@ -656,7 +658,7 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
         _selectTag(
           _items.first.canonicalTag,
           remember: false,
-          reveal: !_singlePane,
+          reveal: !_singlePane && !usesMobileLayout,
         );
       }
     } catch (_) {
@@ -1032,11 +1034,13 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
-            _compactNavigation = constraints.maxWidth < 1000;
-            _singlePane = constraints.maxWidth < 720 * scale.clamp(1, 1.25);
+            final mobile = usesMobileLayout;
+            _compactNavigation = mobile || constraints.maxWidth < 1000;
+            _singlePane =
+                mobile || constraints.maxWidth < 720 * scale.clamp(1, 1.25);
             _scheduleVisibleUpdate();
             final listWidth = 300.0 * scale.clamp(1, 1.25);
-            return Row(
+            final content = Row(
               children: [
                 if (!_compactNavigation)
                   WikiSidebar(
@@ -1074,6 +1078,10 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
                 ),
               ],
             );
+            // 手机上页面铺在底部导航之上，状态栏没有标题栏兜底，自己留出顶栏安全区。
+            return mobile
+                ? SafeArea(top: true, bottom: false, child: content)
+                : content;
           },
         ),
       ),
@@ -1157,6 +1165,9 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
             },
           )
         : _searchFocus.hasFocus
+        ? null
+        : usesMobileLayout
+        // 手机没有物理键盘，不显示「/」快捷键提示。
         ? null
         : IgnorePointer(
             child: Padding(
@@ -1316,13 +1327,15 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
                     ? context.l10n.wiki_sortName
                     : context.l10n.wiki_sortPopular,
                 child: SizedBox(
-                  width: 28,
-                  height: 28,
+                  width: usesMobileLayout ? 44 : 28,
+                  height: usesMobileLayout ? 44 : 28,
                   child: IconButton(
                     key: const ValueKey('wiki-sort-filter'),
                     padding: EdgeInsets.zero,
                     iconSize: 16,
-                    visualDensity: VisualDensity.compact,
+                    visualDensity: usesMobileLayout
+                        ? VisualDensity.standard
+                        : VisualDensity.compact,
                     icon: const Icon(Icons.swap_vert),
                     onPressed: () =>
                         _changeFilter(() => _alphabetical = !_alphabetical),
@@ -1783,15 +1796,17 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
     double size = 32,
     double radius = 7,
   }) {
+    // 手机端触控区至少 44：历史、复制、收藏等小方按钮都跟着放大，桌面尺寸不变。
+    final s = usesMobileLayout && size < 44 ? 44.0 : size;
     final button = SizedBox(
-      width: size,
-      height: size,
+      width: s,
+      height: s,
       child: OutlinedButton(
         key: key,
         style: OutlinedButton.styleFrom(
           padding: EdgeInsets.zero,
-          minimumSize: Size(size, size),
-          maximumSize: Size(size, size),
+          minimumSize: Size(s, s),
+          maximumSize: Size(s, s),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
           shape: RoundedRectangleBorder(
@@ -1914,7 +1929,7 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
         FilledButton.icon(
           key: const ValueKey('wiki-add-to-block'),
           style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 32),
+            minimumSize: Size(0, usesMobileLayout ? 44 : 32),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             visualDensity: VisualDensity.compact,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1954,7 +1969,10 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
             key: const ValueKey('wiki-article-back'),
             tooltip: context.l10n.wiki_allTags,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+            constraints: BoxConstraints.tightFor(
+              width: usesMobileLayout ? 44 : 28,
+              height: usesMobileLayout ? 44 : 28,
+            ),
             visualDensity: VisualDensity.standard,
             style: IconButton.styleFrom(
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

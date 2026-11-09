@@ -16,10 +16,15 @@ import 'explore_parts.dart';
 
 /// 检查器 340：头部 61（#27 · 第 3 轮 · 18:54）+ 可滚动内容 + 底部（完整提示词 · 删除）。
 /// 内容按当前对象切换：单张 / 子代 / 多选 / 排队失败 / 空。
-/// [drawer] 时是窄窗口里盖在舞台上的抽屉（带关闭）。
+/// [drawer] 时是窄窗口里盖在舞台上的抽屉（带关闭）；手机端传 `width: double.infinity` 整宽。
 class ExploreInspector extends StatelessWidget {
-  const ExploreInspector({super.key, this.drawer = false});
+  const ExploreInspector({
+    super.key,
+    this.drawer = false,
+    this.width = StyleExplorePage.inspectorWidth,
+  });
   final bool drawer;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +79,7 @@ class ExploreInspector extends StatelessWidget {
 
     return Container(
       key: const Key('explore-inspector'),
-      width: StyleExplorePage.inspectorWidth,
+      width: width,
       decoration: BoxDecoration(
         color: c.panel,
         border: drawer ? null : Border(left: BorderSide(color: c.line)),
