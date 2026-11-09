@@ -463,6 +463,18 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 Android 13+ 通知权限（首次生成时申请、拒绝后只引导一次、不影响生成本身）见
 [android-port.md](android-port.md) §1.1/§1.3(G18)/§6.11。
 
+### 8.21 本地 RAG 语义检索不复刻（2026-11-10 决定）
+
+第 5 项讨论后决定：Android **不**移植桌面 RAG（Python + uv + PyTorch + `google/embeddinggemma-2` 1.49 GB + `Qwen/Qwen3-Reranker-0.6B`）。手机端继续保持现状——`supportsLocalRagRuntime == false`，设置「语义检索」页、提示词补全的语义召回、Wiki/块库语义搜索、图库 RAG 徽标/菜单与 Agent `studio_search` 均不出现，`RagClient.start` 在 Android 提前抛 `unsupported_platform`，不会把异常抛给 UI。
+
+理由：运行时数 GB、模型约 3 GB、首次建库长时间占满 CPU/GPU，且建库与生成/放大互斥；这套成本与手机竖屏主场景不匹配。桌面端实现与行为不变。
+
+若以后重新考虑，按成本从低到高排序：
+
+1. **远程 embedding**：复用现有 AI 服务商接口，零本地运行时，但每次检索走网络、依赖服务商；
+2. **ONNX Runtime Mobile + 量化小 embedding 模型**（100–200 MB）：先只做提示词标签推荐与 Wiki/块文本检索，reranker 用轻量 cross-encoder 或「语义分 + 共现 + 词法」加权替代；图像通道（图库以图搜图）后置；
+3. 完整复刻 Python 链：不推荐。
+
 ### 8.3 本阶段遗留（后续处理）
 
 1. 手机端生成页 / 全屏编辑器 / 翻译浮层 / 查看器 / 编辑器范围内的触控目标已统一到 ≥48dp；

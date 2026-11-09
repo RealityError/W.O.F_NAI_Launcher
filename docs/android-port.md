@@ -308,7 +308,7 @@ systemProp.https.proxyPort=7897
 | 标签库 / 标签百科 / 翻译补全 | ✓ | ✓ | SQLite 随包资源 + `sqlite3_flutter_libs` |
 | 云端放大 | ✓ | ✓ | NovelAI 接口 |
 | 本地 / 高级放大（Real-ESRGAN、RTX Video、SeedVR2） | ✓ | ✗ | 依赖随包 `.exe` 和外部进程，Android 上入口隐藏/保持 inert；APK 里的 onnxruntime 只有 arm64 / armeabi-v7a 库，x86_64 模拟器没有 |
-| 本地语义检索 RAG（Python 运行时） | ✓ | ✗ | 依赖 Python/uv/PyTorch 外部进程 |
+| 本地语义检索 RAG（Python 运行时） | ✓ | ✗ | 依赖 Python/uv/PyTorch 外部进程。2026-11-10 决定不在 Android 复刻：运行时数 GB + 模型约 3 GB + 首次建库长时间占满 CPU/GPU，与手机竖屏主场景成本不匹配；入口继续隐藏（见 [mobile-adaptation.md](mobile-adaptation.md) §8.21） |
 | NAI Agent（Node 运行时、MCP、Skill） | ✓ | ✗ | 依赖随包 Node 与进程管理 |
 | Krita 桥接 | ✓ | ✗ | 本地 WebSocket 服务 + 桌面插件端 |
 | 外部桥接客户端（studio-bridge.exe） | ✓ | ✗ | 桌面可执行文件 |
