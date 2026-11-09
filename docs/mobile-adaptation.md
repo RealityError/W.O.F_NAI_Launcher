@@ -479,7 +479,7 @@ Android 13+ 通知权限（首次生成时申请、拒绝后只引导一次、�
 
 移动端不再只有「隐藏入口」，两项桌面能力在本轮补上设备端实现（桌面链路不变）：
 
-- **本地放大**：随包 animevideov3 ONNX 模型 + `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理，生成页画布与「本地放大」面板提供入口；`supportsOnnxUpscale` 只在 Android 为 true，桌面继续用随包可执行文件。
+- **本地放大**：随包两个 ONNX 模型（animevideov3-256 2.4 MB、general-x4v3 4.9 MB）+ `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理，生成页画布与「本地放大」面板提供入口（面板可切换模型）；`supportsOnnxUpscale` 只在 Android 为 true，桌面继续用随包可执行文件。更大模型的可行性见 [local-upscale-advanced.md](local-upscale-advanced.md)。
 - **NAI Agent**：`tool/nai_agent` 打包为 `assets/nai_agent/runtime.tar.gz`（约 23.6 MB），首用流式解压到 `<app support>/nai_agent/runtime`，由内嵌 libnode（Node 24.5）启动。
   - 手机端 Agent 面板以全屏覆盖生成页（宽屏桌面才是并排侧栏），入口在生成页提示词区的 Agent 按钮与设置 → Agent；关闭面板时只发 `shutdown`，Node 进程保留，下次打开/切换会话复用同一进程重新初始化。
   - 首次解压约 1.5 万个文件，app 启动后会在后台预热；打开 Agent 时通常已就绪。

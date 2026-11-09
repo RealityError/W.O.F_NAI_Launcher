@@ -141,6 +141,55 @@ class LocalUpscalePanel extends ConsumerWidget {
             LocalUpscalePhase.complete => l.localUpscale_complete,
             null => '',
           };
+    Widget modelDropdown() => DropdownButtonFormField<String>(
+      key: ValueKey('local-upscale-model-${selected?.id}'),
+      initialValue: selected?.id,
+      isExpanded: true,
+      style: labelStyle,
+      iconSize: 16,
+      borderRadius: BorderRadius.circular(4),
+      dropdownColor: UpscaleControlStyle.selected(theme),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        filled: true,
+        fillColor: UpscaleControlStyle.selected(theme),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
+        ),
+      ),
+      hint: Text(
+        method == LocalUpscaleMethod.standard
+            ? l.localUpscale_modelMissing
+            : l.localUpscale_notInstalled,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: captionStyle,
+      ),
+      items: methodModels
+          .map(
+            (model) => DropdownMenuItem(
+              value: model.id,
+              child: Text(
+                '${localUpscaleModelName(context, model)}${model.installed ? '' : ' · ${l.localUpscale_notInstalled}'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle,
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: busy
+          ? null
+          : (id) {
+              if (id != null) controller.updateLocalUpscaleModel(id);
+            },
+    );
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -248,80 +297,40 @@ class LocalUpscalePanel extends ConsumerWidget {
                 ),
               ],
             ),
-            DropdownButtonFormField<String>(
-              key: ValueKey('local-upscale-model-${selected?.id}'),
-              initialValue: selected?.id,
-              isExpanded: true,
-              style: labelStyle,
-              iconSize: 16,
-              borderRadius: BorderRadius.circular(4),
-              dropdownColor: UpscaleControlStyle.selected(theme),
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                filled: true,
-                fillColor: UpscaleControlStyle.selected(theme),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: GenSidebarStyle.border(theme)),
-                ),
-              ),
-              hint: Text(
-                method == LocalUpscaleMethod.standard
-                    ? l.localUpscale_modelMissing
-                    : l.localUpscale_notInstalled,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: captionStyle,
-              ),
-              items: methodModels
-                  .map(
-                    (model) => DropdownMenuItem(
-                      value: model.id,
-                      child: Text(
-                        '${localUpscaleModelName(context, model)}${model.installed ? '' : ' · ${l.localUpscale_notInstalled}'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: labelStyle,
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: busy
-                  ? null
-                  : (id) {
-                      if (id != null) controller.updateLocalUpscaleModel(id);
-                    },
-            ),
+            modelDropdown(),
             const SizedBox(height: 12),
           ] else if (selected != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.memory, size: 16),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      localUpscaleModelName(context, selected),
-                      style: labelStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              child: methodModels.length > 1
+                  ? Row(
+                      children: [
+                        Expanded(child: modelDropdown()),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${selected.inferenceScale(scale)}×',
+                          style: captionStyle,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        const Icon(Icons.memory, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            localUpscaleModelName(context, selected),
+                            style: labelStyle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          '${selected.inferenceScale(scale)}×',
+                          style: captionStyle,
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    '${selected.inferenceScale(scale)}×',
-                    style: captionStyle,
-                  ),
-                ],
-              ),
             ),
           Row(
             children: [

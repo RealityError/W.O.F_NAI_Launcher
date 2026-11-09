@@ -107,9 +107,13 @@ class LocalUpscaleModel {
 
 const localUpscaleDefaultModel = 'anime';
 
-/// 设备端 ONNX 模型。固定 256×256 输入、4 倍输出，随包分发（无需下载）。
+/// 设备端 ONNX 模型。统一 4 倍输出、随包分发（无需下载），输入不要求固定
+/// 尺寸：引擎按 256 分块送进模型，动/静态 shape 都能跑。
 ///
-/// 与桌面端 `anime-fast` 同属 `realesr-animevideov3` 模型族，只换了推理后端。
+/// * `animevideov3-256`：与桌面端 `anime-fast` 同属 `realesr-animevideov3`
+///   模型族，只换了推理后端，专供二次元线条与平涂。
+/// * `realesr-general-x4v3`：Real-ESRGAN 通用照片模型，适合真实照片、
+///   截图和细节丰富的插画，默认仍选 anime 模型。
 const onnxUpscaleCatalog = [
   LocalUpscaleModel(
     id: 'onnx-anime-videov3',
@@ -121,7 +125,21 @@ const onnxUpscaleCatalog = [
     method: LocalUpscaleMethod.onnx,
     modelBytes: 2494775,
   ),
+  LocalUpscaleModel(
+    id: 'onnx-general-x4v3',
+    name: 'RealESR General x4v3',
+    engineName: 'realesr-general-x4v3',
+    scales: [4],
+    bundled: true,
+    installed: true,
+    method: LocalUpscaleMethod.onnx,
+    modelBytes: 4871181,
+  ),
 ];
+
+/// 设备端 ONNX 模型的 asset 路径（`engineName` 与文件基名一致）。
+String onnxUpscaleAssetPath(LocalUpscaleModel model) =>
+    'assets/local_upscale/onnx/${model.engineName}.onnx';
 
 /// 设备端 ONNX 推理单个 4 倍中间图允许的最大输入像素数（约 19.2MP 输出）。
 const int onnxUpscaleMaxInputPixels = 1200000;
@@ -139,9 +157,8 @@ String effectiveLocalUpscaleModel(String id) =>
     : id;
 
 /// 本地放大的 4 倍中间图上限：桌面沿用 64MP，Android 按 ONNX 预算收紧。
-int get localUpscaleMaxNativePixels => supportsOnnxUpscale
-    ? onnxUpscaleMaxInputPixels * 16
-    : 64000000;
+int get localUpscaleMaxNativePixels =>
+    supportsOnnxUpscale ? onnxUpscaleMaxInputPixels * 16 : 64000000;
 
 const localUpscaleCatalog = [
   LocalUpscaleModel(

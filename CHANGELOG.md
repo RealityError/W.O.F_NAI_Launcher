@@ -7,9 +7,11 @@
 手机端补齐两项原本只在桌面可用的能力：设备端 ONNX 本地放大与 NAI Agent，并完成
 移动端交互收尾（桌面布局、hover 与右键路径未改）。
 
-- 设备端本地放大：随包 animevideov3 ONNX 模型，通过 FFI 在应用进程内推理，支持
-  2x/4x 分块处理；不下载外部运行时、不需要可执行位。桌面继续走 Real-ESRGAN /
-  SeedVR2 可执行文件链路，行为不变。
+- 设备端本地放大：随包两个 Real-ESRGAN ONNX 模型（animevideov3-256 2.4 MB、
+  general-x4v3 4.9 MB），通过 FFI 在应用进程内推理，支持 2x/4x 分块处理，面板
+  可切换模型；不下载外部运行时、不需要可执行位。桌面继续走 Real-ESRGAN /
+  SeedVR2 可执行文件链路，行为不变；更大模型的可行性见
+  `docs/local-upscale-advanced.md`。
 - NAI Agent：把桌面的 Pi 宿主（`tool/nai_agent`）打包为约 23.6 MB 的随包资源，
   首次使用时流式解压到应用私有目录，由内嵌 libnode（Node 24.5）启动；桌面端
   继续使用安装器自带的 `tools/nai-agent`，端口协议与工具执行保持一致。

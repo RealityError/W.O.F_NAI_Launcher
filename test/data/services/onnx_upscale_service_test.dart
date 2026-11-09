@@ -12,15 +12,18 @@ import 'package:nai_launcher/data/services/onnx_upscale_engine.dart';
 class _FakeOnnxEngine extends OnnxUpscaleEngine {
   Future<Uint8List> Function(Uint8List source)? onUpscale;
   final List<double> reported = <double>[];
+  final List<String?> modelAssets = <String?>[];
   int calls = 0;
 
   @override
   Future<Uint8List> upscale(
     Uint8List sourcePng, {
+    String? modelAsset,
     required LocalUpscaleCancellation cancellation,
     void Function(double fraction)? onProgress,
   }) async {
     calls++;
+    modelAssets.add(modelAsset);
     cancellation.check();
     final custom = onUpscale;
     if (custom != null) return custom(sourcePng);
@@ -58,6 +61,34 @@ Uint8List _source({bool alpha = false, int width = 48, int height = 32}) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  group('device ONNX catalog', () {
+    test('exposes anime and general models with unique assets', () {
+      expect(
+        onnxUpscaleCatalog.map((model) => model.id).toSet().length,
+        onnxUpscaleCatalog.length,
+      );
+      for (final model in onnxUpscaleCatalog) {
+        expect(model.bundled, isTrue);
+        expect(model.installed, isTrue);
+        expect(model.method, LocalUpscaleMethod.onnx);
+        expect(model.scales, [4]);
+        expect(
+          onnxUpscaleAssetPath(model),
+          'assets/local_upscale/onnx/${model.engineName}.onnx',
+        );
+      }
+      expect(
+        onnxUpscaleCatalog.map(onnxUpscaleAssetPath),
+        contains('assets/local_upscale/onnx/realesr-general-x4v3.onnx'),
+      );
+    });
+
+    test('keeps the anime model as the fallback default', () {
+      expect(onnxUpscaleCatalog.first.id, 'onnx-anime-videov3');
+      expect(onnxUpscaleCatalog.first.engineName, 'animevideov3-256');
+    });
+  });
+
   group('planOnnxTiles', () {
     List<OnnxTileSpan> spans(int length) => planOnnxTiles(length);
 
@@ -94,7 +125,19 @@ void main() {
     }
 
     test('covers edge sizes without overlap or gaps', () {
-      for (final length in [1, 32, 100, 255, 256, 257, 300, 480, 512, 640, 832]) {
+      for (final length in [
+        1,
+        32,
+        100,
+        255,
+        256,
+        257,
+        300,
+        480,
+        512,
+        640,
+        832,
+      ]) {
         expectPartition(length);
       }
     });
@@ -132,39 +175,62 @@ void main() {
       await temporary.delete(recursive: true);
     });
 
-    LocalUpscaleService build(_FakeOnnxEngine engine) => LocalUpscaleService(
-      manager,
-      supportedPlatform: true,
-      onnx: engine,
+    LocalUpscaleService build(_FakeOnnxEngine engine) =>
+        LocalUpscaleService(manager, supportedPlatform: true, onnx: engine);
+
+    test(
+      'runs the ONNX engine and keeps the existing resize pipeline',
+      () async {
+        final engine = _FakeOnnxEngine();
+        final service = build(engine);
+        final phases = <LocalUpscalePhase>[];
+        final fractions = <double?>[];
+        final result = await service.upscale(
+          _source(width: 48, height: 32),
+          modelId: onnxUpscaleCatalog.first.id,
+          scale: 1.5,
+          cancellation: LocalUpscaleCancellation(),
+          onProgress: (progress) {
+            phases.add(progress.phase);
+            fractions.add(progress.fraction);
+          },
+        );
+        expect(engine.calls, 1);
+        expect(
+          engine.modelAssets.single,
+          'assets/local_upscale/onnx/animevideov3-256.onnx',
+        );
+        expect(result.width, (48 * 1.5).round());
+        expect(result.height, (32 * 1.5).round());
+        final output = img.decodePng(result.bytes);
+        expect(output, isNotNull);
+        expect(output!.width, result.width);
+        expect(output.height, result.height);
+        expect(phases.first, LocalUpscalePhase.preparing);
+        expect(phases[1], LocalUpscalePhase.inference);
+        expect(phases, contains(LocalUpscalePhase.resizing));
+        expect(phases.last, LocalUpscalePhase.complete);
+        expect(fractions.whereType<double>(), contains(0.5));
+      },
     );
 
-    test('runs the ONNX engine and keeps the existing resize pipeline', () async {
+    test('uses the selected catalog model asset', () async {
       final engine = _FakeOnnxEngine();
       final service = build(engine);
-      final phases = <LocalUpscalePhase>[];
-      final fractions = <double?>[];
-      final result = await service.upscale(
-        _source(width: 48, height: 32),
-        modelId: onnxUpscaleCatalog.first.id,
-        scale: 1.5,
-        cancellation: LocalUpscaleCancellation(),
-        onProgress: (progress) {
-          phases.add(progress.phase);
-          fractions.add(progress.fraction);
-        },
+      final general = onnxUpscaleCatalog.firstWhere(
+        (model) => model.id == 'onnx-general-x4v3',
       );
-      expect(engine.calls, 1);
-      expect(result.width, (48 * 1.5).round());
-      expect(result.height, (32 * 1.5).round());
-      final output = img.decodePng(result.bytes);
-      expect(output, isNotNull);
-      expect(output!.width, result.width);
-      expect(output.height, result.height);
-      expect(phases.first, LocalUpscalePhase.preparing);
-      expect(phases[1], LocalUpscalePhase.inference);
-      expect(phases, contains(LocalUpscalePhase.resizing));
-      expect(phases.last, LocalUpscalePhase.complete);
-      expect(fractions.whereType<double>(), contains(0.5));
+      await service.upscale(
+        _source(width: 48, height: 32),
+        modelId: general.id,
+        scale: 2,
+        cancellation: LocalUpscaleCancellation(),
+      );
+      expect(
+        engine.modelAssets.single,
+        'assets/local_upscale/onnx/${general.engineName}.onnx',
+      );
+      expect(general.engineName, 'realesr-general-x4v3');
     });
 
     test('restores source alpha after the 4x upscale', () async {
@@ -203,23 +269,26 @@ void main() {
       expect(engine.calls, 0);
     });
 
-    test('keeps engine errors while the native engine is unavailable', () async {
-      final service = LocalUpscaleService(manager, supportedPlatform: true);
-      await expectLater(
-        service.upscale(
-          _source(),
-          modelId: onnxUpscaleCatalog.first.id,
-          scale: 1.5,
-          cancellation: LocalUpscaleCancellation(),
-        ),
-        throwsA(
-          isA<LocalUpscaleException>().having(
-            (error) => error.code,
-            'code',
-            LocalUpscaleError.unsupportedPlatform,
+    test(
+      'keeps engine errors while the native engine is unavailable',
+      () async {
+        final service = LocalUpscaleService(manager, supportedPlatform: true);
+        await expectLater(
+          service.upscale(
+            _source(),
+            modelId: onnxUpscaleCatalog.first.id,
+            scale: 1.5,
+            cancellation: LocalUpscaleCancellation(),
           ),
-        ),
-      );
-    });
+          throwsA(
+            isA<LocalUpscaleException>().having(
+              (error) => error.code,
+              'code',
+              LocalUpscaleError.unsupportedPlatform,
+            ),
+          ),
+        );
+      },
+    );
   });
 }

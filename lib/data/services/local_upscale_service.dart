@@ -33,8 +33,7 @@ class LocalUpscaleService {
   }) : _startProcess =
            startProcess ?? ((exe, args) => Process.start(exe, args)),
        _supportedPlatform =
-           supportedPlatform ??
-           (supportsLocalUpscale || supportsOnnxUpscale);
+           supportedPlatform ?? (supportsLocalUpscale || supportsOnnxUpscale);
 
   final LocalUpscaleModelManager models;
   final AdvancedUpscaleComponentManager? advanced;
@@ -142,13 +141,16 @@ class LocalUpscaleService {
         progress(LocalUpscalePhase.inference);
         upscaledBytes = await onnx!.upscale(
           prepared['bytes'] as Uint8List,
+          modelAsset: onnxUpscaleAssetPath(onnxModel),
           cancellation: cancellation,
           onProgress: (fraction) =>
               progress(LocalUpscalePhase.inference, fraction),
         );
         cancellation.check();
       } else {
-        job = Directory(p.join(models.directory.path, 'jobs', const Uuid().v4()));
+        job = Directory(
+          p.join(models.directory.path, 'jobs', const Uuid().v4()),
+        );
         await job.create(recursive: true);
         final input = File(p.join(job.path, 'input.png'));
         final output = File(p.join(job.path, 'output.png'));
@@ -156,144 +158,146 @@ class LocalUpscaleService {
         cancellation.check();
         progress(LocalUpscalePhase.inference);
         if (optional != null) {
-        if (advanced == null) {
-          throw const LocalUpscaleException(LocalUpscaleError.modelMissing);
-        }
-        final spec = await advanced!.command(
-          resolvedModelId,
-          input.path,
-          output.path,
-          targetWidth,
-          targetHeight,
-          cancellation,
-          seedvr2Options: seedvr2Options,
-        );
-        final result = await runOwnedUpscaleProcess(
-          host: spec.host,
-          executable: spec.executable,
-          arguments: spec.arguments,
-          cancellation: cancellation,
-          startProcess: advanced!.startProcess,
-          environment: {
-            if (model.method == LocalUpscaleMethod.seedvr2)
-              ...AdvancedUpscaleComponentManager.seedRuntimeEnvironment,
-            'PYTHONIOENCODING': 'utf-8',
-            'HF_HUB_OFFLINE': '1',
-            'TRANSFORMERS_OFFLINE': '1',
-            'HF_HUB_DISABLE_TELEMETRY': '1',
-          },
-          onLine: (line) {
-            try {
-              final item = jsonDecode(line) as Map<String, dynamic>;
-              final phase = LocalUpscalePhase.values.byName(
-                item['phase'] as String,
-              );
-              final total = item['total'] as num?;
-              final current = item['current'] as num?;
-              progress(
-                phase,
-                total != null && current != null && total > 0
-                    ? (current / total).clamp(0, 1)
-                    : null,
-              );
-            } catch (_) {
-              /* Only structured native progress is displayed. */
-            }
-          },
-        );
-        if (result.exitCode != 0 || !await output.exists()) {
-          throw LocalUpscaleException(
-            result.exitCode == 12
-                ? LocalUpscaleError.noCuda
-                : result.exitCode == 13
-                ? LocalUpscaleError.noInt8
-                : result.diagnostics.contains('rtx_unavailable')
-                ? LocalUpscaleError.noRtx
-                : model.method == LocalUpscaleMethod.seedvr2 &&
-                      RegExp(
-                        r'CUDA out of memory|cudaErrorMemoryAllocation|"error"\s*:\s*"OutOfMemoryError"',
-                        caseSensitive: false,
-                      ).hasMatch(result.diagnostics)
-                ? LocalUpscaleError.outOfMemory
-                : LocalUpscaleError.processFailed,
-            details: AdvancedUpscaleComponentManager.safeDiagnostics(
-              'exit ${result.exitCode}\n${result.diagnostics}',
-            ),
-          );
-        }
-      } else {
-        Process process;
-        try {
-          process = await _startProcess(executable, [
-            '-i',
+          if (advanced == null) {
+            throw const LocalUpscaleException(LocalUpscaleError.modelMissing);
+          }
+          final spec = await advanced!.command(
+            resolvedModelId,
             input.path,
-            '-o',
             output.path,
-            '-m',
-            modelPath,
-            '-n',
-            model.engineName,
-            '-s',
-            '$nativeScale',
-            '-t',
-            '128',
-            '-j',
-            '1:1:1',
-          ]);
-        } on ProcessException {
-          throw const LocalUpscaleException(LocalUpscaleError.engineMissing);
-        }
-        var timedOut = false;
-        var diagnostics = '';
-        final stop = cancellation.listen(() => process.kill());
-        final timer = Timer(timeout, () {
-          timedOut = true;
-          process.kill();
-        });
-        final stderrDone = process.stderr
-            .transform(const Utf8Decoder(allowMalformed: true))
-            .transform(const LineSplitter())
-            .listen((line) {
-              diagnostics = '$diagnostics\n$line';
-              if (diagnostics.length > 8192) {
-                diagnostics = diagnostics.substring(diagnostics.length - 8192);
-              }
-              final match = RegExp(
-                r'^\s*([0-9]+(?:\.[0-9]+)?)%\s*$',
-              ).firstMatch(line);
-              if (match != null) {
-                progress(
-                  LocalUpscalePhase.inference,
-                  (double.parse(match.group(1)!) / 100).clamp(0, 1),
-                );
-              }
-            })
-            .asFuture<void>();
-        final stdoutDone = process.stdout.drain<void>();
-        int exit;
-        try {
-          // Do not release the model/GPU lock before the child has really exited.
-          exit = await process.exitCode;
-          await Future.wait([stderrDone, stdoutDone]);
-        } finally {
-          timer.cancel();
-          stop();
-        }
-        cancellation.check();
-        if (timedOut) {
-          throw const LocalUpscaleException(LocalUpscaleError.timeout);
-        }
-        if (exit != 0 || !await output.exists()) {
-          final vulkanFailure = RegExp(
-            r'vkCreate|no.*vulkan|invalid gpu|no.*gpu|vkEnumerate',
-            caseSensitive: false,
-          ).hasMatch(diagnostics);
-          throw LocalUpscaleException(
-            vulkanFailure
-                ? LocalUpscaleError.noVulkan
-                : LocalUpscaleError.processFailed,
+            targetWidth,
+            targetHeight,
+            cancellation,
+            seedvr2Options: seedvr2Options,
           );
-        }
+          final result = await runOwnedUpscaleProcess(
+            host: spec.host,
+            executable: spec.executable,
+            arguments: spec.arguments,
+            cancellation: cancellation,
+            startProcess: advanced!.startProcess,
+            environment: {
+              if (model.method == LocalUpscaleMethod.seedvr2)
+                ...AdvancedUpscaleComponentManager.seedRuntimeEnvironment,
+              'PYTHONIOENCODING': 'utf-8',
+              'HF_HUB_OFFLINE': '1',
+              'TRANSFORMERS_OFFLINE': '1',
+              'HF_HUB_DISABLE_TELEMETRY': '1',
+            },
+            onLine: (line) {
+              try {
+                final item = jsonDecode(line) as Map<String, dynamic>;
+                final phase = LocalUpscalePhase.values.byName(
+                  item['phase'] as String,
+                );
+                final total = item['total'] as num?;
+                final current = item['current'] as num?;
+                progress(
+                  phase,
+                  total != null && current != null && total > 0
+                      ? (current / total).clamp(0, 1)
+                      : null,
+                );
+              } catch (_) {
+                /* Only structured native progress is displayed. */
+              }
+            },
+          );
+          if (result.exitCode != 0 || !await output.exists()) {
+            throw LocalUpscaleException(
+              result.exitCode == 12
+                  ? LocalUpscaleError.noCuda
+                  : result.exitCode == 13
+                  ? LocalUpscaleError.noInt8
+                  : result.diagnostics.contains('rtx_unavailable')
+                  ? LocalUpscaleError.noRtx
+                  : model.method == LocalUpscaleMethod.seedvr2 &&
+                        RegExp(
+                          r'CUDA out of memory|cudaErrorMemoryAllocation|"error"\s*:\s*"OutOfMemoryError"',
+                          caseSensitive: false,
+                        ).hasMatch(result.diagnostics)
+                  ? LocalUpscaleError.outOfMemory
+                  : LocalUpscaleError.processFailed,
+              details: AdvancedUpscaleComponentManager.safeDiagnostics(
+                'exit ${result.exitCode}\n${result.diagnostics}',
+              ),
+            );
+          }
+        } else {
+          Process process;
+          try {
+            process = await _startProcess(executable, [
+              '-i',
+              input.path,
+              '-o',
+              output.path,
+              '-m',
+              modelPath,
+              '-n',
+              model.engineName,
+              '-s',
+              '$nativeScale',
+              '-t',
+              '128',
+              '-j',
+              '1:1:1',
+            ]);
+          } on ProcessException {
+            throw const LocalUpscaleException(LocalUpscaleError.engineMissing);
+          }
+          var timedOut = false;
+          var diagnostics = '';
+          final stop = cancellation.listen(() => process.kill());
+          final timer = Timer(timeout, () {
+            timedOut = true;
+            process.kill();
+          });
+          final stderrDone = process.stderr
+              .transform(const Utf8Decoder(allowMalformed: true))
+              .transform(const LineSplitter())
+              .listen((line) {
+                diagnostics = '$diagnostics\n$line';
+                if (diagnostics.length > 8192) {
+                  diagnostics = diagnostics.substring(
+                    diagnostics.length - 8192,
+                  );
+                }
+                final match = RegExp(
+                  r'^\s*([0-9]+(?:\.[0-9]+)?)%\s*$',
+                ).firstMatch(line);
+                if (match != null) {
+                  progress(
+                    LocalUpscalePhase.inference,
+                    (double.parse(match.group(1)!) / 100).clamp(0, 1),
+                  );
+                }
+              })
+              .asFuture<void>();
+          final stdoutDone = process.stdout.drain<void>();
+          int exit;
+          try {
+            // Do not release the model/GPU lock before the child has really exited.
+            exit = await process.exitCode;
+            await Future.wait([stderrDone, stdoutDone]);
+          } finally {
+            timer.cancel();
+            stop();
+          }
+          cancellation.check();
+          if (timedOut) {
+            throw const LocalUpscaleException(LocalUpscaleError.timeout);
+          }
+          if (exit != 0 || !await output.exists()) {
+            final vulkanFailure = RegExp(
+              r'vkCreate|no.*vulkan|invalid gpu|no.*gpu|vkEnumerate',
+              caseSensitive: false,
+            ).hasMatch(diagnostics);
+            throw LocalUpscaleException(
+              vulkanFailure
+                  ? LocalUpscaleError.noVulkan
+                  : LocalUpscaleError.processFailed,
+            );
+          }
         }
         cancellation.check();
         upscaledBytes = await output.readAsBytes();

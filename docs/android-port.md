@@ -71,9 +71,12 @@
 
 - **设备端本地放大（ONNX Runtime）**：`lib/data/services/onnx_upscale_engine.dart` 通过
   Dart FFI 调用 `libonnxruntime.so`（1.15.1，取自 Maven `com.microsoft.onnxruntime:onnxruntime-android`
-  的 arm64-v8a 库），模型 `assets/local_upscale/onnx/animevideov3-256.onnx`（2.4 MB）随包，
-  支持 2x/4x 分块推理；不下载外部运行时，也不需要可执行位。`supportsOnnxUpscale` 只在
-  Android 为 true，UI 入口见生成页画布与「本地放大」面板。
+  的 arm64-v8a 库），随包模型见 `onnxUpscaleCatalog`：`animevideov3-256`（2.4 MB，
+  固定 256 输入，二次元）与 `realesr-general-x4v3`（4.9 MB，动态输入，通用照片），
+  都是 4 倍输出、按 256 分块推理，面板可在两者间切换；不下载外部运行时，也不需要
+  可执行位。`supportsOnnxUpscale` 只在 Android 为 true，UI 入口见生成页画布与
+  「本地放大」面板。更大 ONNX 模型与提速后端的可行性见
+  [local-upscale-advanced.md](local-upscale-advanced.md)。
 - **NAI Agent 运行时**：`tool/nai_agent`（`host.mjs` + Pi SDK 1.5.0 + 内置 skills）由
   `tool/pack_agent_runtime.ps1` 打包为 `assets/nai_agent/runtime.tar.gz`（约 23.6 MB）。
   `android/app/src/main/cpp/node_runtime_jni.cpp` 把 nodejs-mobile 的 `libnode.so`
@@ -118,7 +121,7 @@
 | `supportsGpuProbe` | GPU 探测（`nvidia-smi`） | ✓ | ✓ | ✗ |
 | `supportsLocalRagRuntime` | 本地 RAG Python 运行时（uv + PyTorch） | ✓ | ✓ | ✗ |
 | `supportsLocalUpscale` | 随包可执行文件的本地/高级放大（realesrgan / SeedVR2 / RTX Video） | ✓ | ✓ | ✗ |
-| `supportsOnnxUpscale` | Android 设备端 ONNX Runtime 本地放大（随包 animevideov3 模型） | ✗ | ✗ | ✓ |
+| `supportsOnnxUpscale` | Android 设备端 ONNX Runtime 本地放大（随包 animevideov3 / general-x4v3 模型） | ✗ | ✗ | ✓ |
 | `supportsNaiAgentRuntime` | NAI Agent 的随包 Node 运行时与宿主脚本 | ✓ | ✓ | ✓ |
 | `supportsTranslationAdjustment` | 翻译微调（需要第二个 Node 宿主进程） | ✓ | ✓ | ✗ |
 | `supportsKritaBridge` | Krita 桥接服务与插件 | ✓ | ✓ | ✗ |
@@ -336,7 +339,7 @@ systemProp.https.proxyPort=7897
 | 标签库 / 标签百科 / 翻译补全 | ✓ | ✓ | SQLite 随包资源 + `sqlite3_flutter_libs` |
 | 云端放大 | ✓ | ✓ | NovelAI 接口 |
 | 本地 / 高级放大（Real-ESRGAN、RTX Video、SeedVR2） | ✓ | ✗ | 依赖随包 `.exe` 和外部进程，Android 上入口隐藏/保持 inert |
-| 设备端本地放大（ONNX Runtime，animevideov3） | — | ✓ | 随包 2.4 MB 模型 + `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理；入口在生成页画布与本地放大面板，见 1.4 |
+| 设备端本地放大（ONNX Runtime，animevideov3 / general-x4v3） | — | ✓ | 随包 2.4 MB + 4.9 MB 模型 + `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理；入口在生成页画布与本地放大面板，面板可切换模型，见 1.4 |
 | 本地语义检索 RAG（Python 运行时） | ✓ | ✗ | 依赖 Python/uv/PyTorch 外部进程。2026-11-10 决定不在 Android 复刻：运行时数 GB + 模型约 3 GB + 首次建库长时间占满 CPU/GPU，与手机竖屏主场景成本不匹配；入口继续隐藏（见 [mobile-adaptation.md](mobile-adaptation.md) §8.21） |
 | NAI Agent（Node 运行时、MCP、Skill） | ✓ | ✓ | 桌面由安装器放置 `tools/nai-agent`；Android 把同一运行时（约 23.6 MB tar.gz）打进 assets，首用解压后由内嵌 libnode 启动。手机端全屏覆盖生成页，关闭面板不销毁 Node，再次打开/切换会话复用同一进程重新 init（`NAI_HOST_REINIT`）；翻译微调需要第二个宿主，手机端不提供 |
 | Krita 桥接 | ✓ | ✗ | 本地 WebSocket 服务 + 桌面插件端 |
@@ -376,7 +379,7 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 在本机 MuMu 上补做了登录、生图、画布与手机端布局回归（画布单条工具条实测见 `docs/mobile-adaptation.md` §8.16），全程无崩溃、无 overflow。2.5.0 用 CI 产物的 x86_64 包重装后同样启动正常，设置列表只剩手机端该有的 12 页（无「键盘快捷键」）。2.7.0 在 MuMu 上用 probe 验证了随包运行时解压、libnode 启动、Pi init → shutdown → 再次 init 的完整链路；仍未覆盖：真机（arm64）回归、应用内更新的完整安装闭环（模拟器侧已确认新旧包签名一致、可覆盖安装，尚未在真实网络下走完下载→安装器）、分享出站/入站与后台生成通知的手测。
 16. **NAI Agent 运行时限制**：内嵌 libnode 在一个应用进程内只能启动一次，关闭 Agent 面板只发 `shutdown`，下次打开复用同一进程重新 init；同一时刻只有一个 Agent 宿主（翻译微调因此禁用）。ChatGPT 登录、扩展/包管理、命令/技能清单需要额外 Node 进程或 OAuth 回环，手机端隐藏（`supportsNaiAgentExternalTools`）。MCP 的 stdio 服务器（`npx`）不可用。Agent 运行在应用进程内，进入后台可能被系统回收，长时间任务建议保持前台。
 17. **NAI Agent 首次解压**：运行时约 23.6 MB / 1.5 万个文件，首次使用解压约 5–6 分钟（模拟器 debug；真机通常更快），app 启动后会在后台预热；解压期间打开 Agent 需要等待，之后走 `.runtime-version` 标记直接复用。
-18. **设备端本地放大**：只支持随包 animevideov3 模型（2x/4x 分块），不覆盖桌面 realesrgan / SeedVR2 / RTX Video 的模型与管理界面；不下载外部运行时，桌面链路不变。
+18. **设备端本地放大**：随包两个 ONNX 模型（animevideov3 / general-x4v3，2x/4x 分块，面板可切换），不覆盖桌面 realesrgan / SeedVR2 / RTX Video 的模型与管理界面；不下载外部运行时，桌面链路不变。更大模型与提速后端的可行性见 [local-upscale-advanced.md](local-upscale-advanced.md)。
 
 ## 6. 排障
 

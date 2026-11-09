@@ -19,8 +19,9 @@ import '../models/upscale/local_upscale_models.dart';
 /// 桌面端用随包的 ncnn Vulkan 可执行文件；Android 没有可执行位，改为在独立
 /// isolate 里用 ONNX Runtime 跑同一个 Real-ESRGAN 模型：
 ///
-/// * 模型是 fixed-shape 的 `animevideov3`（256×256 输入，4 倍输出），
-///   所以按 256 分块、块间重叠 32 像素，块内用边缘复制补齐；
+/// * 所有随包模型都是 4 倍输出：animevideov3 是固定 256×256 输入，
+///   general-x4v3 是动态 shape；引擎统一按 256 分块、块间重叠 32 像素，
+///   块内用边缘复制补齐，因此两类模型都能直接跑；
 /// * 每块的输出只写它对应的「中缝」区域，块与块之间的重叠各取一半，
 ///   这样既不会出现接缝，也不需要额外保存整张 4 倍图的浮点缓冲；
 /// * 原始 alpha 不参与推理，由调用方在缩放后按桌面端同样的方式重采样。
@@ -46,13 +47,19 @@ class OnnxUpscaleEngine {
   bool get isSupported => true;
 
   /// 把 [sourcePng] 按 [nativeScale] 放大，返回同样尺寸的 PNG 字节。
+  ///
+  /// [modelAsset] 指定本次推理使用的随包 ONNX 模型；缺省用 [modelAsset] 字段
+  /// 里的默认模型（`animevideov3-256`）。
   Future<Uint8List> upscale(
     Uint8List sourcePng, {
+    String? modelAsset,
     required LocalUpscaleCancellation cancellation,
     void Function(double fraction)? onProgress,
   }) async {
     cancellation.check();
-    final data = await (_bundle ?? rootBundle).load(modelAsset);
+    final data = await (_bundle ?? rootBundle).load(
+      modelAsset ?? this.modelAsset,
+    );
     final modelBytes = Uint8List.sublistView(data);
     final messages = ReceivePort();
     final errors = ReceivePort();
@@ -71,7 +78,9 @@ class OnnxUpscaleEngine {
           debugPrint('ONNX upscale worker failed: $details');
         }
         complete.completeError(
-          LocalUpscaleException(LocalUpscaleError.values.byName(error as String)),
+          LocalUpscaleException(
+            LocalUpscaleError.values.byName(error as String),
+          ),
         );
       } else {
         final transferred = result['bytes'] as TransferableTypedData;
@@ -157,9 +166,7 @@ List<OnnxTileSpan> planOnnxTiles(
   return [
     for (var i = 0; i < origins.length; i++)
       OnnxTileSpan(
-        start: i == 0
-            ? 0
-            : (origins[i - 1] + tile + origins[i]) ~/ 2,
+        start: i == 0 ? 0 : (origins[i - 1] + tile + origins[i]) ~/ 2,
         end: i == origins.length - 1
             ? length
             : (origins[i] + tile + origins[i + 1]) ~/ 2,
@@ -177,13 +184,10 @@ List<(OnnxTileSpan, OnnxTileSpan)> planOnnxTiles2d(
   int stride = OnnxUpscaleEngine.tileStride,
 }) => [
   for (final y in planOnnxTiles(height, tile: tile, stride: stride))
-    for (final x in planOnnxTiles(width, tile: tile, stride: stride))
-      (x, y),
+    for (final x in planOnnxTiles(width, tile: tile, stride: stride)) (x, y),
 ];
 
-void _onnxWorkerEntry(
-  (SendPort, Uint8List, Uint8List, int, int, int) args,
-) {
+void _onnxWorkerEntry((SendPort, Uint8List, Uint8List, int, int, int) args) {
   final progress = args.$1;
   final modelBytes = args.$2;
   final sourcePng = args.$3;
@@ -197,9 +201,7 @@ void _onnxWorkerEntry(
     }
     final width = decoded.width;
     final height = decoded.height;
-    if (width <= 0 ||
-        height <= 0 ||
-        width * height > maxPixels) {
+    if (width <= 0 || height <= 0 || width * height > maxPixels) {
       throw const LocalUpscaleException(LocalUpscaleError.sizeLimit);
     }
     final source = decoded.getBytes(order: img.ChannelOrder.rgb);
