@@ -14,6 +14,10 @@ class _FakeGitHubApiService extends GitHubApiService {
 
   final Future<VersionInfo> Function(String currentVersion) handler;
 
+  /// 最近一次检查时实际使用的更新源，用于锁定桌面/Android 的仓库选择。
+  String? lastOwner;
+  String? lastPlatform;
+
   @override
   Future<VersionInfo> fetchLatestRelease({
     required String owner,
@@ -22,6 +26,8 @@ class _FakeGitHubApiService extends GitHubApiService {
     String platform = 'windows',
     bool includePrerelease = false,
   }) {
+    lastOwner = owner;
+    lastPlatform = platform;
     return handler(currentVersion);
   }
 }
@@ -274,5 +280,35 @@ void main() {
     expect(service.hasKnownUpdate, isTrue);
     expect(await service.checkForUpdates(), isNull);
     expect(service.hasKnownUpdate, isFalse);
+  });
+
+  test('桌面更新源保持上游仓库，Android 走 fork', () {
+    expect(UpdateCheckService.ownerFor(android: false), 'z15087716457-stack');
+    expect(UpdateCheckService.ownerFor(android: true), 'RealityError');
+    // 仓库名两端一致，只有 owner 换；改这里等于换整套发布流程。
+    expect(UpdateCheckService.defaultRepo, 'W.O.F_NAI_Launcher');
+    expect(
+      UpdateCheckService.androidOwner,
+      isNot(UpdateCheckService.defaultOwner),
+    );
+  });
+
+  test('宿主平台检查更新时带上正确的 owner 与 platform', () async {
+    final api = _FakeGitHubApiService(
+      (current) async => VersionInfo(version: current, isNewer: false),
+    );
+    final service = UpdateCheckService(
+      gitHubApiService: api,
+      packageInfo: packageInfo(),
+      installationService: _FakeInstallationService(),
+      checkStorage: storage,
+      now: () => now,
+    );
+
+    await service.checkForUpdates();
+
+    expect(api.lastOwner, UpdateCheckService.owner);
+    expect(api.lastOwner, UpdateCheckService.defaultOwner);
+    expect(api.lastPlatform, 'windows-portable');
   });
 }

@@ -167,4 +167,29 @@ void main() {
       );
     });
   });
+
+  test('GitHub 解析出的 APK 资产能被直接选走（识别与选包对齐）', () {
+    // 用真实解析路径构造资产：确认新增的 androidApk 类型不会让
+    // selectApkAsset 漏掉安装包。
+    final assets = [
+      ReleaseAssetInfo.fromGitHubAsset({
+        'name': 'WOF_NAI_Studio_Windows_2.4.0_Setup.exe',
+        'browser_download_url': 'https://example.com/setup.exe',
+      }),
+      ReleaseAssetInfo.fromGitHubAsset({
+        'name': 'app-arm64-v8a-release.apk',
+        'browser_download_url': 'https://example.com/app-arm64-v8a-release.apk',
+      }),
+    ];
+
+    final picked = AndroidUpdateLogic.selectApkAsset(
+      assets,
+      supportedAbis: const ['arm64-v8a', 'armeabi-v7a'],
+    );
+
+    expect(picked, isNotNull);
+    expect(picked!.fileName, 'app-arm64-v8a-release.apk');
+    expect(picked.type, ReleaseAssetType.androidApk);
+    expect(picked.supportsInAppInstall, isTrue);
+  });
 }

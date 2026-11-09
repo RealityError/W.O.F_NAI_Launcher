@@ -126,6 +126,8 @@ void main() {
       'ac94c80df00816b0dec6b46d68fb82bc1a1c36c35088d6bb3ee5b29702d9b39a';
   const installerHash =
       'd7ffbef4782587155f72ea8ac93d2ca670ef6379c175174354328aa153360329';
+  const apkHash =
+      'a1b2c3d4e5f60718293a4b5c6d7e8f902132435465768798a9bacbdcedfe0f11';
   const releaseUrl = 'https://example.com/releases/v2.2.0';
 
   for (final contentType in ['application/json', 'application/octet-stream']) {
@@ -295,4 +297,62 @@ void main() {
       );
     }
   }
+
+  test(
+    'android platform selects an APK asset, never a desktop package',
+    () async {
+      final dio = Dio();
+      addTearDown(dio.close);
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'tag_name': 'v2.4.0',
+                  'html_url': releaseUrl,
+                  'assets': [
+                    {
+                      'name': 'WOF_NAI_Studio_Windows_2.4.0_Setup.exe',
+                      'browser_download_url': 'https://example.com/setup.exe',
+                      'digest': 'sha256:$installerHash',
+                    },
+                    {
+                      'name': 'app-arm64-v8a-release.apk',
+                      'browser_download_url':
+                          'https://example.com/app-arm64-v8a-release.apk',
+                      'digest': 'sha256:$apkHash',
+                      'size': 227725312,
+                    },
+                    {
+                      'name': 'app-armeabi-v7a-release.apk',
+                      'browser_download_url':
+                          'https://example.com/app-armeabi-v7a-release.apk',
+                      'digest': 'sha256:$apkHash',
+                    },
+                  ],
+                },
+              ),
+            );
+          },
+        ),
+      );
+
+      final info = await GitHubApiService(dio: dio).fetchLatestRelease(
+        owner: 'test',
+        repo: 'studio',
+        currentVersion: '2.3.1',
+        platform: 'android',
+      );
+
+      expect(info.version, '2.4.0');
+      expect(info.primaryAsset!.type, ReleaseAssetType.androidApk);
+      expect(info.primaryAsset!.fileName, endsWith('.apk'));
+      expect(info.primaryAsset!.sha256, apkHash);
+      // 用户装 APK 的前提：资产必须被认成可安装类型。
+      expect(info.supportsInAppInstall, isTrue);
+    },
+  );
 }

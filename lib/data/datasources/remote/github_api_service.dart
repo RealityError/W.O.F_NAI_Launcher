@@ -289,6 +289,11 @@ class GitHubApiService {
       return _firstAssetOfType(assets, ReleaseAssetType.windowsPortable) ??
           _firstAssetOfType(assets, ReleaseAssetType.windowsInstaller);
     }
+    if (normalizedPlatform == 'android') {
+      // ABI 匹配由 `AndroidUpdateLogic.selectApkAsset` 在拿到设备 ABI 后完成，
+      // 这里只给出同平台的候选，避免把 Windows/macOS 资产当成 APK。
+      return _firstAssetOfType(assets, ReleaseAssetType.androidApk);
+    }
     return assets
         .where((asset) => asset.type != ReleaseAssetType.unknown)
         .firstOrNull;

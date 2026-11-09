@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/byte_format.dart';
 import '../../../core/constants/app_version.dart';
+import '../../../core/services/update_check_service.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../data/models/version/version_info.dart';
 import '../../providers/update_provider.dart';
@@ -342,7 +343,7 @@ class UpdateCheckDialog extends ConsumerWidget {
         ? versionInfo.version
         : 'v${versionInfo.version}';
     final rawContentBase = Uri.parse(
-      'https://raw.githubusercontent.com/z15087716457-stack/'
+      'https://raw.githubusercontent.com/${UpdateCheckService.owner}/'
       'W.O.F_NAI_Launcher/$versionTag/',
     );
 
@@ -430,7 +431,7 @@ class UpdateCheckDialog extends ConsumerWidget {
           : null;
     }
     return Uri.parse(
-      'https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/blob/'
+      'https://github.com/${UpdateCheckService.owner}/W.O.F_NAI_Launcher/blob/'
       '$versionTag/',
     ).resolveUri(uri);
   }

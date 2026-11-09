@@ -147,7 +147,8 @@ class SettingsSystemActions {
 
   Future<void> changelog() => openUrl(
     ref.read(updateStateProvider).versionInfo?.htmlUrl ??
-        'https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases',
+        'https://github.com/${UpdateCheckService.owner}/'
+            'W.O.F_NAI_Launcher/releases',
   );
   Future<void> restart() async {
     if (ref.read(imageGenerationNotifierProvider).isGenerating ||
