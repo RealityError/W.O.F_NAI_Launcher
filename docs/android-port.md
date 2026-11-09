@@ -180,10 +180,10 @@ release（单个 arm64 APK）：
 flutter build apk --release --target-platform android-arm64
 ```
 
-release（按 ABI 拆分为三个 APK，CI 使用）：
+release（按 ABI 拆分，CI 使用；仓库只随包 arm64-v8a 原生库，因此实际只产出 arm64 包）：
 
 ```powershell
-flutter build apk --release --split-per-abi
+flutter build apk --release --split-per-abi --target-platform android-arm64
 ```
 
 APK 输出目录固定为 `build/app/outputs/flutter-apk/`：
@@ -192,10 +192,10 @@ APK 输出目录固定为 `build/app/outputs/flutter-apk/`：
 | --- | --- |
 | `--debug`（单 ABI） | `app-debug.apk` |
 | `--release`（单 ABI） | `app-release.apk` |
-| `--release --split-per-abi` | `app-armeabi-v7a-release.apk`、`app-arm64-v8a-release.apk`、`app-x86_64-release.apk` |
-| `--debug --split-per-abi` | 同上，后缀为 `-debug` |
+| `--release --split-per-abi --target-platform android-arm64` | `app-arm64-v8a-release.apk` |
+| `--debug --target-platform android-x64`（模拟器，需自备 `jniLibs/x86_64`） | `app-debug.apk` |
 
-`--split-per-abi` 只拆分原生库，**资源和数据库仍然每个 APK 各带一份**，所以拆包并不会显著减小总体积。
+`--split-per-abi` 只拆分原生库，**资源和数据库仍然每个 APK 各带一份**，所以拆包并不会显著减小总体积。`jniLibs` 只提交 arm64-v8a（libnode / libonnxruntime / libc++_shared）；x86_64 调试包需要自己从 nodejs-mobile 与 ONNX Runtime AAR 取库放到 `android/app/src/main/jniLibs/x86_64/`（该目录已在 `.gitignore` 排除）。
 
 ### 3.4 使用 `scripts/build_android.ps1`
 
@@ -234,7 +234,7 @@ SDK 自动检测顺序：`-FlutterPath` → `WOF_FLUTTER_SDK_ROOT` → `FLUTTER_
 
 - 触发：手动 `workflow_dispatch`；`main` / `feat/android-port` 的 push，以及到 `main` 的 PR，且改动命中 `android/**`、`lib/**`、`assets/**`、`pubspec.yaml`、`pubspec.lock`、`l10n.yaml`、`scripts/build_android.ps1` 或 workflow 自身。
 - 环境：`ubuntu-latest`、Temurin JDK 17、`subosito/flutter-action` 固定 **3.47.7**（与 `tool/flutter-sdk.json` 一致）、Gradle 与 pub 缓存。
-- 步骤：`lfs: true` 检出 → `flutter pub get` → `flutter gen-l10n` + `dart run tool/generate.dart`（生成文件不入库，CI 必须重新生成）→ `flutter build apk --release --split-per-abi` → 上传 `android-release-apks`。
+- 步骤：`lfs: true` 检出 → `flutter pub get` → `flutter gen-l10n` + `dart run tool/generate.dart`（生成文件不入库，CI 必须重新生成）→ `flutter build apk --release --split-per-abi --target-platform android-arm64` → 上传 `android-release-apks`。
 - 首次运行会下载 NDK、Android 平台和 Rust 目标，加上 400 MB+ 资产，整条流水线较慢；`timeout-minutes: 120` 是保守值。
 - 产物用项目固定的 release 密钥签名（CI 从 Secrets 还原，见 §7.6），可用于覆盖安装；PR 来自 fork 拿不到 secret 时退回 debug 签名（仅供构建验证）。
 
@@ -368,12 +368,15 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 7. **剪贴板/拖放差异**：Android 系统剪贴板与拖放对图片格式、文件 URI 的支持不如 Windows 宽松；Windows 专属的 PowerShell/System.Drawing 剪贴板路径只在桌面使用。
 8. **后台限制**：生成中通过 `dataSync` 前台服务降低被系统回收的概率，但厂商省电策略、极端低电量模式或用户手动“强行停止”仍可能中断生成；应用没有托盘常驻，桌面式常驻行为不存在，长时间生成建议保持通知权限开启。
 9. **通知权限按需申请、拒绝后不重复打扰**：Android 13+ 的 `POST_NOTIFICATIONS` 在第一次开始生成时经 `com.nailauncher/notifications` 申请（冷启动不弹窗）；拒绝一次后不再重复申请，只在首次拒绝后给一次带「去设置」按钮的 SnackBar，用户仍需在系统设置里手动开启后通知才可见（前台服务与生成本身继续运行）。Android 12 及以下没有该运行时权限，由系统通知开关决定，应用不做额外弹窗。
-10. **应用内更新的工程前提**：Android 更新只从 GitHub Release 读取，**发布时必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` / `app-armeabi-v7a-release.apk` / `app-x86_64-release.apk`，或含 `universal` 的通用包）；否则客户端会检查到新版本但报“无可安装包”。Android 的更新源是本 fork `RealityError/W.O.F_NAI_Launcher_Android` 的 Release（上游没有 APK 资产），桌面仍走上游仓库；改名前的老地址由 GitHub 301 到新地址，旧版本客户端不受影响。首次安装更新还需要系统里的“安装未知应用”授权；下载失败后需要重新下载（当前 Android 链路不做断点续传）。当前没有应用商店渠道。
+10. **应用内更新的工程前提**：Android 更新只从 GitHub Release 读取，**发布时必须上传 Flutter split-per-abi 命名的 APK**（当前只发 `app-arm64-v8a-release.apk`；x86_64 / armeabi-v7a 调试包不发布），否则客户端会检查到新版本但报“无可安装包”。Android 的更新源是本 fork `RealityError/W.O.F_NAI_Launcher_Android` 的 Release（上游没有 APK 资产），桌面仍走上游仓库；改名前的老地址由 GitHub 301 到新地址，旧版本客户端不受影响。首次安装更新还需要系统里的“安装未知应用”授权；下载失败后需要重新下载（当前 Android 链路不做断点续传）。当前没有应用商店渠道。
 11. **分享入站只处理单张图片**：manifest 只注册了 `ACTION_SEND` + `image/*`，多图 / 非图片文件 / 纯文本分享不会进入应用；收到的图片会先拷到 cache，消费后删除。
 12. **未知来源授权提示文案暂缓**：未授权“安装未知应用”时，应用当前只静默跳到系统设置页，返回后需再次点安装；原生跳转已经闭环，但缺少应用内提示文案。计划新增 ARB key `update_androidUnknownSources`（zh「请允许本应用安装未知来源应用后重试。」/ en「Allow this app to install unknown apps, then try again.」/ ja「不明なアプリのインストールを許可してから再試行してください。」/ ko「알 수 없는 앱 설치를 허용한 후 다시 시도하세요.」），为避免未引用 key 触发 l10n 回归，本轮**暂不加入**，后续补提示时与代码一起加。
 13. **明文 HTTP**：manifest 开启 `usesCleartextTraffic` 以支持局域网 ComfyUI，正式发布前应评估是否收窄。
 14. **构建所需外部资源**：首次构建要下载 NDK、Rust 目标、cargokit 预编译/编译产物，离线环境需要提前预热缓存。
-15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 在本机 MuMu 上补做了登录、生图、画布与手机端布局回归（画布单条工具条实测见 `docs/mobile-adaptation.md` §8.16），全程无崩溃、无 overflow。2.5.0 用 CI 产物的 x86_64 包重装后同样启动正常，设置列表只剩手机端该有的 12 页（无「键盘快捷键」）。仍未覆盖：真机（arm64）回归、应用内更新的完整安装闭环（模拟器侧已确认新旧包签名一致、可覆盖安装，尚未在真实网络下走完下载→安装器）、分享出站/入站与后台生成通知的手测。
+15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 在本机 MuMu 上补做了登录、生图、画布与手机端布局回归（画布单条工具条实测见 `docs/mobile-adaptation.md` §8.16），全程无崩溃、无 overflow。2.5.0 用 CI 产物的 x86_64 包重装后同样启动正常，设置列表只剩手机端该有的 12 页（无「键盘快捷键」）。2.7.0 在 MuMu 上用 probe 验证了随包运行时解压、libnode 启动、Pi init → shutdown → 再次 init 的完整链路；仍未覆盖：真机（arm64）回归、应用内更新的完整安装闭环（模拟器侧已确认新旧包签名一致、可覆盖安装，尚未在真实网络下走完下载→安装器）、分享出站/入站与后台生成通知的手测。
+16. **NAI Agent 运行时限制**：内嵌 libnode 在一个应用进程内只能启动一次，关闭 Agent 面板只发 `shutdown`，下次打开复用同一进程重新 init；同一时刻只有一个 Agent 宿主（翻译微调因此禁用）。ChatGPT 登录、扩展/包管理、命令/技能清单需要额外 Node 进程或 OAuth 回环，手机端隐藏（`supportsNaiAgentExternalTools`）。MCP 的 stdio 服务器（`npx`）不可用。Agent 运行在应用进程内，进入后台可能被系统回收，长时间任务建议保持前台。
+17. **NAI Agent 首次解压**：运行时约 23.6 MB / 1.5 万个文件，首次使用解压约 5–6 分钟（模拟器 debug；真机通常更快），app 启动后会在后台预热；解压期间打开 Agent 需要等待，之后走 `.runtime-version` 标记直接复用。
+18. **设备端本地放大**：只支持随包 animevideov3 模型（2x/4x 分块），不覆盖桌面 realesrgan / SeedVR2 / RTX Video 的模型与管理界面；不下载外部运行时，桌面链路不变。
 
 ## 6. 排障
 
@@ -501,8 +504,9 @@ keyPassword=***
 Android 客户端只认 fork `RealityError/W.O.F_NAI_Launcher_Android` 的 Release（见第 5 节第 10 条）。
 
 **现在由 CI 自动完成**：`.github/workflows/release.yml` 的 `build-android` job 会在打 `v*` tag
-时构建 split-per-abi APK，产物与 Windows 一起进同一个 Release；`generate_release_metadata.ps1`
-把 APK 写成 `android-apk` 资产（带 size 与 SHA256），客户端据此判定「可应用内安装」。
+时构建 split-per-abi APK（`--target-platform android-arm64`，只产出 arm64-v8a 包），产物与
+Windows 一起进同一个 Release；`generate_release_metadata.ps1` 把 APK 写成 `android-apk` 资产
+（带 size 与 SHA256），客户端据此判定「可应用内安装」。
 
 正常发版只有两步：
 
@@ -514,24 +518,25 @@ Android 客户端只认 fork `RealityError/W.O.F_NAI_Launcher_Android` 的 Relea
 
 需要人工复核的点：
 
-- **文件名必须保留 ABI 字样**（`arm64-v8a` / `armeabi-v7a` / `x86_64`），
-  `AndroidUpdateLogic.selectApkAsset` 靠文件名匹配设备 ABI；CI 直接上传
-  `flutter build apk --split-per-abi` 的原生产物，不要改名。
-- Release 起来后核对 `release_manifest.json` 里有三条 `type: "android-apk"`，
+- **文件名必须保留 ABI 字样**（`arm64-v8a`），`AndroidUpdateLogic.selectApkAsset` 靠文件名
+  匹配设备 ABI；CI 直接上传 `flutter build apk --split-per-abi --target-platform android-arm64`
+  的原生产物，不要改名。
+- Release 起来后核对 `release_manifest.json` 里有一条 `type: "android-apk"`（`arm64-v8a`），
   且 `sha256` 与资产一致。
 - 只做构建验证不想发版时，走 `android-build.yml`（PR / push 触发，只产 artifact）。
 
 手工兜底（CI 不可用时）：
 
 ```powershell
-flutter build apk --release --split-per-abi
+flutter build apk --release --split-per-abi --target-platform android-arm64
 gh release upload v2.5.0 -R RealityError/W.O.F_NAI_Launcher_Android `
   build/app/outputs/flutter-apk/app-*-release.apk --clobber
 ```
 
 > 2026-11-09 已用应用自身的更新逻辑对线上 Release 做过端到端确认：三个 APK 均识别为
 > `android-apk`、`supportsInAppInstall` 为 true、arm64 与 x86_64 分别选到对应包，
-> 桌面分支仍选中上游的 Windows 包。
+> 桌面分支仍选中上游的 Windows 包。2.7.0 起只发布 arm64-v8a 包（内嵌 libnode 与
+> ONNX Runtime 只有 arm64 库），arm64 设备仍按文件名选中该资产。
 
 ## 7.6 签名密钥（覆盖安装的前提）
 

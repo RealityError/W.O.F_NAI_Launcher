@@ -220,17 +220,17 @@ Use `scripts/package_windows_release.ps1` to package the installer and portable 
 
 ### Android (port in progress)
 
-The Android port is still in progress and no installable package is published yet. Building it requires Flutter 3.47.7 (see `tool/flutter-sdk.json`), JDK 17, and the Android SDK (API 36, NDK 28.2.13676358). Pull the Git LFS assets and generate the ignored Dart sources first:
+The Android port is still in progress; starting with 2.7.0 the Releases page provides an arm64-v8a APK (the phone build now includes on-device local upscaling and NAI Agent). Building it requires Flutter 3.47.7 (see `tool/flutter-sdk.json`), JDK 17, and the Android SDK (API 36, NDK 28.2.13676358). Pull the Git LFS assets and generate the ignored Dart sources first:
 
 ```bash
 git lfs install && git lfs pull
 flutter pub get
 dart run tool/generate.dart
 flutter gen-l10n
-flutter build apk --release --split-per-abi
+flutter build apk --release --split-per-abi --target-platform android-arm64
 ```
 
-Use `flutter build apk --debug --target-platform android-x64` for x86_64 emulators (for example MuMu) and `android-arm64` for most phones; the APKs are written to `build/app/outputs/flutter-apk/`. `scripts/build_android.ps1` in the repository root runs the SDK/JDK/NDK, Git LFS and generated-source checks and copies the APKs to `dist/android/`. Release builds are signed with a dedicated project key: CI restores `android/app/wof-release.jks` and `android/key.properties` from repository secrets (neither is committed), so builds signed with the same key upgrade in place. Without those two files a local build falls back to the debug key, which is for temporary builds only. See [Android port notes](docs/android-port.md) for platform differences, known limitations and troubleshooting.
+Use `flutter build apk --debug --target-platform android-x64` for x86_64 emulator debugging (stage `libnode` / `libonnxruntime` under `android/app/src/main/jniLibs/x86_64/` yourself; only arm64-v8a is committed) and `android-arm64` for most phones; the APKs are written to `build/app/outputs/flutter-apk/`. `scripts/build_android.ps1` in the repository root runs the SDK/JDK/NDK, Git LFS and generated-source checks and copies the APKs to `dist/android/`. Release builds are signed with a dedicated project key: CI restores `android/app/wof-release.jks` and `android/key.properties` from repository secrets (neither is committed), so builds signed with the same key upgrade in place. Without those two files a local build falls back to the debug key, which is for temporary builds only. See [Android port notes](docs/android-port.md) for platform differences, known limitations and troubleshooting.
 
 </details>
 
