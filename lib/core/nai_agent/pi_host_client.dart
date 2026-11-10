@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
+import '../utils/app_logger.dart';
 import 'agent_tool.dart';
 import 'node_runtime_environment.dart';
 import 'model_request_gate.dart';
@@ -23,11 +27,26 @@ class PiHostClient {
     _stdout = _process.stdout
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .listen(_receive, onError: (_) => _lost());
-    // Dependency diagnostics may include provider data. Never log raw stderr.
-    _stderr = _process.stderr.listen((_) {});
+        .listen(
+          _receive,
+          onError: (Object error) => _lost('stdout_error $error'),
+        );
+    // Dependency diagnostics may include provider data, so stderr stays hidden
+    // in release builds; debug builds log truncated lines to diagnose host
+    // failures that otherwise only surface as a generic UI toast.
+    _stderr = _process.stderr
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .transform(const LineSplitter())
+        .listen((line) {
+          if (!kDebugMode || line.isEmpty) return;
+          AppLogger.w(
+            'Pi host stderr: '
+                '${line.length > 320 ? '${line.substring(0, 320)}…' : line}',
+            'Agent',
+          );
+        }, onError: (_) {});
     if (!_process.persistent) {
-      unawaited(_process.exitCode.then((_) => _lost()));
+      unawaited(_process.exitCode.then((_) => _lost('process_exit')));
     }
   }
   final PiHostProcess _process;
@@ -54,7 +73,7 @@ class PiHostClient {
   final _permits = <String, NaiAgentCancellation>{};
   final _releases = <String, void Function()>{};
   late final StreamSubscription<String> _stdout;
-  late final StreamSubscription<List<int>> _stderr;
+  late final StreamSubscription<String> _stderr;
   int _sequence = 0;
   String? _sessionId;
   bool _closed = false;
@@ -245,15 +264,10 @@ class PiHostClient {
     if (_closed) return;
     try {
       _process.write(
-        '${jsonEncode({
-          'protocol': 1,
-          'workspaceId': workspaceId,
-          'sessionId': _sessionId,
-          ...message,
-        })}\n',
+        '${jsonEncode({'protocol': 1, 'workspaceId': workspaceId, 'sessionId': _sessionId, ...message})}\n',
       );
     } catch (_) {
-      _lost();
+      _lost('write_failed');
     }
   }
 
@@ -262,17 +276,35 @@ class PiHostClient {
     Map<String, dynamic> message;
     try {
       message = (jsonDecode(line) as Map).cast<String, dynamic>();
-    } catch (_) {
-      _lost();
+    } catch (error) {
+      if (kDebugMode) {
+        AppLogger.w(
+          'Pi host line rejected (${line.length} chars, $error): '
+              '${line.length > 240 ? '${line.substring(0, 240)}…' : line}',
+          'Agent',
+        );
+      }
+      _lost('invalid_json');
       return;
     }
     if (message['protocol'] != 1 ||
         message['workspaceId'] != workspaceId ||
         (_sessionId != null && message['sessionId'] != _sessionId)) {
-      _lost();
+      if (kDebugMode) {
+        AppLogger.w(
+          'Pi host envelope rejected: protocol=${message['protocol']} '
+              'workspace=${message['workspaceId']} '
+              'session=${message['sessionId']} expected=$workspaceId/$_sessionId',
+          'Agent',
+        );
+      }
+      _lost('envelope_mismatch');
       return;
     }
     final type = message['type'];
+    if (kDebugMode && line.length > 8192) {
+      AppLogger.d('Pi host line $type ${line.length} chars', 'Agent');
+    }
     // A session_start handler can ask through the UI before ready resolves.
     if (_sessionId == null &&
         type == 'tool_request' &&
@@ -297,7 +329,7 @@ class PiHostClient {
     } else if (type == 'tool_request') {
       final id = message['toolCallId'] as String;
       if (_tools.containsKey(id)) {
-        _lost();
+        _lost('duplicate_tool_request');
         return;
       }
       final token = NaiAgentCancellation();
@@ -308,7 +340,7 @@ class PiHostClient {
     } else if (type == 'request_permit') {
       final id = message['requestId'] as String;
       if (_permits.containsKey(id) || _releases.containsKey(id)) {
-        _lost();
+        _lost('duplicate_permit');
         return;
       }
       final token = NaiAgentCancellation();
@@ -352,7 +384,11 @@ class PiHostClient {
         } catch (_) {
           _releases.remove(id)?.call();
           if (!_closed && !token.isCancelled) {
-            _send({'type': 'permit_result', 'requestId': id, 'error': 'chatgpt'});
+            _send({
+              'type': 'permit_result',
+              'requestId': id,
+              'error': 'chatgpt',
+            });
           }
           return;
         }
@@ -407,9 +443,12 @@ class PiHostClient {
     }
   }
 
-  void _lost() {
+  void _lost([String reason = 'unknown']) {
     if (_closed) return;
     _closed = true;
+    if (kDebugMode) {
+      AppLogger.w('Pi host transport lost: $reason', 'Agent');
+    }
     for (final token in _tools.values) {
       token.cancel();
     }
@@ -467,7 +506,7 @@ class PiHostClient {
         await _process.kill();
       }
     }
-    _lost();
+    _lost('closed');
     await _stdout.cancel();
     await _stderr.cancel();
     await _events.close();

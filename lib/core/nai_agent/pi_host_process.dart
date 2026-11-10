@@ -3,10 +3,11 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../utils/app_logger.dart';
+
 /// Starts one Pi host transport for the current platform.
-typedef PiHostProcessLauncher = Future<PiHostProcess> Function({
-  required String hostScript,
-});
+typedef PiHostProcessLauncher =
+    Future<PiHostProcess> Function({required String hostScript});
 
 /// One NAI Agent host transport.
 ///
@@ -116,6 +117,7 @@ class EmbeddedNodeRuntime {
           _stderr.add(line);
         case 'exit':
           _started = false;
+          AppLogger.w('Embedded Node runtime exited: $payload', 'Agent');
       }
       return null;
     });

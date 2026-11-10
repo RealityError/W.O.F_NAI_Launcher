@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <cerrno>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -41,6 +42,73 @@ struct PipeReader {
   const char* stream;
 };
 
+// JSON.stringify emits standard UTF-8, while NewStringUTF expects modified
+// UTF-8 (CESU-8), so characters outside the BMP would be rejected or truncated
+// mid-line and break the protocol. Decode explicitly and build a UTF-16 string.
+std::u16string utf8ToUtf16(const std::string& input) {
+  std::u16string output;
+  output.reserve(input.size());
+  size_t index = 0;
+  while (index < input.size()) {
+    const auto first = static_cast<unsigned char>(input[index]);
+    if (first < 0x80) {
+      output.push_back(static_cast<char16_t>(first));
+      index += 1;
+      continue;
+    }
+    uint32_t codePoint = 0;
+    size_t length = 0;
+    if ((first & 0xE0) == 0xC0) {
+      codePoint = first & 0x1F;
+      length = 2;
+    } else if ((first & 0xF0) == 0xE0) {
+      codePoint = first & 0x0F;
+      length = 3;
+    } else if ((first & 0xF8) == 0xF0) {
+      codePoint = first & 0x07;
+      length = 4;
+    } else {
+      output.push_back(u'\uFFFD');
+      index += 1;
+      continue;
+    }
+    if (index + length > input.size()) {
+      output.push_back(u'\uFFFD');
+      break;
+    }
+    bool valid = true;
+    for (size_t offset = 1; offset < length; ++offset) {
+      const auto next = static_cast<unsigned char>(input[index + offset]);
+      if ((next & 0xC0) != 0x80) {
+        valid = false;
+        break;
+      }
+      codePoint = (codePoint << 6) | (next & 0x3F);
+    }
+    if (!valid || codePoint > 0x10FFFF ||
+        (codePoint >= 0xD800 && codePoint <= 0xDFFF)) {
+      output.push_back(u'\uFFFD');
+      index += 1;
+      continue;
+    }
+    if (codePoint <= 0xFFFF) {
+      output.push_back(static_cast<char16_t>(codePoint));
+    } else {
+      codePoint -= 0x10000;
+      output.push_back(static_cast<char16_t>(0xD800 + (codePoint >> 10)));
+      output.push_back(static_cast<char16_t>(0xDC00 + (codePoint & 0x3FF)));
+    }
+    index += length;
+  }
+  return output;
+}
+
+jstring makeJString(JNIEnv* env, const std::string& value) {
+  const std::u16string utf16 = utf8ToUtf16(value);
+  return env->NewString(reinterpret_cast<const jchar*>(utf16.data()),
+                        static_cast<jsize>(utf16.size()));
+}
+
 void emitEvent(JNIEnv* env, const char* stream, const std::string& line) {
   if (g_callback == nullptr) return;
   jclass cls = env->GetObjectClass(g_callback);
@@ -48,11 +116,14 @@ void emitEvent(JNIEnv* env, const char* stream, const std::string& line) {
   jmethodID method =
       env->GetMethodID(cls, "onOutput", "(Ljava/lang/String;Ljava/lang/String;)V");
   if (method != nullptr) {
-    jstring javaStream = env->NewStringUTF(stream);
-    jstring javaLine = env->NewStringUTF(line.c_str());
-    env->CallVoidMethod(g_callback, method, javaStream, javaLine);
-    env->DeleteLocalRef(javaStream);
-    env->DeleteLocalRef(javaLine);
+    jstring javaStream = makeJString(env, stream);
+    jstring javaLine = makeJString(env, line);
+    if (javaStream != nullptr && javaLine != nullptr) {
+      env->CallVoidMethod(g_callback, method, javaStream, javaLine);
+    }
+    if (javaStream != nullptr) env->DeleteLocalRef(javaStream);
+    if (javaLine != nullptr) env->DeleteLocalRef(javaLine);
+    if (env->ExceptionCheck()) env->ExceptionClear();
   }
   env->DeleteLocalRef(cls);
 }
@@ -77,6 +148,7 @@ void* readLoop(void* raw) {
   char buffer[4096];
   for (;;) {
     const ssize_t count = read(reader->fd, buffer, sizeof(buffer));
+    if (count < 0 && errno == EINTR) continue;
     if (count <= 0) break;
     pending.append(buffer, static_cast<size_t>(count));
     for (;;) {
@@ -198,8 +270,20 @@ Java_com_wof_nai_1launcher_NodeRuntimeBridge_nativeWriteStdin(
   env->GetByteArrayRegion(data, 0, length,
                           reinterpret_cast<jbyte*>(buffer.data()));
   std::lock_guard<std::mutex> guard(g_write_mutex);
-  const ssize_t written = write(g_stdin_write, buffer.data(), buffer.size());
-  return static_cast<jint>(written);
+  // A pipe write may accept fewer bytes than requested; the protocol line must
+  // be delivered in full or the host sees truncated JSON.
+  size_t offset = 0;
+  while (offset < buffer.size()) {
+    const ssize_t written =
+        write(g_stdin_write, buffer.data() + offset, buffer.size() - offset);
+    if (written < 0) {
+      if (errno == EINTR) continue;
+      break;
+    }
+    if (written == 0) break;
+    offset += static_cast<size_t>(written);
+  }
+  return static_cast<jint>(offset);
 }
 
 extern "C" JNIEXPORT void JNICALL
