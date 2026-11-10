@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/nai_agent/agent_tool.dart';
@@ -11,6 +12,7 @@ import '../../../core/krita/bridge_draft_guard.dart';
 import '../../../core/network/nai_api_endpoint_service.dart';
 import '../../../data/models/image/image_params.dart';
 import '../../../data/services/nai_agent/agent_snapshot_files.dart';
+import '../../../data/services/nai_agent/agent_workspace_files.dart';
 import '../auth_provider.dart';
 import '../subscription_provider.dart';
 import '../image_generation_provider.dart';
@@ -152,6 +154,49 @@ NaiAgentGenerationTools bindNaiAgentGeneration(
     );
   }
 
+  // Generated images are auto-saved to the local gallery, which the workspace
+  // guard rejects. Export a copy into the workspace so the chat's 產物 shelf
+  // can preview them like every other tool artifact.
+  final files = AgentWorkspaceFiles(workspace);
+  Future<Map<String, dynamic>> exportArtifacts(
+    Map<String, dynamic> result,
+    List<GeneratedImage> images,
+  ) async {
+    final artifacts = <Map<String, dynamic>>[];
+    for (final image in images) {
+      try {
+        final path = await files.export(
+          'image-${image.id}.png',
+          image.bytes,
+          () {},
+          companions: {
+            'generation.json': Uint8List.fromList(
+              utf8.encode(
+                jsonEncode({
+                  'run_id': result['native_generation_id'],
+                  'image_id': image.id,
+                  'width': image.width,
+                  'height': image.height,
+                  'seed': image.metadata?.seed,
+                }),
+              ),
+            ),
+          },
+        );
+        artifacts.add({
+          'type': 'image',
+          'path': path,
+          'width': image.width,
+          'height': image.height,
+          'image_id': image.id,
+        });
+      } catch (_) {
+        // A failed artifact copy must not invalidate a completed generation.
+      }
+    }
+    return {...result, 'artifacts': artifacts};
+  }
+
   return NaiAgentGenerationTools(
     readInput: read,
     isAlive: alive,
@@ -174,8 +219,12 @@ NaiAgentGenerationTools bindNaiAgentGeneration(
           }, backup: true);
       return saved['path'] as String;
     },
-    start: (input) =>
-        startNaiAgentNativeGeneration(ref, input, alive, completed: completed),
+    start: (input) => startNaiAgentNativeGeneration(
+      ref,
+      input,
+      alive,
+      completed: completed ?? exportArtifacts,
+    ),
   );
 }
 
