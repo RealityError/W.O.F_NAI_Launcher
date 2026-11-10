@@ -230,6 +230,67 @@ void main() {
     expect(r.error, contains('Provider unavailable'));
   });
 
+  test(
+    'transient provider failures disappear once Pi starts its retry',
+    () async {
+      await load();
+      final r = c.selected!;
+      emitError('Request timed out.');
+      expect(r.error, contains('Request timed out.'));
+      events.add({
+        'type': 'event',
+        'event': {
+          'type': 'auto_retry_start',
+          'attempt': 1,
+          'maxAttempts': 2,
+          'delayMs': 1000,
+          'errorMessage': 'Request timed out.',
+        },
+      });
+      expect(r.error, isNull);
+      emitError('Request timed out.');
+      events.add({
+        'type': 'event',
+        'event': {'type': 'auto_retry_end', 'success': true, 'attempt': 1},
+      });
+      expect(r.error, isNull);
+    },
+  );
+
+  test(
+    'a retry budget exhausted at the last attempt keeps the run error',
+    () async {
+      await load();
+      final r = c.selected!;
+      emitError('Request timed out.');
+      events.add({
+        'type': 'event',
+        'event': {
+          'type': 'auto_retry_start',
+          'attempt': 1,
+          'maxAttempts': 1,
+          'delayMs': 1000,
+          'errorMessage': 'Request timed out.',
+        },
+      });
+      expect(r.error, isNull);
+      events.add({
+        'type': 'event',
+        'event': {
+          'type': 'auto_retry_end',
+          'success': false,
+          'attempt': 1,
+          'finalError': 'Request timed out.',
+        },
+      });
+      expect(r.error, contains('Request timed out.'));
+      expect(
+        r.error,
+        contains(c.selected!.messages.last['errorMessage'] as String),
+      );
+    },
+  );
+
   test('history restore detects the last assistant limit error', () async {
     c.settings = const AgentSettings(maxRequestsPerRun: 19);
     initialState = {

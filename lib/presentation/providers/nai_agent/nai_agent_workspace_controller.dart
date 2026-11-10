@@ -1813,7 +1813,22 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       }
       if (type == 'message_start') {
         final message = Map<String, dynamic>.from(event['message'] as Map);
+        // A new assistant attempt supersedes the previous attempt's error text.
+        if (message['role'] == 'assistant') runtime.error = null;
         runtime.messages = [...runtime.messages, message];
+      }
+      if (type == 'auto_retry_start' ||
+          (type == 'auto_retry_end' && event['success'] == true)) {
+        // Pi retries transient provider failures and omits the failed attempt
+        // from the model context. Its error text must not become a run-level
+        // banner when a retry is already under way.
+        runtime.error = null;
+      }
+      if (type == 'auto_retry_end' && event['success'] != true) {
+        final finalError = event['finalError'];
+        runtime.error = finalError is String && finalError.isNotEmpty
+            ? '${currentL10n.naiAgent_error}\n$finalError'
+            : currentL10n.naiAgent_error;
       }
       if (type == 'message_update' || type == 'message_end') {
         final message = Map<String, dynamic>.from(event['message'] as Map);

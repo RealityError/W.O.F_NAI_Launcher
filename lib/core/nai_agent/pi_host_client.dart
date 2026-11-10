@@ -302,9 +302,6 @@ class PiHostClient {
       return;
     }
     final type = message['type'];
-    if (kDebugMode && line.length > 8192) {
-      AppLogger.d('Pi host line $type ${line.length} chars', 'Agent');
-    }
     // A session_start handler can ask through the UI before ready resolves.
     if (_sessionId == null &&
         type == 'tool_request' &&
