@@ -1,9 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
 
 import '../utils/app_logger.dart';
+
+/// Encodes one protocol line for the byte-oriented embedded transport.
+///
+/// Payloads contain UTF-8 JSON text (Chinese prompts, system prompts), so the
+/// string must be encoded as UTF-8. Casting UTF-16 code units to bytes mangles
+/// every non-ASCII character and fails the line decoder downstream.
+Uint8List encodeHostPayload(String payload) =>
+    Uint8List.fromList(utf8.encode('$payload\n'));
 
 /// Starts one Pi host transport for the current platform.
 typedef PiHostProcessLauncher =
@@ -109,7 +118,7 @@ class EmbeddedNodeRuntime {
       if (call.method != 'event') return null;
       final map = Map<String, dynamic>.from(call.arguments as Map);
       final payload = map['payload'] as String? ?? '';
-      final line = Uint8List.fromList('$payload\n'.codeUnits);
+      final line = encodeHostPayload(payload);
       switch (map['type']) {
         case 'stdout':
           _stdout.add(line);
