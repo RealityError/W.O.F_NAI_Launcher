@@ -5287,6 +5287,7 @@
   "localUpscale_invalidModel": "模型不相容，請匯入配套的 4 倍 Real-ESRGAN NCNN 模型。",
   "localUpscale_invalidImage": "無法讀取圖片，請嘗試 PNG、JPEG 或 WebP 檔案。",
   "localUpscale_sizeLimit": "圖片過大：模型原始輸出不能超過 6400 萬像素。",
+  "localUpscale_onnxSizeLimit": "裝置端放大僅支援不超過 120 萬像素的原圖（如 1024×1024、832×1216）。降低倍率不會解除限制；請先縮小圖片，或在尺寸允許時改用雲端放大。",
   "localUpscale_noVulkan": "未找到可用的 Vulkan 顯示卡，請更新顯示卡驅動後重試。",
   "localUpscale_processFailed": "超分失敗，請檢查模型和顯示卡驅動。原圖已保留。",
   "localUpscale_timeout": "超分逾時，請嘗試較小的圖片。",

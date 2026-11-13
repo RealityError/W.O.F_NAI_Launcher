@@ -74,9 +74,8 @@ bool get supportsOnnxUpscale => isAndroidPlatform;
 /// `AndroidNaiAgentRuntime`）。两侧共用 Pi 的 JSONL 协议。
 bool get supportsNaiAgentRuntime => isSupportedDesktop || isAndroidPlatform;
 
-/// 翻译微调需要第二个 Node 宿主进程；Android 的内嵌 libnode 在应用进程内
-/// 只能常驻一个宿主，因此手机端暂不提供该入口。
-bool get supportsTranslationAdjustment => !isAndroidPlatform;
+/// Android 在同一个 libnode 运行时内用独立 Worker 隔离翻译与 Agent 会话。
+bool get supportsTranslationAdjustment => supportsNaiAgentRuntime;
 
 /// NAI Agent 的一次性 Node 工具（扩展/包管理、命令与技能清单、ChatGPT OAuth
 /// 回环）需要另起外部 Node 进程；Android 的内嵌 libnode 只能常驻会话宿主，

@@ -137,7 +137,13 @@ class GeminiGenerateContentAdapter extends PromptAssistantProviderAdapter {
             if (content is Map<String, dynamic>) {
               final rawParts = content['parts'];
               if (rawParts is List) {
-                parts.addAll(rawParts.map(contentToText));
+                parts.addAll(
+                  rawParts
+                      .where(
+                        (part) => !(part is Map && part['thought'] == true),
+                      )
+                      .map(contentToText),
+                );
               }
             }
           }

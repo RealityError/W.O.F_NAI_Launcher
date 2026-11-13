@@ -9679,6 +9679,10 @@ class AppLocalizationsKo extends AppLocalizations {
       '이미지가 너무 큽니다. 모델 출력은 6,400만 픽셀 이하여야 합니다.';
 
   @override
+  String get localUpscale_onnxSizeLimit =>
+      '기기 내 확대는 원본 120만 픽셀 이하(예: 1024×1024, 832×1216)를 지원합니다. 배율을 낮춰도 한도는 바뀌지 않습니다. 원본을 축소하거나 크기 한도 내에서 클라우드 확대를 사용하세요.';
+
+  @override
   String get localUpscale_noVulkan =>
       '사용 가능한 Vulkan GPU가 없습니다. 그래픽 드라이버를 업데이트하세요.';
 

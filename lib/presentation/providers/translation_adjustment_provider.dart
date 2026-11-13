@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/nai_agent/agent_tool.dart';
+import '../../core/nai_agent/android_nai_agent_runtime.dart';
 import '../../core/nai_agent/pi_host_client.dart';
 import '../../core/nai_agent/translation_context.dart';
 import '../../core/utils/localization_extension.dart';
@@ -76,7 +77,12 @@ typedef TranslationAdjustmentFactory =
 final translationAdjustmentFactoryProvider = Provider<TranslationAdjustmentFactory>(
   (ref) => (context, execute) async {
     final paths = ref.read(naiAgentRuntimePathsProvider);
-    await paths.check();
+    final androidRuntime = ref.read(androidNaiAgentRuntimeProvider);
+    if (androidRuntime != null) {
+      await androidRuntime.ensure();
+    } else {
+      await paths.check();
+    }
     final resolver = ref.read(naiAgentModelResolverProvider);
     NaiAgentModelConnection model;
     try {
@@ -93,7 +99,8 @@ final translationAdjustmentFactoryProvider = Provider<TranslationAdjustmentFacto
     try {
       final host = await PiHostClient.start(
         nodeExecutable: paths.node,
-        hostScript: paths.host,
+        hostScript: androidRuntime?.hostScript ?? paths.host,
+        launcher: androidRuntime?.start,
         workspaceId:
             'translation-${directory.path.split(Platform.pathSeparator).last}',
         workspaceDirectory: Directory('${directory.path}/workspace'),

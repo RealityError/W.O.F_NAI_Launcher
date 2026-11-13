@@ -202,7 +202,7 @@ void _onnxWorkerEntry((SendPort, Uint8List, Uint8List, int, int, int) args) {
     final width = decoded.width;
     final height = decoded.height;
     if (width <= 0 || height <= 0 || width * height > maxPixels) {
-      throw const LocalUpscaleException(LocalUpscaleError.sizeLimit);
+      throw const LocalUpscaleException(LocalUpscaleError.deviceSizeLimit);
     }
     final source = decoded.getBytes(order: img.ChannelOrder.rgb);
     OrtEnv.instance.init();

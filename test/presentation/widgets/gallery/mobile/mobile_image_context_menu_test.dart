@@ -54,12 +54,22 @@ void main() {
     expect(find.text('复制种子'), findsOneWidget);
     // 桌面专属动作不外泄到手机菜单。
     expect(find.text('发送到 Krita'), findsNothing);
-    expect(find.text('放大'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('详情'));
     await tester.pumpAndSettle();
     expect(selected, LocalImageContextAction.details);
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('放大'),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('放大'));
+    await tester.pumpAndSettle();
+    expect(selected, LocalImageContextAction.upscale);
 
     // 底部动作在弹层里可滚动到达（删除在菜单末尾）。
     await tester.tap(find.text('open'));

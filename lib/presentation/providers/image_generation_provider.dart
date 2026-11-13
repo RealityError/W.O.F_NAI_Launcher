@@ -1003,6 +1003,18 @@ class ImageGenerationNotifier extends _$ImageGenerationNotifier {
         final targetModel = effectiveLocalUpscaleModel(
           _activeLocalEnhance!.localModel,
         );
+        if (isOnnxUpscaleModel(targetModel) &&
+            !supportsOnnxUpscaleSize(
+              effectiveParams.width,
+              effectiveParams.height,
+            )) {
+          state = state.copyWith(
+            status: GenerationStatus.error,
+            errorMessage: currentL10n.localUpscale_onnxSizeLimit,
+            clearStreamPreview: true,
+          );
+          return;
+        }
         if (!models.any(
           (model) => model.installed && model.id == targetModel,
         )) {

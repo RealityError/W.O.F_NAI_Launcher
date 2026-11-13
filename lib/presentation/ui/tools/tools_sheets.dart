@@ -29,6 +29,7 @@ class ToolsSheetFrame extends StatefulWidget {
     required this.subtitle,
     required this.body,
     required this.footer,
+    required this.footerNote,
     required this.onClose,
     this.onRun,
   });
@@ -39,6 +40,7 @@ class ToolsSheetFrame extends StatefulWidget {
   final String subtitle;
   final Widget body;
   final List<Widget> footer;
+  final String footerNote;
   final VoidCallback onClose;
   final VoidCallback? onRun;
 
@@ -179,7 +181,32 @@ class _ToolsSheetFrameState extends State<ToolsSheetFrame> {
                         color: c.panel,
                         border: Border(top: BorderSide(color: c.line)),
                       ),
-                      child: Row(spacing: 8, children: widget.footer),
+                      child: mobile
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              spacing: 6,
+                              children: [
+                                Text(
+                                  widget.footerNote,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: UiText.sans(12, color: c.muted),
+                                ),
+                                Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: widget.footer,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              spacing: 8,
+                              children: [
+                                _FooterNote(widget.footerNote),
+                                ...widget.footer,
+                              ],
+                            ),
                     ),
                   ],
                 ),
@@ -218,9 +245,8 @@ UiPopoverAnchor _below(BuildContext context, {double dy = 4}) {
 
 /// 面板底栏左边的一句弱色说明（撑满剩余宽度，放不下省略）。
 class _FooterNote extends StatelessWidget {
-  const _FooterNote(this.text, {this.color});
+  const _FooterNote(this.text);
   final String text;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) => Expanded(
@@ -228,7 +254,7 @@ class _FooterNote extends StatelessWidget {
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: UiText.sans(12, color: color ?? context.ui.muted),
+      style: UiText.sans(12, color: context.ui.muted),
     ),
   );
 }
@@ -255,6 +281,7 @@ class ToolsEnhanceSheet extends StatelessWidget {
     final l = context.l10n;
     final d = data;
     final busy = d.busy;
+    final canRun = !busy && d.blocked == null;
     final out = d.isLocal
         ? l.tools_enhanceOutLocal(
             ToolsFormat.tight(d.sourceWidth, d.sourceHeight),
@@ -345,8 +372,13 @@ class ToolsEnhanceSheet extends StatelessWidget {
                 ),
               ),
             ],
-          )
-        else ...[
+          ),
+        if (d.blocked != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(d.blocked!, style: UiText.sans(12, color: c.warn)),
+          ),
+        if (!d.isLocal) ...[
           ToolsFieldRow(
             key: const Key('tools-enhance-magnitude-row'),
             label: l.tools_enhanceMagnitude,
@@ -430,10 +462,10 @@ class ToolsEnhanceSheet extends StatelessWidget {
       title: l.tools_enhance,
       subtitle: l.tools_enhanceSub,
       onClose: actions.onClose,
-      onRun: busy ? null : actions.onRun,
+      onRun: canRun ? actions.onRun : null,
       body: body,
+      footerNote: l.tools_enhanceFooter(d.model, d.steps),
       footer: [
-        _FooterNote(l.tools_enhanceFooter(d.model, d.steps)),
         ToolsButton(
           key: const Key('tools-enhance-cancel'),
           tone: ToolsButtonTone.ghost,
@@ -447,7 +479,7 @@ class ToolsEnhanceSheet extends StatelessWidget {
         ToolsButton(
           key: const Key('tools-enhance-run'),
           tone: ToolsButtonTone.primary,
-          onTap: busy ? null : actions.onRun,
+          onTap: canRun ? actions.onRun : null,
           cost: ToolsButtonCost(d.cost, insufficient: d.insufficient),
           children: [
             Text(d.isLocal ? l.tools_enhanceRunLocal : l.tools_enhanceRun),
@@ -627,6 +659,15 @@ class _ToolsUpscaleSheetState extends State<ToolsUpscaleSheet> {
               ],
             ),
           ),
+        if (d.blocked != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              d.blocked!,
+              key: const Key('tools-upscale-blocked'),
+              style: UiText.sans(12, color: c.warn),
+            ),
+          ),
         if (d.methods.isNotEmpty) ...[
           const SizedBox(height: 14),
           ToolsFieldRow(
@@ -679,17 +720,18 @@ class _ToolsUpscaleSheetState extends State<ToolsUpscaleSheet> {
                         ),
                 ),
               ),
-              ToolsButton(
-                key: const Key('tools-upscale-manage'),
-                tone: ToolsButtonTone.ghost,
-                small: true,
-                color: c.accent,
-                onTap: a.onManageModels,
-                children: [
-                  Text(l.tools_upscaleManage),
-                  UiGlyph(ToolsGlyphs.external, size: 12, color: c.accent),
-                ],
-              ),
+              if (d.canManageModels)
+                ToolsButton(
+                  key: const Key('tools-upscale-manage'),
+                  tone: ToolsButtonTone.ghost,
+                  small: true,
+                  color: c.accent,
+                  onTap: a.onManageModels,
+                  children: [
+                    Text(l.tools_upscaleManage),
+                    UiGlyph(ToolsGlyphs.external, size: 12, color: c.accent),
+                  ],
+                ),
             ],
           ),
         ],
@@ -793,11 +835,8 @@ class _ToolsUpscaleSheetState extends State<ToolsUpscaleSheet> {
       onClose: a.onClose,
       onRun: canRun ? a.onRun : null,
       body: body,
+      footerNote: l.tools_upscaleFooter,
       footer: [
-        _FooterNote(
-          d.blocked ?? l.tools_upscaleFooter,
-          color: d.blocked != null ? c.warn : null,
-        ),
         ToolsButton(
           key: const Key('tools-upscale-run'),
           tone: ToolsButtonTone.primary,

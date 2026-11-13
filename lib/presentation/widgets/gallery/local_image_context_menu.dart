@@ -136,14 +136,11 @@ class LocalImageContextMenu {
               l.drop_saveToPreciseRefLibrary,
               StudioIcons.galleryBookmarkAdd,
             ),
-            if (!Platform.isAndroid)
-              // Local / advanced upscale depends on bundled desktop
-              // executables and has no Android implementation.
-              item(
-                LocalImageContextAction.upscale,
-                l.gallery_upscale,
-                StudioIcons.galleryUpscale,
-              ),
+            item(
+              LocalImageContextAction.upscale,
+              l.gallery_upscale,
+              StudioIcons.galleryUpscale,
+            ),
             item(
               LocalImageContextAction.sendToKrita,
               l.localGallery_sendToKrita,
@@ -267,6 +264,11 @@ class LocalImageContextMenu {
           LocalImageContextAction.saveToPreciseRefLibrary,
           l.drop_saveToPreciseRefLibrary,
           StudioIcons.galleryBookmarkAdd,
+        ),
+        item(
+          LocalImageContextAction.upscale,
+          l.gallery_upscale,
+          StudioIcons.galleryUpscale,
         ),
         item(
           LocalImageContextAction.placeOnCanvas,

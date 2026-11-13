@@ -125,13 +125,21 @@ class LocalUpscaleService {
           ? onnxUpscaleMaxInputPixels * nativeScale * nativeScale
           : LocalUpscaleService.maxNativeOutputPixels;
       final frozen = Uint8List.fromList(source);
-      final prepared = await _imageWorker({
-        'source': frozen,
-        'scale': scale,
-        'nativeScale': nativeScale,
-        'advanced': optional != null,
-        'maxPixels': maxNativePixels,
-      }, cancellation);
+      final Map<String, dynamic> prepared;
+      try {
+        prepared = await _imageWorker({
+          'source': frozen,
+          'scale': scale,
+          'nativeScale': nativeScale,
+          'advanced': optional != null,
+          'maxPixels': maxNativePixels,
+        }, cancellation);
+      } on LocalUpscaleException catch (error) {
+        if (onnxModel != null && error.code == LocalUpscaleError.sizeLimit) {
+          throw const LocalUpscaleException(LocalUpscaleError.deviceSizeLimit);
+        }
+        rethrow;
+      }
       final width = prepared['width'] as int;
       final height = prepared['height'] as int;
       final targetWidth = (width * scale).round();

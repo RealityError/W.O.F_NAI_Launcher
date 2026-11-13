@@ -19,6 +19,7 @@ String localUpscaleErrorText(BuildContext context, LocalUpscaleError error) {
     LocalUpscaleError.invalidModel => l.localUpscale_invalidModel,
     LocalUpscaleError.invalidImage => l.localUpscale_invalidImage,
     LocalUpscaleError.sizeLimit => l.localUpscale_sizeLimit,
+    LocalUpscaleError.deviceSizeLimit => l.localUpscale_onnxSizeLimit,
     LocalUpscaleError.noVulkan => l.localUpscale_noVulkan,
     LocalUpscaleError.noCuda => l.localUpscale_noCuda,
     LocalUpscaleError.noInt8 => l.localUpscale_noInt8,

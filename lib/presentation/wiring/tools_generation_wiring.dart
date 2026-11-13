@@ -52,7 +52,9 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
   final settings = workflow.enhance;
   final models = ref.watch(localUpscaleModelsProvider).valueOrNull ?? [];
   final model = models
-      .where((m) => m.id == effectiveLocalUpscaleModel(workflow.upscale.localModel))
+      .where(
+        (m) => m.id == effectiveLocalUpscaleModel(workflow.upscale.localModel),
+      )
       .firstOrNull;
   // Android 用随包 ONNX 模型也能做生成后本地增强；iOS 没有任何本地引擎。
   final deviceLocal = supportsOnnxUpscale;
@@ -98,6 +100,12 @@ ToolsEnhanceData toolsEnhanceView(Ref ref, GeneratedImage image) {
     steps: draft.steps,
     cost: ref.watch(toolsEnhanceCostProvider(image)),
     insufficient: ref.watch(isBalanceInsufficientProvider),
+    blocked:
+        settings.localUpscale &&
+            deviceLocal &&
+            !supportsOnnxUpscaleSize(draft.width, draft.height)
+        ? currentL10n.localUpscale_onnxSizeLimit
+        : null,
     busy:
         ref.watch(imageGenerationNotifierProvider).isGenerating ||
         workflow.isToolRunning,
@@ -120,7 +128,9 @@ List<ToolsUpscaleBackend> toolsUpscaleBackends(
     ToolsUpscaleBackend(
       id: 'local',
       title: l.localUpscale_local,
-      detail: l.localUpscale_description,
+      detail: deviceLocal
+          ? l.localUpscale_onnxHelp
+          : l.localUpscale_description,
       enabled: localEnabled,
     ),
   ToolsUpscaleBackend(
@@ -154,12 +164,14 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
       ? l.localUpscale_busy
       : cloud
       ? cloudCost < 0
-            ? l.localUpscale_sizeLimit
+            ? l.img2img_cloudUpscaleSizeLimit
             : null
       : !localAvailable
       ? l.localUpscale_unsupportedPlatform
       : model?.installed != true
       ? l.localUpscale_modelMissing
+      : deviceOnnx && !supportsOnnxUpscaleSize(image.width, image.height)
+      ? l.localUpscale_onnxSizeLimit
       : null;
   final options = settings.selectedSeedvr2Options;
   ToolsUpscaleField number(
@@ -215,6 +227,7 @@ ToolsUpscaleData toolsUpscaleView(Ref ref, GeneratedImage image) {
     scale: cloud ? null : settings.localScale,
     minScale: 1,
     maxScale: 4,
+    canManageModels: !deviceOnnx,
     outWidth: (image.width * (cloud ? 2 : settings.localScale)).round(),
     outHeight: (image.height * (cloud ? 2 : settings.localScale)).round(),
     advanced: cloud || method != LocalUpscaleMethod.seedvr2

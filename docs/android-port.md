@@ -75,7 +75,9 @@
   固定 256 输入，二次元）与 `realesr-general-x4v3`（4.9 MB，动态输入，通用照片），
   都是 4 倍输出、按 256 分块推理，面板可在两者间切换；不下载外部运行时，也不需要
   可执行位。`supportsOnnxUpscale` 只在 Android 为 true，UI 入口见生成页画布与
-  「本地放大」面板。更大 ONNX 模型与提速后端的可行性见
+  「本地放大」面板、图库长按与图片查看器。输入保留 120 万像素预算，超过时提前提示；
+  降低倍率不能解除限制，自动本地增强在生成请求前检查，不自动缩图。手机不提供模型管理。
+  更大 ONNX 模型与提速后端的可行性见
   [local-upscale-advanced.md](local-upscale-advanced.md)。
 - **NAI Agent 运行时**：`tool/nai_agent`（`host.mjs` + Pi SDK 1.5.0 + 内置 skills）由
   `tool/pack_agent_runtime.ps1` 打包为 `assets/nai_agent/runtime.tar.gz`（约 24.7 MB）。
@@ -83,16 +85,16 @@
   （Node 24.5.0）链进应用进程，`NodeRuntimeChannel.kt` 提供 `com.nailauncher/node_runtime`
   通道（`start` / `writeStdin` / `stop`），Dart 侧 `PiHostClient` 通过 `PiHostProcess`
   抽象在桌面子进程与内嵌运行时之间切换，桌面仍走 `Process.start`。
-  - 运行时首次使用解压到 `<app support>/nai_agent/runtime`（流式 gunzip + tar，约 1.67 万个文件、16,716 个条目）
-    解压由 `AndroidNodeRuntimeBundle` 完成，`.runtime-version` 标记避免重复解压；
+  - 运行时首次使用解压到 `<app support>/nai_agent/runtime`（流式 gunzip + tar，约 1.67 万个文件 / 16,716 个文件条目）。解压由 `AndroidNodeRuntimeBundle` 完成，`.runtime-version` 标记避免重复解压；
     app 启动后会在后台预热，用户真正打开 Agent 面板时通常已就绪。
-  - libnode 在同一进程内只能启动一次，因此 Android 上 `host.mjs` 以 `NAI_HOST_REINIT=1`
-    运行：关闭 Agent 面板只发 `shutdown` 并保留进程，下次打开或切换会话时用 `init`
-    重新开始（桌面仍保持单次 init 语义，行为不变）。
+  - libnode 在同一进程内只能启动一次，Android 由 `android-host.mjs` 路由 JSONL，
+    每个客户端通过独立 Worker 运行 `host.mjs`（Worker 内 `NAI_HOST_REINIT=0`）。
+    关闭会话释放自己的 Worker，进程保留；桌面仍使用原来的子进程链路。
   - `jniLibs` 只随包 arm64-v8a（`libnode.so` / `libonnxruntime.so` / `libc++_shared.so`，
     由 Git LFS 管理）；x86_64 仅用于本地模拟器调试，已在 `.gitignore` 排除。
-  - 翻译微调的「微调」宿主是第二个 Node 会话，嵌入式运行时只能常驻一个宿主，
-    因此 `supportsTranslationAdjustment` 在 Android 为 `false`，菜单项禁用。
+  - 翻译微调已开放，独立 Worker 保留原翻译上下文、只开放译文块读写工具，版本校验与
+    撤销沿用现有链路；关闭微调不重置 Agent。Node 合成并发与 Dart 通道路由测试已覆盖，
+    Android 真机并发内存和后台存活尚待验证。
 
 ## 2. 平台能力模型
 
@@ -123,7 +125,7 @@
 | `supportsLocalUpscale` | 随包可执行文件的本地/高级放大（realesrgan / SeedVR2 / RTX Video） | ✓ | ✓ | ✗ |
 | `supportsOnnxUpscale` | Android 设备端 ONNX Runtime 本地放大（随包 animevideov3 / general-x4v3 模型） | ✗ | ✗ | ✓ |
 | `supportsNaiAgentRuntime` | NAI Agent 的随包 Node 运行时与宿主脚本 | ✓ | ✓ | ✓ |
-| `supportsTranslationAdjustment` | 翻译微调（需要第二个 Node 宿主进程） | ✓ | ✓ | ✗ |
+| `supportsTranslationAdjustment` | 翻译微调（Android 在同一 libnode 内使用独立 Worker） | ✓ | ✓ | ✓ |
 | `supportsKritaBridge` | Krita 桥接服务与插件 | ✓ | ✓ | ✗ |
 | `supportsNativeTitleBarRegion` | Windows runner 原生标题栏命中区 | ✓ | ✗ | ✗ |
 | `supportsWindowBackdropMaterial` | Windows DWM 窗口材质 | ✓ | ✗ | ✗ |
@@ -133,7 +135,7 @@
 
 新增平台或功能时：先想清楚"这是能力还是平台"，能落到上面的 getter 就不要写死平台判断；桌面端已有行为用 Android 侧不进入的分支保留。
 
-Android 上的取值口径：`isSupportedDesktop == false`、`isMobilePlatform == true`，上表绝大多数 `supports*` 能力是 `false`；例外是 Android 单独实现的 `supportsOnnxUpscale` 与 `supportsNaiAgentRuntime`（见 1.4），以及明确只属于桌面的 `supportsTranslationAdjustment`。`supportsExternalProcesses` 的实现是 `!isMobilePlatform`，所以 Windows/macOS 之外、未移植的桌面/Linux 环境仍按原有行为返回 `true`，不改变既有桌面代码。设置页和功能入口统一用这些 getter 隐藏/降级（例如 Android 隐藏设置里的语义检索、网络页，隐藏 Krita 桥接、托盘/多窗口入口），不要在 UI 里散落平台判断。Android 的应用内更新不占用 `supportsInAppUpdateInstall`，它由 `isAndroidPlatform` 分支提供（见上一段注意）。
+Android 上的取值口径：`isSupportedDesktop == false`、`isMobilePlatform == true`，上表绝大多数 `supports*` 能力是 `false`；例外是 Android 单独实现的 `supportsOnnxUpscale`、`supportsNaiAgentRuntime` 与 `supportsTranslationAdjustment`（见 1.4）。`supportsExternalProcesses` 的实现是 `!isMobilePlatform`，所以 Windows/macOS 之外、未移植的桌面/Linux 环境仍按原有行为返回 `true`，不改变既有桌面代码。设置页和功能入口统一用这些 getter 隐藏/降级（例如 Android 隐藏设置里的语义检索、网络页，隐藏 Krita 桥接、托盘/多窗口入口），不要在 UI 里散落平台判断。Android 的应用内更新不占用 `supportsInAppUpdateInstall`，它由 `isAndroidPlatform` 分支提供（见上一段注意）。
 
 ## 3. 构建
 
@@ -345,7 +347,7 @@ systemProp.https.proxyPort=7897
 | 本地 / 高级放大（Real-ESRGAN、RTX Video、SeedVR2） | ✓ | ✗ | 依赖随包 `.exe` 和外部进程，Android 上入口隐藏/保持 inert |
 | 设备端本地放大（ONNX Runtime，animevideov3 / general-x4v3） | — | ✓ | 随包 2.4 MB + 4.9 MB 模型 + `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理；入口在生成页画布与本地放大面板，面板可切换模型，见 1.4 |
 | 本地语义检索 RAG（Python 运行时） | ✓ | ✗ | 依赖 Python/uv/PyTorch 外部进程。2026-11-10 决定不在 Android 复刻：运行时数 GB + 模型约 3 GB + 首次建库长时间占满 CPU/GPU，与手机竖屏主场景成本不匹配；入口继续隐藏（见 [mobile-adaptation.md](mobile-adaptation.md) §8.21） |
-| NAI Agent（Node 运行时、MCP、Skill） | ✓ | ✓ | 桌面由安装器放置 `tools/nai-agent`；Android 把同一运行时（约 24.7 MB tar.gz）打进 assets，首用解压后由内嵌 libnode 启动。手机端全屏覆盖生成页，关闭面板不销毁 Node，再次打开/切换会话复用同一进程重新 init（`NAI_HOST_REINIT`）；翻译微调需要第二个宿主，手机端不提供 |
+| NAI Agent（Node 运行时、MCP、Skill） | ✓ | ✓ | 桌面由安装器放置 `tools/nai-agent`；Android 把同一运行时（约 24.7 MB tar.gz）打进 assets，首用解压后由内嵌 libnode 启动。手机端全屏覆盖生成页，关闭会话释放对应 Worker、保留 Node；翻译微调在独立 Worker 中运行，见 1.4 |
 | Krita 桥接 | ✓ | ✗ | 本地 WebSocket 服务 + 桌面插件端 |
 | 外部桥接客户端（studio-bridge.exe） | ✓ | ✗ | 桌面可执行文件 |
 | 应用内更新检查/安装 | ✓ | ✓ | 桌面：Windows 更新脚本 / macOS 核验。Android（G17）：检查 GitHub Release → 按设备 ABI 选 APK → 下载到 cache 并做大小/SHA256 校验 → 系统安装器（`REQUEST_INSTALL_PACKAGES` + 现有 FileProvider cache 路径）；未授权「未知来源」时跳到本应用系统设置页，返回后重试。**Android 读取的是本 fork（`RealityError`）的 Release**，因为上游只发布 Windows/macOS 资产；桌面仍查上游。**Release 必须上传 Flutter split-per-abi 命名的 APK**（`app-arm64-v8a-release.apk` 等），否则会提示有新版本但无包可装 |
@@ -393,7 +395,7 @@ Android 上隐藏/降级的功能入口按 `desktop_platform.dart` 的能力 get
 13. **明文 HTTP**：manifest 开启 `usesCleartextTraffic` 以支持局域网 ComfyUI，正式发布前应评估是否收窄。
 14. **构建所需外部资源**：首次构建要下载 NDK、Rust 目标、cargokit 预编译/编译产物，离线环境需要提前预热缓存。
 15. **运行时验证范围**：2026-11-08 在 MuMu x86_64（API 36）做了启动、导航和功能入口 smoke test；2026-11-09 在本机 MuMu 上补做了登录、生图、画布与手机端布局回归（画布单条工具条实测见 `docs/mobile-adaptation.md` §8.16），全程无崩溃、无 overflow。2.5.0 用 CI 产物的 x86_64 包重装后同样启动正常，设置列表只剩手机端该有的 12 页（无「键盘快捷键」）。2.7.0 在 MuMu 上用 probe 验证了随包运行时解压、libnode 启动、Pi init → shutdown → 再次 init 的完整链路；仍未覆盖：真机（arm64）回归、应用内更新的完整安装闭环（模拟器侧已确认新旧包签名一致、可覆盖安装，尚未在真实网络下走完下载→安装器）、分享出站/入站与后台生成通知的手测。
-16. **NAI Agent 运行时限制**：内嵌 libnode 在一个应用进程内只能启动一次，关闭 Agent 面板只发 `shutdown`，下次打开复用同一进程重新 init；同一时刻只有一个 Agent 宿主（翻译微调因此禁用）。ChatGPT 登录、扩展/包管理、命令/技能清单需要额外 Node 进程或 OAuth 回环，手机端隐藏（`supportsNaiAgentExternalTools`）。MCP 的 stdio 服务器（`npx`）不可用。Agent 运行在应用进程内，进入后台可能被系统回收，长时间任务建议保持前台。
+16. **NAI Agent 运行时限制**：内嵌 libnode 在一个应用进程内只能启动一次，各会话在独立 Worker 中运行；翻译微调已开放。ChatGPT 登录、扩展/包管理、命令/技能清单需要额外 Node 进程或 OAuth 回环，手机端隐藏（`supportsNaiAgentExternalTools`）。MCP 的 stdio 服务器（`npx`）不可用。Agent 运行在应用进程内，进入后台可能被系统回收，长时间任务建议保持前台；并发会话真机内存尚待验证。
 17. **NAI Agent 首次解压**：运行时约 24.7 MB / 1.67 万个文件（16,716 个），首次使用解压约 5–6 分钟（模拟器 debug；真机通常更快），app 启动后会在后台预热；解压期间打开 Agent 需要等待，之后走 `.runtime-version` 标记直接复用。
 18. **设备端本地放大**：随包两个 ONNX 模型（animevideov3 / general-x4v3，2x/4x 分块，面板可切换），不覆盖桌面 realesrgan / SeedVR2 / RTX Video 的模型与管理界面；不下载外部运行时，桌面链路不变。更大模型与提速后端的可行性见 [local-upscale-advanced.md](local-upscale-advanced.md)。
 

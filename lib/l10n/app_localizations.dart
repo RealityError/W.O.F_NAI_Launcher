@@ -17288,6 +17288,12 @@ abstract class AppLocalizations {
   /// **'Image too large: the model output must fit within 64 megapixels.'**
   String get localUpscale_sizeLimit;
 
+  /// No description provided for @localUpscale_onnxSizeLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device upscaling supports source images up to 1.2 megapixels (e.g. 1024×1024 or 832×1216). Lowering the scale does not change this limit. Resize the source first, or use cloud upscaling if its size limit allows.'**
+  String get localUpscale_onnxSizeLimit;
+
   /// No description provided for @localUpscale_noVulkan.
   ///
   /// In en, this message translates to:

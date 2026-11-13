@@ -62,6 +62,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('device ONNX catalog', () {
+    test(
+      'input budget includes the boundary and rejects invalid dimensions',
+      () {
+        expect(supportsOnnxUpscaleSize(1200, 1000), isTrue);
+        expect(supportsOnnxUpscaleSize(1201, 1000), isFalse);
+        expect(supportsOnnxUpscaleSize(832, 1216), isTrue);
+        expect(supportsOnnxUpscaleSize(1024, 1024), isTrue);
+        expect(supportsOnnxUpscaleSize(1536, 1024), isFalse);
+        expect(supportsOnnxUpscaleSize(0, 1000), isFalse);
+        expect(supportsOnnxUpscaleSize(1000, -1), isFalse);
+      },
+    );
+
     test('exposes anime and general models with unique assets', () {
       expect(
         onnxUpscaleCatalog.map((model) => model.id).toSet().length,
@@ -262,7 +275,7 @@ void main() {
           isA<LocalUpscaleException>().having(
             (error) => error.code,
             'code',
-            LocalUpscaleError.sizeLimit,
+            LocalUpscaleError.deviceSizeLimit,
           ),
         ),
       );

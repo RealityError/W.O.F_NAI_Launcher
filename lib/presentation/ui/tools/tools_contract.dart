@@ -73,6 +73,7 @@ class ToolsEnhanceData {
     this.cost,
     this.insufficient = false,
     this.busy = false,
+    this.blocked,
   });
 
   final int sourceWidth;
@@ -114,6 +115,8 @@ class ToolsEnhanceData {
 
   bool get isLocal => scale == ToolsEnhanceScale.local;
 
+  final String? blocked;
+
   ToolsEnhanceData copyWith({
     String? scale,
     int? outWidth,
@@ -141,6 +144,7 @@ class ToolsEnhanceData {
     cost: cost ?? this.cost,
     insufficient: insufficient,
     busy: busy ?? this.busy,
+    blocked: blocked,
   );
 }
 
@@ -278,6 +282,7 @@ class ToolsUpscaleData {
     this.outHeight,
     this.advanced = const [],
     this.advancedHint,
+    this.canManageModels = true,
     this.cost,
     this.running = false,
     this.blocked,
@@ -309,6 +314,8 @@ class ToolsUpscaleData {
 
   /// 折叠行后面的一句弱色摘要。
   final String? advancedHint;
+
+  final bool canManageModels;
 
   /// 云端价格；null = 免费。
   final int? cost;
@@ -346,6 +353,7 @@ class ToolsUpscaleData {
     outHeight: outHeight ?? this.outHeight,
     advanced: advanced ?? this.advanced,
     advancedHint: advancedHint,
+    canManageModels: canManageModels,
     cost: cost,
     running: running ?? this.running,
     blocked: clearBlocked ? null : blocked ?? this.blocked,

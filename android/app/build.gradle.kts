@@ -51,14 +51,20 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk {
-            // NAI Agent embeds nodejs-mobile's libnode.so and the local upscale
-            // model needs libonnxruntime.so; both ship for arm64-v8a only.
+            // Release libraries ship for arm64-v8a; explicit emulator builds
+            // use the locally staged x86_64 Node.js and ONNX Runtime libraries.
             abiFilters.clear()
             // Flutter passes -Psplit-per-abi=true for split builds and derives
             // its own ABI filters; Gradle rejects a build that also declares
             // ndk abiFilters in that case.
             if (!providers.gradleProperty("split-per-abi").isPresent) {
-                abiFilters.add("arm64-v8a")
+                abiFilters.add(
+                    if (providers.gradleProperty("target-platform").orNull == "android-x64") {
+                        "x86_64"
+                    } else {
+                        "arm64-v8a"
+                    },
+                )
             }
         }
     }

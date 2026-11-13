@@ -9,8 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/image_save_utils.dart';
 import '../../core/utils/file_explorer_utils.dart';
 import '../../core/utils/localization_extension.dart';
+import '../../core/utils/desktop_platform.dart';
 import '../../core/utils/zip_utils.dart';
 import '../../data/models/vibe/vibe_library_entry.dart';
+import '../../data/models/upscale/local_upscale_models.dart';
 import '../../data/services/image_metadata_service.dart';
 import '../utils/metadata_import_coordinator.dart';
 import '../../data/models/vibe/vibe_reference.dart';
@@ -456,6 +458,11 @@ class GenerationOperations {
     final image = input(id);
     final write = backend.captureDraft(alive: () => mounted);
     final mode = ref.read(imageWorkflowControllerProvider).upscale.backend;
+    if (mode != UpscaleBackend.novelai &&
+        supportsOnnxUpscale &&
+        !supportsOnnxUpscaleSize(image.width, image.height)) {
+      throw StateError(currentL10n.localUpscale_onnxSizeLimit);
+    }
     if (mode == UpscaleBackend.novelai &&
         !await confirm(ref.read(imageUpscaleCostProvider(image)) ?? 0)) {
       return;

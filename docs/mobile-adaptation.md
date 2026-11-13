@@ -250,6 +250,8 @@ class MobileListTile;              // 图标 + 标题 + 副标题 + 右侧箭头
 
 ### 8.10 生成页触屏入口第一批（长按菜单 / 隐藏桌面专属）
 
+以下记录初期适配；当前 Android 已支持设备端 ONNX 放大和翻译微调，边界见 8.22。
+
 按 [mobile-gen-gaps.md](mobile-gen-gaps.md) 第一批落地，桌面交互一行不改：
 
 1. **画布图片长按**（G1）：`GenCanvasMenuScope` 新增 `onOpenMobile`，手机布局下图块 `onLongPress` 触发；`openGenerationCanvasMenuMobile` 把右键菜单拍平成底部弹层（保存 / 复制 / 详情 / 删除 / 发送到图生图 / 风格参考 / 精准参考 / 保存到精准参考库），桌面右键路径与菜单内容不变。
@@ -481,11 +483,16 @@ Android 13+ 通知权限（首次生成时申请、拒绝后只引导一次、�
 
 - **本地放大**：随包两个 ONNX 模型（animevideov3-256 2.4 MB、general-x4v3 4.9 MB）+ `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理，生成页画布与「本地放大」面板提供入口（面板可切换模型）；`supportsOnnxUpscale` 只在 Android 为 true，桌面继续用随包可执行文件。更大模型的可行性见 [local-upscale-advanced.md](local-upscale-advanced.md)。
 - **NAI Agent**：`tool/nai_agent` 打包为 `assets/nai_agent/runtime.tar.gz`（约 24.7 MB），首用流式解压到 `<app support>/nai_agent/runtime`，由内嵌 libnode（Node 24.5）启动。
-  - 手机端 Agent 面板以全屏覆盖生成页（宽屏桌面才是并排侧栏），入口在生成页提示词区的 Agent 按钮与设置 → Agent；关闭面板时只发 `shutdown`，Node 进程保留，下次打开/切换会话复用同一进程重新初始化。
+  - 手机端 Agent 面板以全屏覆盖生成页（宽屏桌面才是并排侧栏），入口在生成页提示词区的 Agent 按钮与设置 → Agent；`android-host.mjs` 在单个 libnode 内为每个客户端建立独立 Worker，关闭会话释放自己的 Worker，Node 进程保留。
   - 首次解压约 1.67 万个文件（16,716 个），app 启动后会在后台预热；打开 Agent 时通常已就绪。
   - ChatGPT 登录、扩展/包管理、命令/技能清单需要额外 Node 进程或 OAuth 回环，手机端隐藏（`supportsNaiAgentExternalTools == false`）。
-  - 翻译微调需要第二个 Node 宿主，手机端菜单项禁用（`supportsTranslationAdjustment`）。
+  - 翻译微调已开放（`supportsTranslationAdjustment`）：复用桌面微调协议和译文块工具，在独立 Worker 中运行，不重置 Agent 会话；原译文上下文、版本校验和撤销沿用现有链路。
   - 已知限制：Agent 运行在 app 进程内，进入后台后可能被系统回收；长时间任务建议保持前台。MCP 的 stdio 服务器（通过 `npx` 启动）在 Android 不可用。
+
+后续入口与边界补齐：图库长按与图片查看器提供放大，生成结果查看器先打开设置再执行；
+手机端不提供自定义模型管理。ONNX 输入保留 120 万像素预算，面板显示完整说明，
+手动放大和自动本地增强都提前拦截，自动增强在生成请求前停止，不自动缩图。
+五语言 360×640 合成界面与 Node 并发会话测试已覆盖；Android 真机内存、耗时与后台存活尚待验证。
 
 
 ### 8.23 积木多预览图 / 删除确认框 / 输入框选择（2.8.0）

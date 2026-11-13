@@ -11,6 +11,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nai_launcher/core/constants/storage_keys.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
+import 'package:nai_launcher/core/utils/localization_extension.dart';
 import 'package:nai_launcher/data/datasources/remote/nai_image_enhancement_api_service.dart';
 import 'package:nai_launcher/data/models/director/director_tool_type.dart';
 import 'package:nai_launcher/data/models/upscale/local_upscale_models.dart';
@@ -146,6 +147,23 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  test('cloud size warning uses the cloud input limit', () {
+    container
+        .read(imageWorkflowControllerProvider.notifier)
+        .updateUpscaleBackend(UpscaleBackend.novelai);
+    final data = container.read(
+      toolsUpscaleDataProvider(
+        GeneratedImage(
+          id: 'oversized-cloud',
+          bytes: Uint8List(0),
+          width: 2048,
+          height: 2048,
+        ),
+      ),
+    );
+    expect(data.blocked, currentL10n.img2img_cloudUpscaleSizeLimit);
+  });
+
   testWidgets(
     'enhance uses locked sheet, backups and request projection; draft source stays intact',
     (tester) async {
@@ -187,7 +205,7 @@ void main() {
       );
       sheet.actions.onScale('1.5');
       await drain(tester);
-      expect(container.read(generationRequestParamsProvider).width, 1248);
+      expect(container.read(generationRequestParamsProvider).width, 1280);
       expect(
         container.read(generationParamsNotifierProvider).width,
         before.width,

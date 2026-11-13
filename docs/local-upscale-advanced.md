@@ -41,7 +41,8 @@ Real-ESRGAN 模型，在 Android 端能追到什么程度、值不值得做。�
   （1×–4×）缩放，因此模型只要**能接受 256×256 输入**即可——固定 shape 的
   animevideov3 与动态 shape 的 general-x4v3 都能直接跑。
 - 像素预算：输入不超过 `onnxUpscaleMaxInputPixels`（1,200,000，约 19.2 MP
-  输出），超过直接报 `sizeLimit`。
+  输出），超过直接报 `deviceSizeLimit`。降低目标倍率不会解除该预算，因为仍需完整
+  的 4 倍中间图。面板显示说明，自动本地增强在生成请求前检查；不自动缩图。
 - 模型选择：`onnxUpscaleCatalog` + `onnxUpscaleAssetPath()`（asset 文件名与
   `engineName` 一致），`OnnxUpscaleEngine.upscale(modelAsset:)` 按次传入。
 

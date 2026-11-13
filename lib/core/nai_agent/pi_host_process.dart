@@ -69,8 +69,8 @@ class NativePiHostProcess implements PiHostProcess {
 /// Process-wide embedded Node runtime shared by every Agent client.
 ///
 /// The runtime is started once (libnode cannot be started a second time);
-/// `host.mjs` runs in reinit mode on Android, so closing a session only sends
-/// `shutdown` and the next client starts with a fresh `init`.
+/// `android-host.mjs` routes each client to an isolated Worker, so closing
+/// translation does not reset an active Studio session.
 class EmbeddedNodeRuntime {
   EmbeddedNodeRuntime._();
 
@@ -82,6 +82,7 @@ class EmbeddedNodeRuntime {
   final _stderr = StreamController<Uint8List>.broadcast();
   bool _started = false;
   bool _handlerInstalled = false;
+  Future<void>? _starting;
 
   Stream<Uint8List> get stdout => _stdout.stream;
   Stream<Uint8List> get stderr => _stderr.stream;
@@ -90,7 +91,11 @@ class EmbeddedNodeRuntime {
   Future<void> ensureStarted({
     required String hostScript,
     required String workingDirectory,
-  }) async {
+  }) => _starting ??= _start(hostScript, workingDirectory).whenComplete(() {
+    _starting = null;
+  });
+
+  Future<void> _start(String hostScript, String workingDirectory) async {
     _installHandler();
     if (_started) return;
     final started = await _channel.invokeMethod<bool>('start', {
@@ -103,13 +108,8 @@ class EmbeddedNodeRuntime {
     _started = true;
   }
 
-  void write(String data) {
-    unawaited(
-      _channel
-          .invokeMethod<void>('writeStdin', {'data': data})
-          .catchError((Object _) {}),
-    );
-  }
+  Future<void> write(String data) =>
+      _channel.invokeMethod<void>('writeStdin', {'data': data});
 
   void _installHandler() {
     if (_handlerInstalled) return;
@@ -126,6 +126,7 @@ class EmbeddedNodeRuntime {
           _stderr.add(line);
         case 'exit':
           _started = false;
+          _stdout.addError(StateError('Embedded Node runtime exited'));
           AppLogger.w('Embedded Node runtime exited: $payload', 'Agent');
       }
       return null;
@@ -139,11 +140,14 @@ class EmbeddedNodePiHostProcess implements PiHostProcess {
     this._runtime,
     this._stdoutController,
     this._stderrController,
+    this._transportId,
   );
 
   final EmbeddedNodeRuntime _runtime;
   final StreamController<List<int>> _stdoutController;
   final StreamController<List<int>> _stderrController;
+  final String _transportId;
+  static int _sequence = 0;
   final Completer<int> _exit = Completer<int>();
   StreamSubscription<Uint8List>? _stdoutSubscription;
   StreamSubscription<Uint8List>? _stderrSubscription;
@@ -162,9 +166,11 @@ class EmbeddedNodePiHostProcess implements PiHostProcess {
       runtime,
       StreamController<List<int>>(),
       StreamController<List<int>>(),
+      'embedded-${++_sequence}',
     );
     process._stdoutSubscription = runtime.stdout.listen(
-      process._stdoutController.add,
+      process._receive,
+      onError: process._stdoutController.addError,
     );
     process._stderrSubscription = runtime.stderr.listen(
       process._stderrController.add,
@@ -182,7 +188,34 @@ class EmbeddedNodePiHostProcess implements PiHostProcess {
   Future<int> get exitCode => _exit.future;
 
   @override
-  void write(String data) => _runtime.write(data);
+  void write(String data) {
+    if (_detached) throw StateError('Embedded transport closed');
+    final message = (jsonDecode(data) as Map).cast<String, dynamic>();
+    unawaited(
+      _runtime
+          .write('${jsonEncode({...message, 'transportId': _transportId})}\n')
+          .catchError((Object error) {
+            if (!_detached) _stdoutController.addError(error);
+          }),
+    );
+  }
+
+  void _receive(Uint8List data) {
+    if (_detached) return;
+    try {
+      final message = (jsonDecode(utf8.decode(data)) as Map)
+          .cast<String, dynamic>();
+      if (message['transportId'] != _transportId) return;
+      if (message['type'] == 'transport_closed') {
+        _stdoutController.addError(StateError('Embedded session closed'));
+        return;
+      }
+      message.remove('transportId');
+      _stdoutController.add(encodeHostPayload(jsonEncode(message)));
+    } catch (_) {
+      _stdoutController.addError(const FormatException('Invalid host payload'));
+    }
+  }
 
   @override
   bool get persistent => true;
@@ -191,10 +224,19 @@ class EmbeddedNodePiHostProcess implements PiHostProcess {
   Future<void> kill() async {
     if (_detached) return;
     _detached = true;
+    try {
+      await _runtime.write(
+        '${jsonEncode({'transportId': _transportId, 'type': 'transport_close'})}\n',
+      );
+    } catch (_) {
+      // The runtime may already have exited.
+    }
     await _stdoutSubscription?.cancel();
     await _stderrSubscription?.cancel();
     _stdoutSubscription = null;
     _stderrSubscription = null;
+    unawaited(_stdoutController.close());
+    unawaited(_stderrController.close());
     if (!_exit.isCompleted) _exit.complete(0);
   }
 }

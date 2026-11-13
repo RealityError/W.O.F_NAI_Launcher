@@ -30,6 +30,7 @@ import '../ui/viewer/viewer_page.dart';
 import '../utils/precise_ref_library_import_helper.dart';
 import 'generation_history_actions.dart';
 import 'generation_operations.dart';
+import 'tools_generation_wiring.dart';
 
 final generationViewerWindowProvider =
     StateProvider<({bool fullscreen, bool captionOverStage})>(
@@ -366,7 +367,20 @@ class _GenerationViewerWiringState
       case ViewerAction.preciseRef:
         await op.sendTo([id], GenSendTarget.precise);
       case ViewerAction.upscale:
-        await op.upscale(id);
+        if (Platform.isAndroid) {
+          final sheet = ref.read(toolsSheetProvider);
+          if (sheet?.image.id != id || sheet?.sheet != GenToolSheet.upscale) {
+            await ToolsGenerationSheetWiring.open(
+              ref,
+              op,
+              id,
+              GenToolSheet.upscale,
+            );
+          }
+          await close();
+        } else {
+          await op.upscale(id);
+        }
       case ViewerAction.copyImage:
         await op.copyImage(id);
       case ViewerAction.copyPath:
@@ -482,8 +496,7 @@ class _GenerationViewerWiringState
             ViewerAction.img2img,
             ViewerAction.styleTransfer,
             ViewerAction.preciseRef,
-            // Local / advanced upscale has no Android implementation.
-            if (!Platform.isAndroid) ViewerAction.upscale,
+            ViewerAction.upscale,
             if (Platform.isAndroid) ViewerAction.shareImage,
             ViewerAction.copyImage,
             ViewerAction.copyAllPrompts,

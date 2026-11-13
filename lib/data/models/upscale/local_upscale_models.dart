@@ -10,6 +10,7 @@ enum LocalUpscaleError {
   invalidModel,
   invalidImage,
   sizeLimit,
+  deviceSizeLimit,
   noVulkan,
   noCuda,
   noInt8,
@@ -143,6 +144,9 @@ String onnxUpscaleAssetPath(LocalUpscaleModel model) =>
 
 /// 设备端 ONNX 推理单个 4 倍中间图允许的最大输入像素数（约 19.2MP 输出）。
 const int onnxUpscaleMaxInputPixels = 1200000;
+
+bool supportsOnnxUpscaleSize(int width, int height) =>
+    width > 0 && height > 0 && width * height <= onnxUpscaleMaxInputPixels;
 
 bool isOnnxUpscaleModel(String id) =>
     onnxUpscaleCatalog.any((model) => model.id == id);

@@ -81,6 +81,43 @@ void main() {
     await temp.delete(recursive: true);
   });
 
+  test(
+    'oversized ONNX enhancement is rejected before a paid request',
+    () async {
+      final api = _Api();
+      final service = _Upscale();
+      final container = ProviderContainer(
+        overrides: [
+          generationParamsNotifierProvider.overrideWith(_Params.new),
+          imageSaveSettingsNotifierProvider.overrideWith(_Save.new),
+          subscriptionNotifierProvider.overrideWith(_Subscription.new),
+          naiImageGenerationApiServiceProvider.overrideWithValue(api),
+          localUpscaleServiceProvider.overrideWithValue(service),
+          localUpscaleModelsProvider.overrideWith(
+            (ref) async => onnxUpscaleCatalog,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final workflow = container.read(imageWorkflowControllerProvider.notifier);
+      workflow.openTemporaryTool(_png(48, 32), ImageWorkflowMode.enhance);
+      workflow.setEnhanceLocalUpscale();
+      workflow.updateLocalUpscaleModel(onnxUpscaleCatalog.first.id);
+      await container
+          .read(imageGenerationNotifierProvider.notifier)
+          .generate(
+            container
+                .read(generationRequestParamsProvider)
+                .copyWith(width: 1536, height: 1024),
+          );
+      final state = container.read(imageGenerationNotifierProvider);
+      expect(state.status, GenerationStatus.error);
+      expect(state.errorMessage, isNotEmpty);
+      verifyZeroInteractions(api);
+      verifyZeroInteractions(service);
+    },
+  );
+
   for (final scenario in [
     'stream',
     'empty-stream',

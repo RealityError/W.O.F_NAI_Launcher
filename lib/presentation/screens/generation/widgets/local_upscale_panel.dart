@@ -398,7 +398,9 @@ class LocalUpscalePanel extends ConsumerWidget {
             Text(l.localUpscale_notInstalled, style: captionStyle),
           if (hasSource && selected?.installed == true && !localSupported)
             Text(
-              l.localUpscale_sizeLimit,
+              supportsOnnxUpscale
+                  ? l.localUpscale_onnxSizeLimit
+                  : l.localUpscale_sizeLimit,
               style: TextStyle(color: theme.colorScheme.error),
             ),
           if (models.hasError)

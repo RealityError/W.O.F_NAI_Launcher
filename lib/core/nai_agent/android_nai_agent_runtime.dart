@@ -46,7 +46,7 @@ class AndroidNaiAgentRuntime {
   Future<PiHostProcess> start({required String hostScript}) async {
     final directory = await ensure();
     return EmbeddedNodePiHostProcess.start(
-      hostScript: this.hostScript,
+      hostScript: p.join(directory.path, 'android-host.mjs'),
       workingDirectory: directory.path,
     );
   }

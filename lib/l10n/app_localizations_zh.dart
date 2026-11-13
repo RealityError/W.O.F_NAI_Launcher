@@ -9467,6 +9467,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localUpscale_sizeLimit => '图片过大：模型原始输出不能超过 6400 万像素。';
 
   @override
+  String get localUpscale_onnxSizeLimit =>
+      '设备端放大仅支持不超过 120 万像素的原图（如 1024×1024、832×1216）。降低倍率不会解除限制；请先缩小图片，或在尺寸允许时改用云端放大。';
+
+  @override
   String get localUpscale_noVulkan => '未找到可用的 Vulkan 显卡，请更新显卡驱动后重试。';
 
   @override
@@ -31329,6 +31333,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get localUpscale_sizeLimit => '圖片過大：模型原始輸出不能超過 6400 萬像素。';
+
+  @override
+  String get localUpscale_onnxSizeLimit =>
+      '裝置端放大僅支援不超過 120 萬像素的原圖（如 1024×1024、832×1216）。降低倍率不會解除限制；請先縮小圖片，或在尺寸允許時改用雲端放大。';
 
   @override
   String get localUpscale_noVulkan => '未找到可用的 Vulkan 顯示卡，請更新顯示卡驅動後重試。';

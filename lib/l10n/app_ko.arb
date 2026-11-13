@@ -5276,6 +5276,7 @@
   "localUpscale_invalidModel": "호환되지 않는 모델입니다. 4배 Real-ESRGAN NCNN 파일 쌍을 가져오세요.",
   "localUpscale_invalidImage": "이미지를 읽을 수 없습니다. PNG, JPEG 또는 WebP를 시도하세요.",
   "localUpscale_sizeLimit": "이미지가 너무 큽니다. 모델 출력은 6,400만 픽셀 이하여야 합니다.",
+  "localUpscale_onnxSizeLimit": "기기 내 확대는 원본 120만 픽셀 이하(예: 1024×1024, 832×1216)를 지원합니다. 배율을 낮춰도 한도는 바뀌지 않습니다. 원본을 축소하거나 크기 한도 내에서 클라우드 확대를 사용하세요.",
   "localUpscale_noVulkan": "사용 가능한 Vulkan GPU가 없습니다. 그래픽 드라이버를 업데이트하세요.",
   "localUpscale_processFailed": "업스케일에 실패했습니다. 모델과 그래픽 드라이버를 확인하세요. 원본은 유지됩니다.",
   "localUpscale_timeout": "시간이 초과되었습니다. 더 작은 이미지를 시도하세요.",

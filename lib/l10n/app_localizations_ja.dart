@@ -9655,6 +9655,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get localUpscale_sizeLimit => '画像が大きすぎます。モデルの出力は6400万画素以下にしてください。';
 
   @override
+  String get localUpscale_onnxSizeLimit =>
+      '端末内の拡大は元画像120万画素以下（例：1024×1024、832×1216）に対応します。倍率を下げても上限は変わりません。元画像を縮小するか、サイズ制限内ならクラウド拡大を使用してください。';
+
+  @override
   String get localUpscale_noVulkan =>
       '利用可能な Vulkan GPU がありません。グラフィックスドライバーを更新してください。';
 

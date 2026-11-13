@@ -203,4 +203,55 @@ void main() {
       expect(provider.allowImageInput, true);
     },
   );
+
+  test(
+    'Gemini completion excludes thought parts from the final response',
+    () async {
+      final dio = _Dio();
+      when(
+        () => dio.post<dynamic>(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).thenAnswer(
+        (_) async => Response<dynamic>(
+          requestOptions: RequestOptions(path: '/'),
+          data: {
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'We need answer only JSON.', 'thought': true},
+                    {'text': '{"fields":[]}'},
+                  ],
+                },
+              },
+            ],
+          },
+        ),
+      );
+
+      final response = await const GeminiGenerateContentAdapter().complete(
+        dio: dio,
+        cancelToken: CancelToken(),
+        request: const PromptAssistantRequest(
+          sessionId: 'translation',
+          provider: ProviderConfig(
+            id: 'google',
+            name: 'Google',
+            baseUrl: 'https://example.test/v1beta',
+            protocol: ProviderProtocol.geminiGenerateContent,
+          ),
+          model: 'gemini-test',
+          systemPrompt: 'Return JSON.',
+          userParts: [PromptAssistantTextPart('{}')],
+          apiKey: null,
+        ),
+      );
+
+      expect(response, '{"fields":[]}');
+    },
+  );
 }
