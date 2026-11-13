@@ -610,7 +610,10 @@ class AgentComposerState extends State<AgentComposer> {
               ?.$2;
     return LayoutBuilder(
       builder: (context, box) {
-        final narrow = box.maxWidth < 400;
+        // 手机竖屏（360–412dp）底栏只有 320–375dp：权限药丸 92、「排队发送」93，
+        // 再放停止和模型名就只剩二十几 dp，模型药丸的箭头被挤到换行外。
+        // 窄屏只保留图标主按钮，把宽度让给模型名和权限模式。
+        final compact = box.maxWidth < 400;
         return Padding(
           padding: const EdgeInsets.fromLTRB(8, 6, 6, 6),
           child: Row(
@@ -692,64 +695,74 @@ class AgentComposerState extends State<AgentComposer> {
               Expanded(
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: UiPopover(
-                    anchor: _model,
-                    onDismiss: () => setState(() => _model = null),
-                    builder: (_) => AgentModelPopover(
-                      onClose: () => setState(() => _model = null),
-                    ),
-                    child: Builder(
-                      key: _modelKey,
-                      builder: (context) => _Pill(
-                        key: const Key('agent-model'),
-                        open: _model != null,
-                        tooltip: model?.chatGptUsageUrl == null
-                            ? l.ag_modelPicker
-                            : l.naiAgent_chatGptUsingPlan,
-                        onTap: () => setState(
-                          () => _model = _above(context, right: true),
+                  child: LayoutBuilder(
+                    builder: (context, slot) {
+                      // 连「名称 + 箭头」都放不下的极端窄宽（低于侧栏最小宽度才有）
+                      // 直接不收模型药丸，别让它在 Row 里溢出。
+                      if (slot.maxWidth < _Pill.minWidth) {
+                        return const SizedBox.shrink();
+                      }
+                      return UiPopover(
+                        anchor: _model,
+                        onDismiss: () => setState(() => _model = null),
+                        builder: (_) => AgentModelPopover(
+                          onClose: () => setState(() => _model = null),
                         ),
-                        children: [
-                          Flexible(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: narrow ? 64 : 120,
-                              ),
-                              child: Text(
-                                model?.label ?? l.ag_modelNone,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: UiText.sans(
-                                  11.5,
-                                  weight: FontWeight.w500,
-                                  color: model == null ? c.warn : c.ink,
-                                  height: 1.2,
-                                ),
-                              ),
+                        child: Builder(
+                          key: _modelKey,
+                          builder: (context) => _Pill(
+                            key: const Key('agent-model'),
+                            open: _model != null,
+                            tooltip: model?.chatGptUsageUrl == null
+                                ? l.ag_modelPicker
+                                : l.naiAgent_chatGptUsingPlan,
+                            onTap: () => setState(
+                              () => _model = _above(context, right: true),
                             ),
-                          ),
-                          // 档位名是英文（Medium、XHigh…），窄宽时和模型名一起让位。
-                          if (thinking != null)
-                            Flexible(
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: narrow ? 40 : 72,
-                                ),
-                                child: Text(
-                                  thinking,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: UiText.sans(
-                                    11.5,
-                                    color: c.faint,
-                                    height: 1.2,
+                            children: [
+                              Flexible(
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: compact ? 96 : 120,
+                                  ),
+                                  child: Text(
+                                    model?.label ?? l.ag_modelNone,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: UiText.sans(
+                                      11.5,
+                                      weight: FontWeight.w500,
+                                      color: model == null ? c.warn : c.ink,
+                                      height: 1.2,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
+                              // 档位名是英文（Medium、XHigh…），窄屏优先保模型名，
+                              // 档位留在模型弹层里。
+                              if (thinking != null && !compact)
+                                Flexible(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 72,
+                                    ),
+                                    child: Text(
+                                      thinking,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: UiText.sans(
+                                        11.5,
+                                        color: c.faint,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -782,14 +795,23 @@ class AgentComposerState extends State<AgentComposer> {
               else if (running &&
                   _text.text.trim().isEmpty &&
                   comp.attachments.isEmpty)
-                AgentButton(
-                  key: const Key('agent-stop'),
-                  label: l.ag_stop,
-                  glyph: AgentGlyphs.stop,
-                  style: AgentButtonStyle.danger,
-                  height: 28,
-                  onPressed: () => s.run(s.actions.onStop),
-                )
+                if (compact)
+                  AgentIconButton(
+                    key: const Key('agent-stop'),
+                    glyph: AgentGlyphs.stop,
+                    tooltip: l.ag_stop,
+                    color: c.error,
+                    onPressed: () => s.run(s.actions.onStop),
+                  )
+                else
+                  AgentButton(
+                    key: const Key('agent-stop'),
+                    label: l.ag_stop,
+                    glyph: AgentGlyphs.stop,
+                    style: AgentButtonStyle.danger,
+                    height: 28,
+                    onPressed: () => s.run(s.actions.onStop),
+                  )
               else if (running) ...[
                 AgentIconButton(
                   key: const Key('agent-stop'),
@@ -798,11 +820,26 @@ class AgentComposerState extends State<AgentComposer> {
                   color: c.error,
                   onPressed: () => s.run(s.actions.onStop),
                 ),
-                _QueueSend(
+                if (compact)
+                  _CompactSend(
+                    key: const Key('agent-send'),
+                    enabled: comp.canSend,
+                    tooltip: l.ag_sendQueue,
+                    onPressed: () => _send(steer: false),
+                  )
+                else
+                  _QueueSend(
+                    enabled: comp.canSend,
+                    onSend: (steer) => _send(steer: steer),
+                  ),
+              ] else if (compact)
+                _CompactSend(
+                  key: const Key('agent-send'),
                   enabled: comp.canSend,
-                  onSend: (steer) => _send(steer: steer),
-                ),
-              ] else
+                  tooltip: l.ag_send,
+                  onPressed: () => _send(steer: false),
+                )
+              else
                 AgentButton(
                   key: const Key('agent-send'),
                   label: l.ag_send,
@@ -906,6 +943,10 @@ class _Pill extends StatefulWidget {
   /// 警示色（完全权限）。
   final bool warn;
   final String? tooltip;
+
+  /// 箭头 + 左右内边距：药丸再窄也得放下这些，否则 Row 会溢出。窄屏（[compact]）
+  /// 靠主按钮收窄给模型名腾地方，仍低于这个宽度就直接不画药丸。
+  static const minWidth = 30.0;
 
   @override
   State<_Pill> createState() => _PillState();
@@ -1063,6 +1104,65 @@ class _QueueSendState extends State<_QueueSend> {
                 size: 12,
                 color: widget.enabled ? c.bg : c.faint,
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 窄屏底栏的主按钮：只画实心箭头（30 × 28），省下「排队发送」文字，把宽度
+/// 让给权限药丸和模型名。运行中按下去就是排队发送，排队后可在排队行上转引导。
+class _CompactSend extends StatefulWidget {
+  const _CompactSend({
+    super.key,
+    required this.enabled,
+    required this.tooltip,
+    required this.onPressed,
+  });
+  final bool enabled;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  State<_CompactSend> createState() => _CompactSendState();
+}
+
+class _CompactSendState extends State<_CompactSend> {
+  var _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final enabled = widget.enabled;
+    final bg = !enabled
+        ? c.control
+        : _hover
+        ? Color.lerp(c.ink, c.bg, .14)!
+        : c.ink;
+    return Tooltip(
+      message: widget.tooltip,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: enabled ? widget.onPressed : null,
+          child: Container(
+            width: 30,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: AgentIcon(
+              AgentGlyphs.send,
+              size: 15,
+              color: enabled ? c.bg : c.faint,
             ),
           ),
         ),
