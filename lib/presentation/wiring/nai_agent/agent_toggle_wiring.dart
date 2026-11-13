@@ -44,3 +44,16 @@ class AgentToggleWiring extends ConsumerWidget {
     );
   }
 }
+
+/// 侧栏标题左侧的状态标志：跟着入口角标一起变表情和小圆点。
+/// 面板是全屏的，手机上这个标志是「Agent 正在干嘛」最直接的可见信号。
+class AgentStatusMarkWiring extends ConsumerWidget {
+  const AgentStatusMarkWiring({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => AgentStatusMark(
+    badge: ref.exists(naiAgentControllerProvider)
+        ? ref.watch(agentToggleBadgeProvider)
+        : AgentToggleBadge.none,
+  );
+}

@@ -221,6 +221,28 @@ class UiColors {
   final Color evoBg;
   final Color onEvo;
 
+  /// Agent 像素小人的实心底（工具栏里展开态的那块蓝）。
+  Color get agentTile =>
+      dark ? const Color(0xFF2F7BFF) : const Color(0xFF0A6CFF);
+  Color get agentTileBevel => const Color(0x59001450);
+
+  /// 像素小人的四档颜色：身体、亮面、暗面、眼睛。
+  ({Color body, Color highlight, Color shadow, Color eyes}) agentPixels({
+    required bool onTile,
+  }) => onTile
+      ? (
+          body: onBrand,
+          highlight: onBrand,
+          shadow: const Color(0xFFBCD4FF),
+          eyes: const Color(0xFF0040B0),
+        )
+      : (
+          body: dark ? const Color(0xFF3D8BFF) : agentTile,
+          highlight: dark ? const Color(0xFFA5D4FF) : const Color(0xFF6CB6FF),
+          shadow: dark ? const Color(0xFF1D58D6) : const Color(0xFF0047BD),
+          eyes: dark ? const Color(0xFF04070D) : const Color(0xFF08214F),
+        );
+
   /// 把 [color] 按 [t] 混到卡片底色上，等价于 CSS `color-mix(color t, card)`。
   Color onCard(Color color, double t) => Color.lerp(card, color, t)!;
 }

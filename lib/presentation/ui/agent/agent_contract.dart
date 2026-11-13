@@ -1595,7 +1595,11 @@ enum AgentMemoryTarget { global, chatPrefix, workspace, skills, quick }
 /// 需要平台能力的包装，由转接层提供；null = 不包。
 @immutable
 class AgentSlots {
-  const AgentSlots({this.dropTarget, this.imageDrag});
+  const AgentSlots({this.headerMark, this.dropTarget, this.imageDrag});
+
+  /// 标题左侧的状态标志。转接层按入口角标状态订阅，界面层不直连 provider；
+  /// 没提供时用静态的 [AgentStatusMark]。
+  final Widget? headerMark;
 
   /// 包住输入卡片的系统拖放区（外部文件、历史缩略图拖进来 = 附图）。
   /// [onHover] 由转接层在拖入 / 离开时调用，界面据此显示「松开以附加」。

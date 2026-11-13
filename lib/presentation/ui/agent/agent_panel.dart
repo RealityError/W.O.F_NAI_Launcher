@@ -435,7 +435,7 @@ class _InitError extends StatelessWidget {
                 color: c.ink,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: AgentMark(size: 22, color: c.bg, stroke: 1.8),
+              child: AgentMark(size: 22, color: c.bg),
             ),
             Text(
               l.ag_initFailed,
