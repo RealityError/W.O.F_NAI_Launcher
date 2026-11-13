@@ -7,6 +7,20 @@ import '../../../core/enums/quality_tag_preset.dart';
 part 'prompt_block.freezed.dart';
 part 'prompt_block.g.dart';
 
+/// One managed preview and its independent framing.
+@freezed
+class PromptBlockThumbnail with _$PromptBlockThumbnail {
+  const factory PromptBlockThumbnail({
+    required String path,
+    @Default(0.0) double offsetX,
+    @Default(0.0) double offsetY,
+    @Default(1.0) double scale,
+  }) = _PromptBlockThumbnail;
+
+  factory PromptBlockThumbnail.fromJson(Map<String, dynamic> json) =>
+      _$PromptBlockThumbnailFromJson(json);
+}
+
 /// 块库标签。颜色属于标签本身，名称用于筛选与复用。
 @freezed
 class PromptBlockTag with _$PromptBlockTag {
@@ -132,6 +146,10 @@ class PromptBlock with _$PromptBlock {
     /// 预览图缩放比例（1.0 ~ 3.0）。
     @Default(1.0) double thumbnailScale,
 
+    /// 封面之后的追加预览图；旧字段仍是第一张图。
+    @Default(<PromptBlockThumbnail>[])
+    List<PromptBlockThumbnail> additionalThumbnails,
+
     /// 成功插入提示词的次数（点击/拖拽同一汇点计数）。
     @Default(0) int useCount,
 
@@ -182,6 +200,7 @@ class PromptBlock with _$PromptBlock {
     double thumbnailOffsetX = 0.0,
     double thumbnailOffsetY = 0.0,
     double thumbnailScale = 1.0,
+    List<PromptBlockThumbnail> additionalThumbnails = const [],
     int useCount = 0,
     bool isFavorite = false,
     bool isArchived = false,
@@ -223,6 +242,7 @@ class PromptBlock with _$PromptBlock {
       thumbnailOffsetX: thumbnailOffsetX,
       thumbnailOffsetY: thumbnailOffsetY,
       thumbnailScale: thumbnailScale,
+      additionalThumbnails: additionalThumbnails,
       useCount: useCount,
       isFavorite: isFavorite,
       isArchived: isArchived,
@@ -251,6 +271,30 @@ class PromptBlock with _$PromptBlock {
 
   /// 是否已挂预览图。
   bool get hasThumbnail => thumbnail != null && thumbnail!.isNotEmpty;
+
+  /// 封面 + 追加图，按显示顺序。[hasThumbnail] 为假时只剩追加图。
+  List<PromptBlockThumbnail> get thumbnails => [
+    if (hasThumbnail)
+      PromptBlockThumbnail(
+        path: thumbnail!,
+        offsetX: thumbnailOffsetX,
+        offsetY: thumbnailOffsetY,
+        scale: thumbnailScale,
+      ),
+    ...additionalThumbnails,
+  ];
+
+  /// 按显示顺序整体替换预览图：第一张回到旧字段（兼容旧读法）。
+  PromptBlock withThumbnails(List<PromptBlockThumbnail> images) {
+    final cover = images.isEmpty ? null : images.first;
+    return copyWith(
+      thumbnail: cover?.path,
+      thumbnailOffsetX: cover?.offsetX ?? 0,
+      thumbnailOffsetY: cover?.offsetY ?? 0,
+      thumbnailScale: cover?.scale ?? 1,
+      additionalThumbnails: images.skip(1).toList(),
+    );
+  }
 
   /// 抽取用原子列表（FEAT-79）：显式 [atoms] 非 null 时原样返回
   /// （含空列表=无原子，不再 fallback）；null 回退顶层逗号切分——
