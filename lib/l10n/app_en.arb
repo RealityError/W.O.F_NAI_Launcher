@@ -7290,6 +7290,38 @@
   "blocks_editHint": "After saving, fixed instances in prompts update at once; random and sequential use the new content on the next roll",
   "blocks_newBlockHint": "Once saved, insert it from the generation sidebar with one click",
   "blocks_addThumb": "Add preview",
+"blocks_showRange": "Display range",
+"blocks_rangeHover": "Hover card",
+"blocks_rangeDetail": "Detail preview",
+"blocks_cropRange": "Inside the dashed line: {target}",
+"blocks_previewCount": "{count} preview images",
+"blocks_previewNumber": "Preview image {index}",
+"blocks_scrollPreviews": "Scroll to browse",
+"blocks_resetZoom": "Reset zoom to 100%",
+"blocks_previousPreview": "Previous preview image",
+"blocks_nextPreview": "Next preview image",
+"blocks_removePreview": "Remove this preview",
+  "@blocks_cropRange": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_previewCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_previewNumber": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
   "blocks_changeImage": "Change",
   "blocks_clearThumb": "Remove preview",
   "blocks_cropHint": "Drag · scroll to zoom",

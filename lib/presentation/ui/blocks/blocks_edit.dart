@@ -3,11 +3,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/enums/quality_tag_preset.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../kit/ui_new_badge.dart';
 import '../kit/ui_block_pill.dart';
 import '../kit/ui_colors.dart';
@@ -22,6 +24,7 @@ import '../kit/ui_popover.dart';
 import '../kit/ui_slider.dart';
 import '../kit/ui_text.dart';
 import 'blocks_contract.dart';
+import 'blocks_gallery.dart';
 import 'blocks_format.dart';
 import 'blocks_parts.dart';
 
@@ -35,6 +38,7 @@ class BlockIconGrid extends StatefulWidget {
     required this.color,
     required this.onChanged,
     this.iconKeys = UiBlockIcon.legacyKeys,
+    this.columnCount = 10,
   });
 
   /// 前排（默认原 40 格）；其余图标按「新增 → NSFW」依次接在后面，同一个网格。
@@ -44,6 +48,9 @@ class BlockIconGrid extends StatefulWidget {
 
   /// null = 默认图标。
   final ValueChanged<String?> onChanged;
+
+  /// 每行格数；手机竖屏放不下 10 列时按可用宽度收窄。
+  final int columnCount;
 
   static const cell = 30.0, gap = 4.0, columns = 10;
 
@@ -82,7 +89,7 @@ class _BlockIconGridState extends State<BlockIconGrid> {
       final i = _all.indexOf(widget.selected);
       if (i < 0) return;
       const step = BlockIconGrid.cell + BlockIconGrid.gap;
-      final top = (i ~/ BlockIconGrid.columns) * step;
+      final top = (i ~/ widget.columnCount) * step;
       final pos = _scroll.position;
       if (top + BlockIconGrid.cell > pos.viewportDimension) {
         _scroll.jumpTo(
@@ -121,9 +128,9 @@ class _BlockIconGridState extends State<BlockIconGrid> {
       );
     }
 
-    const width =
-        BlockIconGrid.cell * BlockIconGrid.columns +
-        BlockIconGrid.gap * (BlockIconGrid.columns - 1);
+    final width =
+        BlockIconGrid.cell * widget.columnCount +
+        BlockIconGrid.gap * (widget.columnCount - 1);
     return SizedBox(
       key: const Key('block-icon-scroll'),
       width: width,
@@ -162,6 +169,9 @@ enum _Tab { positive, negative, text }
 
 class _BlockEditDialogState extends State<BlockEditDialog> {
   late BlockDraft _d = widget.data.draft;
+  int _thumbIndex = 0;
+  bool _showRange = true;
+  bool _detailRange = false;
   late var _tab = widget.data.draft.atoms == null ? _Tab.text : _Tab.positive;
   late final _text = TextEditingController(
     text:
@@ -171,6 +181,9 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
   final _positiveEditor = GlobalKey<_AtomEditorState>();
   final _negativeEditor = GlobalKey<_AtomEditorState>();
   var _confirmDelete = false;
+
+  /// 手机竖屏：预览面板收成一行，点开弹层再做取景 / 多图管理。
+  var _previewOpen = false;
   UiPopoverAnchor? _pop;
   WidgetBuilder? _popBuilder;
 
@@ -229,6 +242,8 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
     final w = math.min(1000.0, mq.width * .92);
     final h = math.min(744.0, mq.height * .92);
     final narrow = w < 820;
+    // 手机竖屏放不下 330 的预览面板：收成一行入口，点开是整幅预览弹层。
+    final compactPreview = narrow && usesMobileLayout;
     final isNew = widget.data.blockId == null;
 
     return CallbackShortcuts(
@@ -244,128 +259,154 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
           key: const Key('block-edit'),
           width: w,
           height: h,
-          child: UiPopoverSurface(
-            radius: 16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  height: 56,
-                  padding: const EdgeInsets.only(left: 22, right: 10),
-                  decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: c.line)),
-                  ),
-                  child: Row(
-                    spacing: 10,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: UiPopoverSurface(
+                  radius: 16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        isNew
-                            ? l10n.blocks_newBlock
-                            : l10n.blocks_editBlockTitle,
-                        style: UiText.sans(
-                          16,
-                          weight: FontWeight.w700,
-                          color: c.ink,
+                      Container(
+                        height: 56,
+                        padding: const EdgeInsets.only(left: 22, right: 10),
+                        decoration: BoxDecoration(
+                          border: Border(bottom: BorderSide(color: c.line)),
+                        ),
+                        child: Row(
+                          spacing: 10,
+                          children: [
+                            Text(
+                              isNew
+                                  ? l10n.blocks_newBlock
+                                  : l10n.blocks_editBlockTitle,
+                              style: UiText.sans(
+                                16,
+                                weight: FontWeight.w700,
+                                color: c.ink,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                isNew
+                                    ? l10n.blocks_newBlockHint
+                                    : l10n.blocks_editHint,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: UiText.sans(12, color: c.faint),
+                              ),
+                            ),
+                            UiIconBox(
+                              key: const Key('block-edit-close'),
+                              glyph: UiGlyphs.close,
+                              glyphSize: 17,
+                              tooltip: l10n.blocks_close,
+                              onTap: widget.actions.onCancel,
+                            ),
+                          ],
                         ),
                       ),
                       Expanded(
-                        child: Text(
-                          isNew
-                              ? l10n.blocks_newBlockHint
-                              : l10n.blocks_editHint,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: UiText.sans(12, color: c.faint),
+                        child: compactPreview
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _previewBar(context),
+                                  Expanded(child: _form(context)),
+                                ],
+                              )
+                            : Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (!narrow) _preview(context),
+                                  Expanded(child: _form(context)),
+                                ],
+                              ),
+                      ),
+                      Container(
+                        height: 60,
+                        padding: const EdgeInsets.only(left: 22, right: 18),
+                        decoration: BoxDecoration(
+                          color: c.panel,
+                          border: Border(top: BorderSide(color: c.line)),
                         ),
-                      ),
-                      UiIconBox(
-                        key: const Key('block-edit-close'),
-                        glyph: UiGlyphs.close,
-                        glyphSize: 17,
-                        tooltip: l10n.blocks_close,
-                        onTap: widget.actions.onCancel,
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (!narrow) _preview(context),
-                      Expanded(child: _form(context)),
-                    ],
-                  ),
-                ),
-                Container(
-                  height: 60,
-                  padding: const EdgeInsets.only(left: 22, right: 18),
-                  decoration: BoxDecoration(
-                    color: c.panel,
-                    border: Border(top: BorderSide(color: c.line)),
-                  ),
-                  child: Row(
-                    spacing: 8,
-                    children: [
-                      if (widget.actions.onDelete != null && !_confirmDelete)
-                        UiBtn(
-                          key: const Key('block-edit-delete'),
-                          tone: UiBtnTone.ghost,
-                          color: c.error,
-                          onTap: () => setState(() => _confirmDelete = true),
+                        child: Row(
+                          spacing: 8,
                           children: [
-                            const UiGlyph(UiGlyphs.trash, size: 14),
-                            Text(l10n.blocks_deleteBlock),
+                            if (widget.actions.onDelete != null &&
+                                !_confirmDelete)
+                              UiBtn(
+                                key: const Key('block-edit-delete'),
+                                tone: UiBtnTone.ghost,
+                                color: c.error,
+                                onTap: () =>
+                                    setState(() => _confirmDelete = true),
+                                children: [
+                                  const UiGlyph(UiGlyphs.trash, size: 14),
+                                  Text(l10n.blocks_deleteBlock),
+                                ],
+                              ),
+                            if (_confirmDelete) ...[
+                              Text(
+                                l10n.blocks_deleteConfirmInline,
+                                style: UiText.sans(
+                                  12.5,
+                                  weight: FontWeight.w600,
+                                  color: c.error,
+                                ),
+                              ),
+                              UiBtn(
+                                key: const Key('block-edit-delete-no'),
+                                size: UiBtnSize.small,
+                                onTap: () =>
+                                    setState(() => _confirmDelete = false),
+                                children: [Text(l10n.blocks_cancel)],
+                              ),
+                              UiBtn(
+                                key: const Key('block-edit-delete-yes'),
+                                size: UiBtnSize.small,
+                                color: c.error,
+                                onTap: widget.actions.onDelete,
+                                children: [Text(l10n.blocks_delete)],
+                              ),
+                            ],
+                            const Spacer(),
+                            // 手机竖屏没有 Ctrl+Enter，省掉快捷键提示给按钮让位。
+                            if (!compactPreview) ...[
+                              UiGlyph(
+                                UiGlyphs.keyboard,
+                                size: 13,
+                                color: c.faint,
+                              ),
+                              Text(
+                                l10n.blocks_saveShortcut,
+                                style: UiText.sans(12, color: c.faint),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            UiBtn(
+                              key: const Key('block-edit-cancel'),
+                              size: UiBtnSize.large,
+                              onTap: widget.actions.onCancel,
+                              children: [Text(l10n.blocks_cancel)],
+                            ),
+                            UiBtn(
+                              key: const Key('block-edit-save'),
+                              size: UiBtnSize.large,
+                              tone: UiBtnTone.primary,
+                              onTap: _valid ? _save : null,
+                              children: [Text(l10n.blocks_save)],
+                            ),
                           ],
                         ),
-                      if (_confirmDelete) ...[
-                        Text(
-                          l10n.blocks_deleteConfirmInline,
-                          style: UiText.sans(
-                            12.5,
-                            weight: FontWeight.w600,
-                            color: c.error,
-                          ),
-                        ),
-                        UiBtn(
-                          key: const Key('block-edit-delete-no'),
-                          size: UiBtnSize.small,
-                          onTap: () => setState(() => _confirmDelete = false),
-                          children: [Text(l10n.blocks_cancel)],
-                        ),
-                        UiBtn(
-                          key: const Key('block-edit-delete-yes'),
-                          size: UiBtnSize.small,
-                          color: c.error,
-                          onTap: widget.actions.onDelete,
-                          children: [Text(l10n.blocks_delete)],
-                        ),
-                      ],
-                      const Spacer(),
-                      UiGlyph(UiGlyphs.keyboard, size: 13, color: c.faint),
-                      Text(
-                        l10n.blocks_saveShortcut,
-                        style: UiText.sans(12, color: c.faint),
-                      ),
-                      const SizedBox(width: 4),
-                      UiBtn(
-                        key: const Key('block-edit-cancel'),
-                        size: UiBtnSize.large,
-                        onTap: widget.actions.onCancel,
-                        children: [Text(l10n.blocks_cancel)],
-                      ),
-                      UiBtn(
-                        key: const Key('block-edit-save'),
-                        size: UiBtnSize.large,
-                        tone: UiBtnTone.primary,
-                        onTap: _valid ? _save : null,
-                        children: [Text(l10n.blocks_save)],
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              if (_previewOpen)
+                Positioned.fill(child: _previewSheet(context, h)),
+            ],
           ),
         ),
       ),
@@ -384,6 +425,7 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
     atoms: _atoms,
     negativeAtoms: _d.negativeAtoms,
     thumb: _d.thumb,
+    additionalThumbs: _d.additionalThumbs,
     folderName: widget.data.folders
         .where((f) => f.id == _d.folderId)
         .firstOrNull
@@ -392,132 +434,348 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
     updatedAt: DateTime(2000),
   );
 
-  Widget _preview(BuildContext context) {
+  Widget _preview(BuildContext context, {bool sheet = false, double? width}) {
     final c = context.ui;
     final l10n = context.l10n;
     final b = _shown;
     final data = widget.data;
-    final t = _d.thumb;
+    final thumbs = _d.thumbs;
+    final t = thumbs.elementAtOrNull(_thumbIndex);
+    final target = _detailRange
+        ? l10n.blocks_rangeDetail
+        : l10n.blocks_rangeHover;
+    void select(int index) => setState(() => _thumbIndex = index);
+    void update(BlockThumb value) {
+      final changed = [..._d.thumbs];
+      changed[_thumbIndex] = value;
+      _setThumbs(changed);
+    }
+
+    void move(int delta) =>
+        select((_thumbIndex + delta + thumbs.length) % thumbs.length);
     return Container(
-      width: 330,
+      key: Key(
+        sheet ? 'block-edit-preview-sheet-body' : 'block-edit-preview-panel',
+      ),
+      width: sheet ? width : 330,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: c.panel,
-        border: Border(right: BorderSide(color: c.line)),
+        border: sheet ? null : Border(right: BorderSide(color: c.line)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 14,
-        children: [
-          BlockLabel(l10n.blocks_preview),
-          SizedBox(
-            height: 210,
-            child: t == null
-                ? UiDashedBox(
-                    radius: 10,
-                    color: c.strong,
-                    child: Center(
-                      child: Builder(
-                        builder: (ctx) => UiBtn(
-                          key: const Key('block-edit-pick'),
-                          size: UiBtnSize.small,
-                          onTap: _pick,
-                          children: [
-                            const UiGlyph(UiGlyphs.picture, size: 13),
-                            Text(l10n.blocks_addThumb),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                : _Crop(
-                    thumb: t,
-                    onChanged: (v) => _set(_d.copyWith(thumb: v)),
-                    onPick: _pick,
-                    onClear: () => _set(_d.copyWith(clearThumb: true)),
-                  ),
-          ),
-          BlockBox(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  const TextSpan(text: '…, wide shot, '),
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: BlockPill(b),
-                  ),
-                  const TextSpan(text: ' white dress, blue flower, …'),
-                ],
-              ),
-              style: UiText.sans(13, color: c.ink, height: 1.6),
-            ),
-          ),
-          BlockBox(
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                  child: Row(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 14,
+          children: [
+            BlockLabel(
+              l10n.blocks_preview,
+              count: thumbs.isEmpty
+                  ? null
+                  : '${_thumbIndex + 1} / ${thumbs.length}',
+              trailing: Semantics(
+                toggled: _showRange,
+                button: true,
+                child: UiPressable(
+                  key: const Key('block-edit-show-range'),
+                  onTap: () => setState(() => _showRange = !_showRange),
+                  builder: (context, _) => Row(
+                    mainAxisSize: MainAxisSize.min,
                     spacing: 6,
                     children: [
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: BlockPill(b, large: true),
-                        ),
+                      Icon(Icons.crop_free, size: 13, color: c.faint),
+                      Text(
+                        l10n.blocks_showRange,
+                        style: UiText.sans(10, color: c.muted),
                       ),
-                      if (b.folderName != null)
-                        Text(
-                          b.folderName!,
-                          style: UiText.sans(11, color: c.faint),
-                        ),
+                      UiSwitch(value: _showRange, width: 22, height: 12),
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                  child: BlockAtoms(
-                    b.atoms.isEmpty ? b.negativeAtoms : b.atoms,
-                    max: 5,
-                  ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                BlockSeg<bool>(
+                  values: const [false, true],
+                  selected: _detailRange,
+                  mini: true,
+                  expand: true,
+                  keyOf: (v) =>
+                      Key('block-edit-range-${v ? 'detail' : 'hover'}'),
+                  labelOf: (v) =>
+                      v ? l10n.blocks_rangeDetail : l10n.blocks_rangeHover,
+                  onTap: (v) => setState(() => _detailRange = v),
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 210,
+                  child: t == null
+                      ? UiDashedBox(
+                          radius: 10,
+                          color: c.strong,
+                          child: Center(
+                            child: UiBtn(
+                              key: const Key('block-edit-pick'),
+                              size: UiBtnSize.small,
+                              onTap: _pick,
+                              children: [
+                                const UiGlyph(UiGlyphs.picture, size: 13),
+                                Text(l10n.blocks_addThumb),
+                              ],
+                            ),
+                          ),
+                        )
+                      : _Crop(
+                          key: ValueKey(_thumbIndex),
+                          thumb: t,
+                          showRange: _showRange,
+                          target: _detailRange
+                              ? blockInspectorPreviewSize
+                              : blockHoverPreviewSize,
+                          onChanged: update,
+                          onPick: () => _pick(replace: true),
+                          onClear: () {
+                            final remaining = [..._d.thumbs]
+                              ..removeAt(_thumbIndex);
+                            _thumbIndex = math.max(
+                              0,
+                              math.min(_thumbIndex, remaining.length - 1),
+                            );
+                            _setThumbs(remaining);
+                          },
+                          onPrevious: thumbs.length > 1 ? () => move(-1) : null,
+                          onNext: thumbs.length > 1 ? () => move(1) : null,
+                        ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  spacing: 8,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        t != null && _showRange
+                            ? l10n.blocks_cropRange(target)
+                            : '',
+                        key: const Key('block-edit-range-caption'),
+                        maxLines: 2,
+                        style: UiText.sans(10, color: c.faint, height: 1.5),
+                      ),
+                    ),
+                    if (t != null)
+                      Tooltip(
+                        message: l10n.blocks_resetZoom,
+                        child: UiPressable(
+                          key: const Key('block-edit-reset-zoom'),
+                          onTap: () => update(t.copyWith(scale: 1)),
+                          builder: (context, hover) => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 4,
+                            children: [
+                              Icon(
+                                Icons.zoom_in,
+                                size: 14,
+                                color: hover ? c.ink : c.muted,
+                              ),
+                              Text(
+                                '${(t.scale * 100).round()}%',
+                                key: const Key('block-edit-zoom-percent'),
+                                style: UiText.sans(
+                                  10,
+                                  color: hover ? c.ink : c.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (thumbs.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  BlockThumbnailStrip(
+                    images: thumbs,
+                    selected: _thumbIndex,
+                    onSelected: select,
+                    onAdd: _pick,
+                  ),
+                  const SizedBox(height: 7),
+                  Row(
+                    children: [
+                      Text(
+                        l10n.blocks_previewCount(thumbs.length),
+                        style: UiText.sans(10, color: c.faint),
+                      ),
+                      const Spacer(),
+                      if (thumbs.length > 4)
+                        Text(
+                          l10n.blocks_scrollPreviews,
+                          style: UiText.sans(10, color: c.faint),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
-          ),
-          const Spacer(),
-          if (data.sourcePath != null)
-            Text(
-              [
-                l10n.blocks_sourceFile(data.sourcePath!),
-                [
-                  if (data.importedAt != null)
-                    l10n.blocks_importedAt(BlocksFormat.date(data.importedAt!)),
-                  switch (data.sourceState) {
-                    BlockSourceState.synced => l10n.blocks_sourceSynced,
-                    BlockSourceState.changed => l10n.blocks_sourceChanged,
-                    BlockSourceState.missing => l10n.blocks_sourceMissing,
-                    BlockSourceState.none => '',
-                  },
-                ].where((s) => s.isNotEmpty).join(' · '),
-              ].join('\n'),
-              style: UiText.sans(11, color: c.faint, height: 1.7),
+            BlockBox(
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(text: '…, wide shot, '),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: BlockPill(b),
+                    ),
+                    const TextSpan(text: ' white dress, blue flower, …'),
+                  ],
+                ),
+                style: UiText.sans(13, color: c.ink, height: 1.6),
+              ),
             ),
-        ],
+            BlockBox(
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    child: Row(
+                      spacing: 6,
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: BlockPill(b, large: true),
+                          ),
+                        ),
+                        if (b.folderName != null)
+                          Text(
+                            b.folderName!,
+                            style: UiText.sans(11, color: c.faint),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                    child: BlockAtoms(
+                      b.atoms.isEmpty ? b.negativeAtoms : b.atoms,
+                      max: 5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (data.sourcePath != null)
+              Text(
+                [
+                  l10n.blocks_sourceFile(data.sourcePath!),
+                  [
+                    if (data.importedAt != null)
+                      l10n.blocks_importedAt(
+                        BlocksFormat.date(data.importedAt!),
+                      ),
+                    switch (data.sourceState) {
+                      BlockSourceState.synced => l10n.blocks_sourceSynced,
+                      BlockSourceState.changed => l10n.blocks_sourceChanged,
+                      BlockSourceState.missing => l10n.blocks_sourceMissing,
+                      BlockSourceState.none => '',
+                    },
+                  ].where((s) => s.isNotEmpty).join(' · '),
+                ].join('\n'),
+                style: UiText.sans(11, color: c.faint, height: 1.7),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _pick() async {
-    final r = await widget.actions.onPickThumbnail();
-    if (r == null || !mounted) return;
-    _set(
-      _d.copyWith(
-        thumb: BlockThumb(r.image),
-        thumbToken: r.token,
-        clearThumb: false,
-      ),
+  void _setThumbs(List<BlockThumb> images) => _set(
+    _d.copyWith(
+      thumb: images.firstOrNull,
+      additionalThumbs: images.skip(1).toList(),
+      clearThumb: images.isEmpty,
+    ),
+  );
+
+  Future<void> _pick({bool replace = false}) async {
+    final List<BlockThumbPick> picked;
+    if (!replace && widget.actions.onPickThumbnails != null) {
+      picked = await widget.actions.onPickThumbnails!();
+    } else {
+      final image = await widget.actions.onPickThumbnail();
+      picked = [if (image != null) image];
+    }
+    if (!mounted || picked.isEmpty) return;
+    final images = [..._d.thumbs];
+    final added = [
+      for (final image in picked)
+        BlockThumb(image.image, pickToken: image.token),
+    ];
+    if (replace && _thumbIndex < images.length) {
+      images[_thumbIndex] = added.first;
+    } else {
+      _thumbIndex = images.length;
+      images.addAll(added);
+    }
+    _setThumbs(images);
+  }
+
+  /// 外观样式的三列小卡（宽度 cw）；桌面在右侧，手机竖屏在图标网格下面整宽排。
+  Widget _lookTiles(double cw) {
+    final c = context.ui;
+    return Wrap(
+      key: const Key('block-edit-looks'),
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final look in BlockAppearance.values)
+          UiPressable(
+            key: Key('block-edit-look-${look.name}'),
+            onTap: () => _set(_d.copyWith(look: look)),
+            builder: (context, hover) {
+              final on = _d.look == look;
+              return Container(
+                width: cw,
+                height: 46,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: on
+                      ? Color.alphaBlend(
+                          c.accent.withValues(alpha: .04),
+                          c.raised,
+                        )
+                      : (hover ? c.hover : null),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: on ? c.accent : c.line),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 3,
+                  children: [
+                    BlockPill(_shown, look: look),
+                    // 固定 46 高：长名称（如日文）缩小，不换行撑破。
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        BlocksFormat.look(context, look),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: UiText.sans(
+                          11,
+                          color: on ? c.accent : c.muted,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 
@@ -544,12 +802,155 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
     );
   }
 
+  /// 手机竖屏：预览面板收成一行入口，点开后是整幅预览/取景弹层（多图管理都在里面）。
+  Widget _previewBar(BuildContext context) {
+    final c = context.ui;
+    final l10n = context.l10n;
+    final thumbs = _d.thumbs;
+    final cover = thumbs.elementAtOrNull(_thumbIndex);
+    return UiPressable(
+      key: const Key('block-edit-preview-bar'),
+      onTap: () => setState(() => _previewOpen = true),
+      builder: (context, hover) => Container(
+        height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: hover ? c.hover : c.panel,
+          border: Border(bottom: BorderSide(color: c.line)),
+        ),
+        child: Row(
+          spacing: 10,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: SizedBox.square(
+                dimension: 34,
+                child: cover == null
+                    ? ColoredBox(
+                        color: c.bg,
+                        child: Center(
+                          child: UiGlyph(
+                            UiGlyphs.picture,
+                            size: 15,
+                            color: c.faint,
+                          ),
+                        ),
+                      )
+                    : UiCroppedImage(
+                        image: blockThumbnailProvider(
+                          cover,
+                          34,
+                          MediaQuery.devicePixelRatioOf(context),
+                        ),
+                        offsetX: cover.offsetX,
+                        offsetY: cover.offsetY,
+                        scale: cover.scale,
+                      ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 2,
+                children: [
+                  Text(
+                    l10n.blocks_preview,
+                    style: UiText.sans(
+                      13,
+                      weight: FontWeight.w600,
+                      color: c.ink,
+                    ),
+                  ),
+                  Text(
+                    thumbs.isEmpty
+                        ? l10n.blocks_addThumb
+                        : l10n.blocks_previewCount(thumbs.length),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: UiText.sans(11, color: c.faint),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: c.muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _previewSheet(BuildContext context, double editorHeight) {
+    final c = context.ui;
+    final l10n = context.l10n;
+    void close() => setState(() => _previewOpen = false);
+    return GestureDetector(
+      key: const Key('block-edit-preview-sheet'),
+      behavior: HitTestBehavior.opaque,
+      onTap: close,
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: .38),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: GestureDetector(
+            onTap: () {},
+            child: SizedBox(
+              width: double.infinity,
+              height: math.min(560, editorHeight * .86),
+              child: UiPopoverSurface(
+                radius: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      height: 46,
+                      padding: const EdgeInsets.only(left: 18, right: 8),
+                      decoration: BoxDecoration(
+                        border: Border(bottom: BorderSide(color: c.line)),
+                      ),
+                      child: Row(
+                        spacing: 8,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.blocks_preview,
+                              style: UiText.sans(
+                                14,
+                                weight: FontWeight.w700,
+                                color: c.ink,
+                              ),
+                            ),
+                          ),
+                          UiIconBox(
+                            key: const Key('block-edit-preview-sheet-close'),
+                            glyph: UiGlyphs.close,
+                            glyphSize: 16,
+                            tooltip: l10n.blocks_close,
+                            onTap: close,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(child: _preview(context, sheet: true)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _form(BuildContext context) {
     final c = context.ui;
     final l10n = context.l10n;
     final data = widget.data;
     final folder = data.folders.where((f) => f.id == _d.folderId).firstOrNull;
-    final p = _d.params;
+    // 手机竖屏：标签和附带参数并排会挤出边界，改成上下两段。
+    final mq = MediaQuery.sizeOf(context);
+    final compactForm =
+        usesMobileLayout && math.min(1000.0, mq.width * .92) < 820;
 
     final content = switch (_tab) {
       _Tab.positive => KeyedSubtree(
@@ -713,240 +1114,218 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
           ),
           _field(
             l10n.blocks_appearance,
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 16,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 10,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: BlockColorDots(
-                        key: const Key('block-edit-colors'),
-                        selected: _d.color,
-                        size: 20,
-                        onChanged: (col) => _set(_d.copyWith(color: col)),
-                      ),
-                    ),
-                    BlockIconGrid(
-                      key: const Key('block-edit-icons'),
-                      selected: _d.icon,
-                      color: _d.color,
-                      onChanged: (k) => _set(
-                        k == null
-                            ? _d.copyWith(clearIcon: true)
-                            : _d.copyWith(icon: k),
-                      ),
-                    ),
-                  ],
-                ),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, box) {
-                      final cw = (box.maxWidth - 12) / 3;
-                      return Wrap(
-                        key: const Key('block-edit-looks'),
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          for (final look in BlockAppearance.values)
-                            UiPressable(
-                              key: Key('block-edit-look-${look.name}'),
-                              onTap: () => _set(_d.copyWith(look: look)),
-                              builder: (context, hover) {
-                                final on = _d.look == look;
-                                return Container(
-                                  width: cw,
-                                  height: 46,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: on
-                                        ? Color.alphaBlend(
-                                            c.accent.withValues(alpha: .04),
-                                            c.raised,
-                                          )
-                                        : (hover ? c.hover : null),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: on ? c.accent : c.line,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    spacing: 3,
-                                    children: [
-                                      BlockPill(_shown, look: look),
-                                      // 固定 46 高：长名称（如日文）缩小，不换行撑破。
-                                      FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Text(
-                                          BlocksFormat.look(context, look),
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          style: UiText.sans(
-                                            11,
-                                            color: on ? c.accent : c.muted,
-                                            height: 1.2,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                        ],
-                      );
-                    },
+            LayoutBuilder(
+              builder: (context, box) {
+                // 手机竖屏放不下 10 列图标 + 三列外观，收成上下两段。
+                final compact = usesMobileLayout && box.maxWidth < 520;
+                final iconColumns = compact
+                    ? math.max(
+                        4,
+                        math.min(
+                          BlockIconGrid.columns,
+                          ((box.maxWidth + BlockIconGrid.gap) /
+                                  (BlockIconGrid.cell + BlockIconGrid.gap))
+                              .floor(),
+                        ),
+                      )
+                    : BlockIconGrid.columns;
+                final colors = Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: BlockColorDots(
+                    key: const Key('block-edit-colors'),
+                    selected: _d.color,
+                    size: 20,
+                    onChanged: (col) => _set(_d.copyWith(color: col)),
                   ),
-                ),
-              ],
+                );
+                final grid = BlockIconGrid(
+                  key: const Key('block-edit-icons'),
+                  selected: _d.icon,
+                  color: _d.color,
+                  columnCount: iconColumns,
+                  onChanged: (k) => _set(
+                    k == null
+                        ? _d.copyWith(clearIcon: true)
+                        : _d.copyWith(icon: k),
+                  ),
+                );
+                final looks = LayoutBuilder(
+                  builder: (context, looksBox) =>
+                      _lookTiles((looksBox.maxWidth - 12) / 3),
+                );
+                if (!compact) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 16,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 10,
+                        children: [colors, grid],
+                      ),
+                      Expanded(child: looks),
+                    ],
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 12,
+                  children: [
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: colors,
+                    ),
+                    Align(alignment: Alignment.centerLeft, child: grid),
+                    looks,
+                  ],
+                );
+              },
             ),
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 12,
-            children: [
-              Expanded(
-                child: _field(
-                  l10n.blocks_tags,
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 34),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        for (final t in _d.tags)
-                          BlockTagChip(
-                            t,
-                            onRemove: () => _set(
-                              _d.copyWith(tags: [..._d.tags]..remove(t)),
-                            ),
-                          ),
-                        Builder(
-                          builder: (ctx) => UiBtn(
-                            key: const Key('block-edit-add-tag'),
-                            size: UiBtnSize.small,
-                            tone: UiBtnTone.ghost,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            onTap: () => _open(
-                              ctx,
-                              above: true,
-                              (_) => _TagPicker(
-                                tags: [
-                                  for (final t in data.tags)
-                                    if (!_d.tags.any((x) => x.name == t.name))
-                                      t,
-                                ],
-                                onPick: (t) {
-                                  _closePop();
-                                  _set(_d.copyWith(tags: [..._d.tags, t]));
-                                },
-                              ),
-                            ),
-                            children: [
-                              const UiGlyph(UiGlyphs.plus, size: 13),
-                              Text(l10n.blocks_add),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+          if (!compactForm)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 12,
+              children: [
+                Expanded(child: _tagsField()),
+                SizedBox(width: 330, child: _paramsField()),
+              ],
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 12,
+              children: [_tagsField(), _paramsField()],
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 标签字段（手机竖屏整宽，桌面与参数并排）。
+  Widget _tagsField() {
+    final l10n = context.l10n;
+    final data = widget.data;
+    return _field(
+      l10n.blocks_tags,
+      ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 34),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            for (final t in _d.tags)
+              BlockTagChip(
+                t,
+                onRemove: () =>
+                    _set(_d.copyWith(tags: [..._d.tags]..remove(t))),
               ),
-              SizedBox(
-                width: 330,
-                child: _field(
-                  l10n.blocks_params,
-                  Builder(
-                    builder: (ctx) {
-                      void edit() => _open(
-                        ctx,
-                        above: true,
-                        (_) => _ParamsPanel(
-                          params: _d.params ?? const BlockParams(),
-                          catalog: data.catalog,
-                          onCapture: widget.actions.onCaptureParams,
-                          onChanged: (v) => _set(
-                            v == null
-                                ? _d.copyWith(clearParams: true)
-                                : _d.copyWith(params: v),
-                          ),
-                          onClose: _closePop,
-                        ),
-                      );
-                      if (p == null || p.isEmpty) {
-                        return Row(
-                          children: [
-                            Text(
-                              l10n.blocks_noParamsShort,
-                              style: UiText.sans(12, color: c.faint),
-                            ),
-                            const SizedBox(width: 6),
-                            UiBtn(
-                              key: const Key('block-edit-params'),
-                              size: UiBtnSize.small,
-                              tone: UiBtnTone.ghost,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              onTap: edit,
-                              children: [
-                                const UiGlyph(UiGlyphs.plus, size: 13),
-                                Text(l10n.blocks_add),
-                              ],
-                            ),
-                          ],
-                        );
-                      }
-                      return Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          if (p.model case final m?)
-                            _chip(data.catalog.model(m), edit),
-                          if (p.steps case final s?)
-                            _chip(l10n.blocks_steps(s), edit),
-                          if (p.scale case final g?)
-                            _chip(
-                              l10n.blocks_guidance(BlocksFormat.num1(g)),
-                              edit,
-                            ),
-                          if (p.sampler case final s?)
-                            _chip(
-                              BlocksFormat.shortSampler(
-                                data.catalog.sampler(s),
-                              ),
-                              edit,
-                            ),
-                          UiIconBox(
-                            key: const Key('block-edit-params'),
-                            glyph: UiGlyphs.pencil,
-                            size: 26,
-                            glyphSize: 13,
-                            tooltip: l10n.blocks_editParams,
-                            onTap: edit,
-                          ),
-                        ],
-                      );
+            Builder(
+              builder: (ctx) => UiBtn(
+                key: const Key('block-edit-add-tag'),
+                size: UiBtnSize.small,
+                tone: UiBtnTone.ghost,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                onTap: () => _open(
+                  ctx,
+                  above: true,
+                  (_) => _TagPicker(
+                    tags: [
+                      for (final t in data.tags)
+                        if (!_d.tags.any((x) => x.name == t.name)) t,
+                    ],
+                    onPick: (t) {
+                      _closePop();
+                      _set(_d.copyWith(tags: [..._d.tags, t]));
                     },
                   ),
-                  hint: null,
-                  trailing: Text(
-                    l10n.blocks_paramsNotAuto,
-                    style: UiText.sans(11, color: c.faint),
-                  ),
                 ),
+                children: [
+                  const UiGlyph(UiGlyphs.plus, size: 13),
+                  Text(l10n.blocks_add),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 附带参数字段（手机竖屏整排到标签下面）。
+  Widget _paramsField() {
+    final c = context.ui;
+    final l10n = context.l10n;
+    final data = widget.data;
+    final p = _d.params;
+    return _field(
+      l10n.blocks_params,
+      Builder(
+        builder: (ctx) {
+          void edit() => _open(
+            ctx,
+            above: true,
+            (_) => _ParamsPanel(
+              params: _d.params ?? const BlockParams(),
+              catalog: data.catalog,
+              onCapture: widget.actions.onCaptureParams,
+              onChanged: (v) => _set(
+                v == null
+                    ? _d.copyWith(clearParams: true)
+                    : _d.copyWith(params: v),
+              ),
+              onClose: _closePop,
+            ),
+          );
+          if (p == null || p.isEmpty) {
+            return Row(
+              children: [
+                Text(
+                  l10n.blocks_noParamsShort,
+                  style: UiText.sans(12, color: c.faint),
+                ),
+                const SizedBox(width: 6),
+                UiBtn(
+                  key: const Key('block-edit-params'),
+                  size: UiBtnSize.small,
+                  tone: UiBtnTone.ghost,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  onTap: edit,
+                  children: [
+                    const UiGlyph(UiGlyphs.plus, size: 13),
+                    Text(l10n.blocks_add),
+                  ],
+                ),
+              ],
+            );
+          }
+          return Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (p.model case final m?) _chip(data.catalog.model(m), edit),
+              if (p.steps case final s?) _chip(l10n.blocks_steps(s), edit),
+              if (p.scale case final g?)
+                _chip(l10n.blocks_guidance(BlocksFormat.num1(g)), edit),
+              if (p.sampler case final s?)
+                _chip(BlocksFormat.shortSampler(data.catalog.sampler(s)), edit),
+              UiIconBox(
+                key: const Key('block-edit-params'),
+                glyph: UiGlyphs.pencil,
+                size: 26,
+                glyphSize: 13,
+                tooltip: l10n.blocks_editParams,
+                onTap: edit,
               ),
             ],
-          ),
-        ],
+          );
+        },
+      ),
+      hint: null,
+      trailing: Text(
+        l10n.blocks_paramsNotAuto,
+        style: UiText.sans(11, color: c.faint),
       ),
     );
   }
@@ -958,15 +1337,24 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
 /// 预览图裁剪：拖动平移、滚轮或触控板捏合缩放（1…3）。
 class _Crop extends StatefulWidget {
   const _Crop({
+    super.key,
     required this.thumb,
     required this.onChanged,
     required this.onPick,
     required this.onClear,
+    required this.showRange,
+    required this.target,
+    this.onPrevious,
+    this.onNext,
   });
   final BlockThumb thumb;
   final ValueChanged<BlockThumb> onChanged;
   final VoidCallback onPick;
   final VoidCallback onClear;
+  final bool showRange;
+  final Size target;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   @override
   State<_Crop> createState() => _CropState();
@@ -974,6 +1362,58 @@ class _Crop extends StatefulWidget {
 
 class _CropState extends State<_Crop> {
   double? _pinchStartScale;
+  Size? _imageSize;
+  ImageProvider? _resolved;
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  void _stopImage() {
+    if (_listener != null) _stream?.removeListener(_listener!);
+    _listener = null;
+    _stream = null;
+  }
+
+  void _resolveImage() {
+    if (_resolved == widget.thumb.image) return;
+    _stopImage();
+    _resolved = widget.thumb.image;
+    _imageSize = null;
+    _stream = widget.thumb.image.resolve(
+      createLocalImageConfiguration(context),
+    );
+    _listener = ImageStreamListener((info, _) {
+      final size = Size(
+        info.image.width.toDouble(),
+        info.image.height.toDouble(),
+      );
+      info.dispose();
+      if (!mounted) return;
+      _imageSize = size;
+      _stopImage();
+      if (SchedulerBinding.instance.schedulerPhase ==
+          SchedulerPhase.persistentCallbacks) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+      } else {
+        setState(() {});
+      }
+    }, onError: (Object _, StackTrace? __) => _stopImage());
+    _stream!.addListener(_listener!);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolveImage();
+  }
+
+  @override
+  void dispose() {
+    _stopImage();
+    super.dispose();
+  }
+
   // Pan and pinch events can arrive before the parent rebuilds.
   BlockThumb? _pending;
 
@@ -988,6 +1428,7 @@ class _CropState extends State<_Crop> {
   void didUpdateWidget(covariant _Crop oldWidget) {
     super.didUpdateWidget(oldWidget);
     _pending = null;
+    _resolveImage();
   }
 
   @override
@@ -1007,11 +1448,14 @@ class _CropState extends State<_Crop> {
         onPointerPanZoomEnd: (_) => _pinchStartScale = null,
         onPointerSignal: (e) {
           if (e is PointerScrollEvent) {
-            _change(
-              _current.copyWith(
-                scale: (_current.scale - e.scrollDelta.dy / 600).clamp(
-                  1.0,
-                  3.0,
+            GestureBinding.instance.pointerSignalResolver.register(
+              e,
+              (_) => _change(
+                _current.copyWith(
+                  scale: (_current.scale - e.scrollDelta.dy / 600).clamp(
+                    1.0,
+                    3.0,
+                  ),
                 ),
               ),
             );
@@ -1048,53 +1492,82 @@ class _CropState extends State<_Crop> {
                   width: 2,
                 ),
               ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  UiCroppedImage(
-                    image: thumb.image,
-                    offsetX: thumb.offsetX,
-                    offsetY: thumb.offsetY,
-                    scale: thumb.scale,
-                  ),
-                  Positioned(
-                    left: 8,
-                    bottom: 8,
-                    child: _darkBtn(
-                      UiGlyphs.picture,
-                      l10n.blocks_changeImage,
-                      widget.onPick,
-                      const Key('block-edit-pick'),
-                    ),
-                  ),
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: _darkBtn(
-                      UiGlyphs.close,
-                      '',
-                      widget.onClear,
-                      const Key('block-edit-clear-thumb'),
-                      tip: l10n.blocks_clearThumb,
-                    ),
-                  ),
-                  Positioned(
-                    right: 10,
-                    bottom: 12,
-                    child: Text(
-                      l10n.blocks_cropHint,
-                      style:
-                          UiText.sans(
-                            11,
-                            color: Colors.white.withValues(alpha: .9),
-                          ).copyWith(
-                            shadows: const [
-                              Shadow(color: Color(0x80000000), blurRadius: 4),
-                            ],
+              child: BlockGalleryFrame(
+                onPrevious: widget.onPrevious,
+                onNext: widget.onNext,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (_imageSize == null)
+                      UiCroppedImage(
+                        image: thumb.image,
+                        offsetX: thumb.offsetX,
+                        offsetY: thumb.offsetY,
+                        scale: thumb.scale,
+                      )
+                    else
+                      Positioned.fromRect(
+                        rect: blockEditorImageRect(
+                          _imageSize!,
+                          box.biggest,
+                          thumb,
+                          target: widget.target,
+                        ),
+                        child: Image(image: thumb.image, fit: BoxFit.fill),
+                      ),
+                    if (widget.showRange && _imageSize != null)
+                      IgnorePointer(
+                        child: CustomPaint(
+                          key: const Key('block-edit-crop-range'),
+                          painter: BlockPreviewGuidePainter(
+                            blockPreviewRange(
+                              _imageSize!,
+                              box.biggest,
+                              widget.target,
+                              thumb,
+                            ),
                           ),
+                        ),
+                      ),
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: _darkBtn(
+                        UiGlyphs.picture,
+                        l10n.blocks_changeImage,
+                        widget.onPick,
+                        const Key('block-edit-pick'),
+                      ),
                     ),
-                  ),
-                ],
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: _darkBtn(
+                        UiGlyphs.close,
+                        '',
+                        widget.onClear,
+                        const Key('block-edit-clear-thumb'),
+                        tip: l10n.blocks_removePreview,
+                      ),
+                    ),
+                    Positioned(
+                      right: 10,
+                      bottom: 12,
+                      child: Text(
+                        l10n.blocks_cropHint,
+                        style:
+                            UiText.sans(
+                              11,
+                              color: Colors.white.withValues(alpha: .9),
+                            ).copyWith(
+                              shadows: const [
+                                Shadow(color: Color(0x80000000), blurRadius: 4),
+                              ],
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

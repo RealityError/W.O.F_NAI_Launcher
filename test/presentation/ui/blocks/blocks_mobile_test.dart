@@ -15,13 +15,14 @@ Future<void> pumpBlocksMobile(
   WidgetTester tester, {
   String locale = 'zh',
   BlocksLibraryViewData? data,
+  List<BlockThumbPick>? galleryPicks,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(360, 780);
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   await loadStudioCaptureFonts();
-  final rec = RecordingBlocks();
+  final rec = RecordingBlocks(galleryPicks: galleryPicks);
   final view =
       data ??
       BlocksFixture.library(image: blocksTestImage, view: BlocksView.masonry);
@@ -119,6 +120,50 @@ void main() {
       greaterThan(300),
     );
     expect(find.byKey(const Key('blocks-sel-more')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('编辑弹层把预览面板收成一行入口，点开弹层可多选加图', (tester) async {
+    await pumpBlocksMobile(
+      tester,
+      galleryPicks: [
+        for (var i = 0; i < 3; i++)
+          BlockThumbPick(blocksTestImage('pick-$i'), 'pick-$i'),
+      ],
+    );
+
+    await tester.tap(find.byKey(const Key('blocks-card-y99')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('blocks-insp-thumb')));
+    await tester.pumpAndSettle();
+
+    // 360dp 放不下 330 的桌面预览面板，收成一行入口。
+    expect(find.byKey(const Key('block-edit')), findsOneWidget);
+    expect(find.byKey(const Key('block-edit-preview-panel')), findsNothing);
+    expect(find.byKey(const Key('block-edit-preview-bar')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('block-edit-preview-bar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('block-edit-preview-sheet')), findsOneWidget);
+    expect(
+      find.byKey(const Key('block-edit-preview-sheet-body')),
+      findsOneWidget,
+    );
+
+    // 缩略图条的「+」走多选添加：y99 已有 1 张封面，再加 3 张。
+    final l = tester.element(find.byKey(const Key('block-edit'))).l10n;
+    await tester.tap(find.byKey(const Key('block-edit-add-thumbnails')));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 4; i++) {
+      expect(find.byKey(Key('block-thumbnail-$i')), findsOneWidget);
+    }
+    expect(find.text(l.blocks_previewCount(4)), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const Key('block-edit-preview-sheet-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('block-edit-preview-sheet')), findsNothing);
+    expect(find.text(l.blocks_previewCount(4)), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

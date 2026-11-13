@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../mobile/mobile_breakpoints.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_block_pill.dart';
 import '../kit/ui_colors.dart';
@@ -12,6 +13,7 @@ import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
 import '../kit/ui_text.dart';
 import 'blocks_contract.dart';
+import 'blocks_gallery.dart';
 import 'blocks_edit.dart';
 import 'blocks_format.dart';
 import 'blocks_page.dart';
@@ -232,20 +234,24 @@ class _SingleState extends State<_Single> {
         spacing: 14,
         children: [
           if (b.thumb != null)
-            Container(
+            BlockImageGallery(
+              key: ValueKey(b.id),
+              images: b.thumbs,
               height: 176,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(9)),
-              child: Stack(
-                fit: StackFit.expand,
+              overlay: Stack(
                 children: [
-                  BlockCover(b),
                   Positioned(
                     right: 8,
                     bottom: 8,
                     child: UiPressable(
                       key: const Key('blocks-insp-thumb'),
-                      onTap: () => ctrl.openEdit(b.id),
+                      // 手机端检查器是独立弹层路由；先收起弹层再打开页面级编辑弹窗。
+                      onTap: () async {
+                        if (usesMobileLayout) {
+                          await Navigator.of(context).maybePop();
+                        }
+                        ctrl.openEdit(b.id);
+                      },
                       builder: (context, hover) => Container(
                         height: 26,
                         padding: const EdgeInsets.symmetric(horizontal: 9),

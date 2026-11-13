@@ -23293,6 +23293,72 @@ abstract class AppLocalizations {
   /// **'Add preview'**
   String get blocks_addThumb;
 
+  /// No description provided for @blocks_showRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Display range'**
+  String get blocks_showRange;
+
+  /// No description provided for @blocks_rangeHover.
+  ///
+  /// In en, this message translates to:
+  /// **'Hover card'**
+  String get blocks_rangeHover;
+
+  /// No description provided for @blocks_rangeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Detail preview'**
+  String get blocks_rangeDetail;
+
+  /// No description provided for @blocks_cropRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Inside the dashed line: {target}'**
+  String blocks_cropRange(String target);
+
+  /// No description provided for @blocks_previewCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} preview images'**
+  String blocks_previewCount(int count);
+
+  /// No description provided for @blocks_previewNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview image {index}'**
+  String blocks_previewNumber(int index);
+
+  /// No description provided for @blocks_scrollPreviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll to browse'**
+  String get blocks_scrollPreviews;
+
+  /// No description provided for @blocks_resetZoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset zoom to 100%'**
+  String get blocks_resetZoom;
+
+  /// No description provided for @blocks_previousPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous preview image'**
+  String get blocks_previousPreview;
+
+  /// No description provided for @blocks_nextPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Next preview image'**
+  String get blocks_nextPreview;
+
+  /// No description provided for @blocks_removePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this preview'**
+  String get blocks_removePreview;
+
   /// No description provided for @blocks_changeImage.
   ///
   /// In en, this message translates to:

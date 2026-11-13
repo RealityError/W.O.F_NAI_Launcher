@@ -12837,6 +12837,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get blocks_addThumb => '添加预览图';
 
   @override
+  String get blocks_showRange => '显示范围';
+
+  @override
+  String get blocks_rangeHover => '悬浮卡';
+
+  @override
+  String get blocks_rangeDetail => '详情预览';
+
+  @override
+  String blocks_cropRange(String target) {
+    return '虚线内为$target显示范围';
+  }
+
+  @override
+  String blocks_previewCount(int count) {
+    return '$count 张预览图';
+  }
+
+  @override
+  String blocks_previewNumber(int index) {
+    return '第 $index 张预览图';
+  }
+
+  @override
+  String get blocks_scrollPreviews => '滚轮左右浏览';
+
+  @override
+  String get blocks_resetZoom => '恢复100%缩放';
+
+  @override
+  String get blocks_previousPreview => '上一张预览图';
+
+  @override
+  String get blocks_nextPreview => '下一张预览图';
+
+  @override
+  String get blocks_removePreview => '移除这张预览图';
+
+  @override
   String get blocks_changeImage => '换图';
 
   @override
@@ -34621,6 +34660,45 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get blocks_addThumb => '新增預覽圖';
+
+  @override
+  String get blocks_showRange => '顯示範圍';
+
+  @override
+  String get blocks_rangeHover => '懸浮卡';
+
+  @override
+  String get blocks_rangeDetail => '詳情預覽';
+
+  @override
+  String blocks_cropRange(String target) {
+    return '虛線內為$target顯示範圍';
+  }
+
+  @override
+  String blocks_previewCount(int count) {
+    return '$count 張預覽圖';
+  }
+
+  @override
+  String blocks_previewNumber(int index) {
+    return '第 $index 張預覽圖';
+  }
+
+  @override
+  String get blocks_scrollPreviews => '滾輪左右瀏覽';
+
+  @override
+  String get blocks_resetZoom => '恢復100%縮放';
+
+  @override
+  String get blocks_previousPreview => '上一張預覽圖';
+
+  @override
+  String get blocks_nextPreview => '下一張預覽圖';
+
+  @override
+  String get blocks_removePreview => '移除這張預覽圖';
 
   @override
   String get blocks_changeImage => '換圖';

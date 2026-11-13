@@ -13041,6 +13041,45 @@ class AppLocalizationsJa extends AppLocalizations {
   String get blocks_addThumb => 'プレビューを追加';
 
   @override
+  String get blocks_showRange => '表示範囲';
+
+  @override
+  String get blocks_rangeHover => 'ホバーカード';
+
+  @override
+  String get blocks_rangeDetail => '詳細プレビュー';
+
+  @override
+  String blocks_cropRange(String target) {
+    return '破線内が$targetの表示範囲';
+  }
+
+  @override
+  String blocks_previewCount(int count) {
+    return 'プレビュー画像 $count 枚';
+  }
+
+  @override
+  String blocks_previewNumber(int index) {
+    return 'プレビュー画像 $index';
+  }
+
+  @override
+  String get blocks_scrollPreviews => 'スクロールで横に移動';
+
+  @override
+  String get blocks_resetZoom => 'ズームを100%に戻す';
+
+  @override
+  String get blocks_previousPreview => '前のプレビュー画像';
+
+  @override
+  String get blocks_nextPreview => '次のプレビュー画像';
+
+  @override
+  String get blocks_removePreview => 'このプレビューを削除';
+
+  @override
   String get blocks_changeImage => '画像を変更';
 
   @override

@@ -13434,6 +13434,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get blocks_addThumb => 'Add preview';
 
   @override
+  String get blocks_showRange => 'Display range';
+
+  @override
+  String get blocks_rangeHover => 'Hover card';
+
+  @override
+  String get blocks_rangeDetail => 'Detail preview';
+
+  @override
+  String blocks_cropRange(String target) {
+    return 'Inside the dashed line: $target';
+  }
+
+  @override
+  String blocks_previewCount(int count) {
+    return '$count preview images';
+  }
+
+  @override
+  String blocks_previewNumber(int index) {
+    return 'Preview image $index';
+  }
+
+  @override
+  String get blocks_scrollPreviews => 'Scroll to browse';
+
+  @override
+  String get blocks_resetZoom => 'Reset zoom to 100%';
+
+  @override
+  String get blocks_previousPreview => 'Previous preview image';
+
+  @override
+  String get blocks_nextPreview => 'Next preview image';
+
+  @override
+  String get blocks_removePreview => 'Remove this preview';
+
+  @override
   String get blocks_changeImage => 'Change';
 
   @override

@@ -13071,6 +13071,45 @@ class AppLocalizationsKo extends AppLocalizations {
   String get blocks_addThumb => '미리보기 추가';
 
   @override
+  String get blocks_showRange => '표시 범위';
+
+  @override
+  String get blocks_rangeHover => '호버 카드';
+
+  @override
+  String get blocks_rangeDetail => '상세 미리보기';
+
+  @override
+  String blocks_cropRange(String target) {
+    return '점선 안쪽이 $target 표시 범위입니다';
+  }
+
+  @override
+  String blocks_previewCount(int count) {
+    return '미리보기 이미지 $count개';
+  }
+
+  @override
+  String blocks_previewNumber(int index) {
+    return '미리보기 이미지 $index';
+  }
+
+  @override
+  String get blocks_scrollPreviews => '스크롤하여 좌우 탐색';
+
+  @override
+  String get blocks_resetZoom => '확대/축소를 100%로 복원';
+
+  @override
+  String get blocks_previousPreview => '이전 미리보기 이미지';
+
+  @override
+  String get blocks_nextPreview => '다음 미리보기 이미지';
+
+  @override
+  String get blocks_removePreview => '이 미리보기 삭제';
+
+  @override
   String get blocks_changeImage => '이미지 변경';
 
   @override

@@ -76,6 +76,10 @@ Future<void> tapKey(WidgetTester t, String key) async {
 
 /// 记录所有回调，断言用。每条记成 `名字:参数` 一行。
 class RecordingBlocks {
+  RecordingBlocks({this.galleryPicks});
+
+  /// 多选添加替身；null 时用默认 3 张渐变图。
+  final List<BlockThumbPick>? galleryPicks;
   final calls = <String>[];
   final drafts = <BlockDraft>[];
   final patches = <(String, BlockPatch)>[];
@@ -126,6 +130,12 @@ class RecordingBlocks {
       _c('pickThumb');
       return BlockThumbPick(blocksTestImage('c12'), 'c12');
     },
+    onPickThumbnails: galleryPicks == null
+        ? null
+        : () async {
+            _c('pickThumbs');
+            return galleryPicks!;
+          },
     onCaptureParams: () async {
       _c('captureParams');
       return BlocksFixture.y99Params;
