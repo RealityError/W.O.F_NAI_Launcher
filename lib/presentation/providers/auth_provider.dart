@@ -29,6 +29,7 @@ enum AuthErrorCode {
   authFailed,
   tokenInvalid,
   credentialsLoginUnavailable,
+  endpointNotFound,
   serverError,
   unknown,
 }
@@ -102,6 +103,10 @@ class AuthState {
       if (statusCode != null) {
         if (statusCode == 401 || statusCode == 403) {
           return (AuthErrorCode.authFailed, statusCode);
+        }
+        // 自建/第三方中转地址被下线或改动时，官方路径以外会直接 404。
+        if (statusCode == 404) {
+          return (AuthErrorCode.endpointNotFound, statusCode);
         }
         if (statusCode == 400) {
           // 检查是否是 Authorization header 相关的错误

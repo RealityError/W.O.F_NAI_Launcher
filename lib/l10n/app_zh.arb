@@ -149,6 +149,8 @@
   "auth_error_credentialsLoginUnavailable_hint": "NovelAI 官网账号密码登录需要网页安全验证，客户端无法完成，请改用 Persistent API Token。",
   "auth_error_serverError": "服务器错误",
   "auth_error_unknown": "未知错误",
+  "auth_error_endpointUnavailable": "接口地址不可用",
+  "auth_error_endpointUnavailable_hint": "该账号的 API 地址可能已更换或服务已下线。请检查账号里的 API 地址，或改用官方 NovelAI 账号登录。",
   "auth_autoLogin": "自动登录",
   "auth_forgotPassword": "忘记密码？",
   "auth_passwordTooShort": "密码长度至少6位",
@@ -1146,12 +1148,6 @@
   },
   "localGallery_unfavorite": "取消收藏",
   "localGallery_favoriteMenuEmptyCollections": "暂无收藏集，左侧 + 创建",
-  "localGallery_confirmDeleteImageContent": "确定要删除图片「{name}」吗？\n\n图片会立即从画廊消失，文件将在下次启动时彻底清理（本次会话内可撤销）。",
-  "@localGallery_confirmDeleteImageContent": {
-    "placeholders": {
-      "name": {}
-    }
-  },
   "localGallery_moveTo": "移动到…",
   "localGallery_copyTo": "复制到…",
   "localGallery_externalSourceMoveConfirmTitle": "移动外部图库源文件",
@@ -1203,13 +1199,6 @@
       "error": {}
     }
   },
-  "localGallery_protectedDeleteTitle": "保护模式：再次确认删除",
-  "localGallery_protectedDeleteImagesContent": "将永久删除 {count} 张本地图片文件。此操作无法撤销。",
-  "@localGallery_protectedDeleteImagesContent": {
-    "placeholders": {
-      "count": {}
-    }
-  },
   "localGallery_protectedBulkMoveTitle": "保护模式：确认批量移动",
   "localGallery_protectedBulkMoveContent": "将移动 {count} 张本地图片文件到目标文件夹。请确认不是误操作。",
   "@localGallery_protectedBulkMoveContent": {
@@ -1221,12 +1210,6 @@
   "@localGallery_importParamsFailed": {
     "placeholders": {
       "error": {}
-    }
-  },
-  "localGallery_protectedDeleteImageContent": "将永久删除图片「{name}」。此操作无法撤销。",
-  "@localGallery_protectedDeleteImageContent": {
-    "placeholders": {
-      "name": {}
     }
   },
   "localGallery_saveZipArchive": "保存压缩包",
@@ -1391,13 +1374,6 @@
   "localGallery_gotIt": "知道了",
   "localGallery_undone": "已撤销",
   "localGallery_redone": "已重做",
-  "localGallery_confirmBulkDelete": "确认批量删除",
-  "localGallery_confirmBulkDeleteContent": "确定要删除选中的 {count} 张图片吗？\n\n图片会立即从画廊消失，文件将在下次启动时彻底清理（本次会话内可撤销）。",
-  "@localGallery_confirmBulkDeleteContent": {
-    "placeholders": {
-      "count": {}
-    }
-  },
   "localGallery_deletedToPool": "已删除 {count} 张图片，下次启动时彻底清理。",
   "@localGallery_deletedToPool": {
     "placeholders": {
@@ -4893,6 +4869,34 @@
   },
   "update_errorInstallFailed": "安装更新失败",
   "update_errorInstallFailedSeeLog": "安装更新失败，请查看更新日志",
+  "update_androidUnknownSources": "请允许本应用安装未知来源应用，然后返回再点一次「下载并安装」。",
+  "preciseRef_importTitle": "导入精准参考",
+  "preciseRef_importTypePrompt": "想让这张图片提供哪一类参考？",
+  "preciseRef_importTypeHint": "点击选项即可导入",
+  "preciseRef_characterDescription": "参考人物的外观与特征",
+  "preciseRef_styleDescription": "参考配色、笔触与画面质感",
+  "preciseRef_characterAndStyleDescription": "同时参考人物特征与视觉风格",
+  "localGallery_moveToDeletePool": "移入删除池",
+  "localGallery_moveToDeletePoolTitle": "{count, plural, =1{将这张图片移入删除池？} other{将 {count} 张图片移入删除池？}}",
+  "localGallery_moveToDeletePoolDescription": "重启前可在删除池恢复。下次启动 Studio 时，池内文件会被彻底删除。",
+  "@localGallery_moveToDeletePoolTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@localGallery_deleteForeverTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },  "localGallery_deleteForeverTitle": "{count, plural, =1{彻底删除这张图片？} other{彻底删除这 {count} 张图片？}}",
+  "localGallery_deleteForeverDescription": "文件会立即从磁盘删除，无法恢复。",
+  "imageViewer_movedToTrash": "已移入删除池",
+  "naiAgent_emptyResponse": "模型结束了请求，但没有返回正文或工具调用。请重试，或检查模型输出设置。",
+  "naiAgent_imageRequestTooLarge": "本次图片总量过大或无法处理。请减少图片数量、缩小图片或更换格式后重试。",
   "auth_tokenEmpty": "Token 为空，无法验证",
   "auth_tokenFormatInvalid": "Token 格式无效",
   "auth_tokenInvalidOrExpired": "Token无效或已过期，请检查Token是否正确。如果是Persistent Token，应以pst-开头。",
@@ -7301,8 +7305,27 @@
 "blocks_previousPreview": "上一张预览图",
 "blocks_nextPreview": "下一张预览图",
 "blocks_removePreview": "移除这张预览图",
-  "blocks_changeImage": "换图",
-  "blocks_clearThumb": "清除预览图",
+  "@blocks_cropRange": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_previewCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_previewNumber": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },  "blocks_changeImage": "换图",
   "blocks_cropHint": "拖动 / 滚轮缩放",
   "blocks_namePlaceholder": "不填就用第一项",
   "blocks_plainText": "纯文本",
@@ -7381,7 +7404,6 @@
   "imageViewer_hintFit": "回到适应",
   "imageViewer_hintActual": "原始大小",
   "imageViewer_dragFrame": "拖框移动",
-  "imageViewer_movedToTrash": "已移到回收站",
   "imageViewer_undo": "撤销",
   "imageViewer_details": "详情",
   "imageViewer_generationResult": "生成结果",
@@ -7520,9 +7542,6 @@
   "imageViewer_keyDouble": "双击",
   "imageViewer_helpCopyPrompt": "复制提示词",
   "imageViewer_helpUndo": "撤销删除",
-  "imageViewer_protectedTitle": "这张图受保护，移到回收站？",
-  "imageViewer_protectedBody": "移到回收站后可以在回收站里还原。",
-  "imageViewer_cancel": "取消",
   "imageViewer_justNow": "刚刚",
   "imageViewer_minutesAgo": "{count} 分钟前",
   "@imageViewer_minutesAgo": {
@@ -11505,6 +11524,11 @@
   "ag_cacheWarmOff": "已关闭",
   "ag_cacheWarmRefreshing": "正在续期缓存…",
   "ag_cacheWarmIdle": "待机，下次运行时开始",
+  "ag_cacheWarmExpired": "已错过保温时机，等待下一次模型请求",
+  "ag_cacheWarmContextChanged": "上下文已变化，等待下一次模型请求",
+  "ag_cacheWarmSafetyLimit": "已到保温时长上限，等待下一次模型请求",
+  "ag_cacheWarmUnavailable": "当前请求不支持缓存保温",
+  "ag_cacheWarmEconomics": "预计收益不足，本次保温已暂停",
   "ag_cacheWarmNext": "{time} 后续期",
   "@ag_cacheWarmNext": {
     "placeholders": {
@@ -11612,14 +11636,6 @@
   "localGallery_recentViews": "最近浏览",
   "localGallery_recentViewsEmpty": "还没有浏览记录",
   "localGallery_deleteForever": "彻底删除",
-  "localGallery_deleteForeverConfirm": "将立即物理删除选中的 {count} 个文件，不可恢复。",
-  "@localGallery_deleteForeverConfirm": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "ag_chatAgeMinutes": "{count}m",
   "@ag_chatAgeMinutes": {
     "placeholders": {

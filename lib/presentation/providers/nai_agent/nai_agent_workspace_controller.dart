@@ -2037,8 +2037,13 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
   ) {
     if (_recordRunLimit(runtime, message['errorMessage'])) return;
     runtime.runLimitHit = null;
-    runtime.error =
-        '${currentL10n.naiAgent_error}\n${message['errorMessage'] ?? ''}';
+    final detail = '${message['errorMessage'] ?? ''}';
+    final l = currentL10n;
+    runtime.error = detail.contains('STUDIO_EMPTY_RESPONSE:')
+        ? l.naiAgent_emptyResponse
+        : detail.contains('STUDIO_IMAGE_BUDGET:')
+        ? l.naiAgent_imageRequestTooLarge
+        : '${l.naiAgent_error}\n$detail';
   }
 
   String? _error(Object error, [AgentChatRuntime? runtime]) {

@@ -233,6 +233,8 @@ class _ThirdPartyApiLoginCardState
       AuthErrorCode.tokenInvalid => context.l10n.auth_tokenInvalid,
       AuthErrorCode.credentialsLoginUnavailable =>
         context.l10n.auth_error_credentialsLoginUnavailable,
+      AuthErrorCode.endpointNotFound =>
+        context.l10n.auth_error_endpointUnavailable,
       AuthErrorCode.serverError => context.l10n.auth_error_serverError,
       AuthErrorCode.unknown || null => context.l10n.auth_error_unknown,
     };

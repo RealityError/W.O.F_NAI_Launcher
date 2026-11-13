@@ -242,7 +242,7 @@ void main() {
       expect(find.text('彻底删除'), findsOneWidget);
       await tester.tap(find.text('彻底删除'));
       await _settle(tester);
-      expect(find.textContaining('不可恢复'), findsOneWidget);
+      expect(find.textContaining('无法恢复'), findsOneWidget);
       await tester.tap(find.text('取消'));
       await _settle(tester);
       expect(

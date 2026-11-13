@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../kit/ui_dialog.dart';
 import '../kit/ui_popover.dart';
+import '../gallery/gallery_delete_dialog.dart';
 import '../../mobile/mobile_breakpoints.dart';
 import 'viewer_contract.dart';
 import 'viewer_info.dart';
@@ -495,7 +496,9 @@ class _ImageViewerPageState extends State<ImageViewerPage>
         dialog: switch (_dialog) {
           _Dialog.none => null,
           _Dialog.help => (_) => ViewerHelpDialog(onClose: _closeDialog),
-          _Dialog.delete => (_) => ViewerDeleteDialog(
+          _Dialog.delete => (_) => GalleryDeleteDialog(
+            count: 1,
+            fileName: _data.detail?.fileName,
             onCancel: _closeDialog,
             onConfirm: () {
               final k = _deleteKey;

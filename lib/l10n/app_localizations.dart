@@ -799,6 +799,18 @@ abstract class AppLocalizations {
   /// **'Unknown error'**
   String get auth_error_unknown;
 
+  /// No description provided for @auth_error_endpointUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'API endpoint unavailable'**
+  String get auth_error_endpointUnavailable;
+
+  /// No description provided for @auth_error_endpointUnavailable_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'This account\'s API address may have changed or the service is offline. Check the account\'s API address, or sign in with an official NovelAI account.'**
+  String get auth_error_endpointUnavailable_hint;
+
   /// No description provided for @auth_autoLogin.
   ///
   /// In en, this message translates to:
@@ -4848,12 +4860,6 @@ abstract class AppLocalizations {
   /// **'No collections yet — create one with + on the left'**
   String get localGallery_favoriteMenuEmptyCollections;
 
-  /// No description provided for @localGallery_confirmDeleteImageContent.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete image \"{name}\"?\n\nThe image will disappear from the gallery immediately; the file will be removed permanently on the next launch (can be undone in this session).'**
-  String localGallery_confirmDeleteImageContent(Object name);
-
   /// No description provided for @localGallery_moveTo.
   ///
   /// In en, this message translates to:
@@ -5004,18 +5010,6 @@ abstract class AppLocalizations {
   /// **'Failed to open folder: {error}'**
   String localGallery_openFolderFailed(Object error);
 
-  /// No description provided for @localGallery_protectedDeleteTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Protected Mode: Confirm Delete Again'**
-  String get localGallery_protectedDeleteTitle;
-
-  /// No description provided for @localGallery_protectedDeleteImagesContent.
-  ///
-  /// In en, this message translates to:
-  /// **'This will permanently delete {count} local image files. This cannot be undone.'**
-  String localGallery_protectedDeleteImagesContent(Object count);
-
   /// No description provided for @localGallery_protectedBulkMoveTitle.
   ///
   /// In en, this message translates to:
@@ -5033,12 +5027,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to import parameters: {error}'**
   String localGallery_importParamsFailed(Object error);
-
-  /// No description provided for @localGallery_protectedDeleteImageContent.
-  ///
-  /// In en, this message translates to:
-  /// **'This will permanently delete image \"{name}\". This cannot be undone.'**
-  String localGallery_protectedDeleteImageContent(Object name);
 
   /// No description provided for @localGallery_saveZipArchive.
   ///
@@ -5495,18 +5483,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Redone'**
   String get localGallery_redone;
-
-  /// No description provided for @localGallery_confirmBulkDelete.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Bulk Delete'**
-  String get localGallery_confirmBulkDelete;
-
-  /// No description provided for @localGallery_confirmBulkDeleteContent.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to delete {count} selected images?\n\nThey will disappear from the gallery immediately; the files will be removed permanently on the next launch (can be undone in this session).'**
-  String localGallery_confirmBulkDeleteContent(Object count);
 
   /// No description provided for @localGallery_deletedToPool.
   ///
@@ -15944,6 +15920,96 @@ abstract class AppLocalizations {
   /// **'Failed to install the update; see the update log'**
   String get update_errorInstallFailedSeeLog;
 
+  /// No description provided for @update_androidUnknownSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow this app to install unknown apps, then come back and tap Download and install again.'**
+  String get update_androidUnknownSources;
+
+  /// No description provided for @preciseRef_importTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Precise Reference'**
+  String get preciseRef_importTitle;
+
+  /// No description provided for @preciseRef_importTypePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What should this image be used to reference?'**
+  String get preciseRef_importTypePrompt;
+
+  /// No description provided for @preciseRef_importTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a type to import'**
+  String get preciseRef_importTypeHint;
+
+  /// No description provided for @preciseRef_characterDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference the character’s appearance and features'**
+  String get preciseRef_characterDescription;
+
+  /// No description provided for @preciseRef_styleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference colors, brushwork, and visual texture'**
+  String get preciseRef_styleDescription;
+
+  /// No description provided for @preciseRef_characterAndStyleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference both the character and visual style'**
+  String get preciseRef_characterAndStyleDescription;
+
+  /// No description provided for @localGallery_moveToDeletePool.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to Trash'**
+  String get localGallery_moveToDeletePool;
+
+  /// No description provided for @localGallery_moveToDeletePoolTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Move this image to Trash?} other{Move {count} images to Trash?}}'**
+  String localGallery_moveToDeletePoolTitle(int count);
+
+  /// No description provided for @localGallery_moveToDeletePoolDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'You can restore the images from Trash until Studio restarts. Studio permanently deletes them the next time it starts.'**
+  String get localGallery_moveToDeletePoolDescription;
+
+  /// No description provided for @localGallery_deleteForeverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Permanently delete this image?} other{Permanently delete these {count} images?}}'**
+  String localGallery_deleteForeverTitle(int count);
+
+  /// No description provided for @localGallery_deleteForeverDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The files will be deleted from disk immediately and cannot be recovered.'**
+  String get localGallery_deleteForeverDescription;
+
+  /// No description provided for @imageViewer_movedToTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to Trash'**
+  String get imageViewer_movedToTrash;
+
+  /// No description provided for @naiAgent_emptyResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'The model finished without returning text or a tool call. Retry or check the model output settings.'**
+  String get naiAgent_emptyResponse;
+
+  /// No description provided for @naiAgent_imageRequestTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'This image batch is too large or could not be processed. Send fewer images, reduce their size, or try another format.'**
+  String get naiAgent_imageRequestTooLarge;
+
   /// No description provided for @auth_tokenEmpty.
   ///
   /// In en, this message translates to:
@@ -23365,12 +23431,6 @@ abstract class AppLocalizations {
   /// **'Change'**
   String get blocks_changeImage;
 
-  /// No description provided for @blocks_clearThumb.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove preview'**
-  String get blocks_clearThumb;
-
   /// No description provided for @blocks_cropHint.
   ///
   /// In en, this message translates to:
@@ -23718,12 +23778,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Drag the frame'**
   String get imageViewer_dragFrame;
-
-  /// No description provided for @imageViewer_movedToTrash.
-  ///
-  /// In en, this message translates to:
-  /// **'Moved to Recycle Bin'**
-  String get imageViewer_movedToTrash;
 
   /// No description provided for @imageViewer_undo.
   ///
@@ -24222,24 +24276,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Undo delete'**
   String get imageViewer_helpUndo;
-
-  /// No description provided for @imageViewer_protectedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'This image is protected. Move to Recycle Bin?'**
-  String get imageViewer_protectedTitle;
-
-  /// No description provided for @imageViewer_protectedBody.
-  ///
-  /// In en, this message translates to:
-  /// **'You can restore it from the Recycle Bin.'**
-  String get imageViewer_protectedBody;
-
-  /// No description provided for @imageViewer_cancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get imageViewer_cancel;
 
   /// No description provided for @imageViewer_justNow.
   ///
@@ -39178,6 +39214,36 @@ abstract class AppLocalizations {
   /// **'Waiting — starts with the next run'**
   String get ag_cacheWarmIdle;
 
+  /// No description provided for @ag_cacheWarmExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh window missed — waiting for the next model request'**
+  String get ag_cacheWarmExpired;
+
+  /// No description provided for @ag_cacheWarmContextChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Context changed — waiting for the next model request'**
+  String get ag_cacheWarmContextChanged;
+
+  /// No description provided for @ag_cacheWarmSafetyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Warming time limit reached — waiting for the next model request'**
+  String get ag_cacheWarmSafetyLimit;
+
+  /// No description provided for @ag_cacheWarmUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache warming is unavailable for this request'**
+  String get ag_cacheWarmUnavailable;
+
+  /// No description provided for @ag_cacheWarmEconomics.
+  ///
+  /// In en, this message translates to:
+  /// **'Warming paused because the estimated savings are too low'**
+  String get ag_cacheWarmEconomics;
+
   /// No description provided for @ag_cacheWarmNext.
   ///
   /// In en, this message translates to:
@@ -39507,12 +39573,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete permanently'**
   String get localGallery_deleteForever;
-
-  /// No description provided for @localGallery_deleteForeverConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Permanently delete the selected {count} files? This cannot be undone.'**
-  String localGallery_deleteForeverConfirm(int count);
 
   /// No description provided for @ag_chatAgeMinutes.
   ///

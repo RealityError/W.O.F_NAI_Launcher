@@ -480,13 +480,20 @@ Android 13+ 通知权限（首次生成时申请、拒绝后只引导一次、�
 移动端不再只有「隐藏入口」，两项桌面能力在本轮补上设备端实现（桌面链路不变）：
 
 - **本地放大**：随包两个 ONNX 模型（animevideov3-256 2.4 MB、general-x4v3 4.9 MB）+ `libonnxruntime.so`（arm64-v8a），Dart FFI 在应用进程内推理，生成页画布与「本地放大」面板提供入口（面板可切换模型）；`supportsOnnxUpscale` 只在 Android 为 true，桌面继续用随包可执行文件。更大模型的可行性见 [local-upscale-advanced.md](local-upscale-advanced.md)。
-- **NAI Agent**：`tool/nai_agent` 打包为 `assets/nai_agent/runtime.tar.gz`（约 23.6 MB），首用流式解压到 `<app support>/nai_agent/runtime`，由内嵌 libnode（Node 24.5）启动。
+- **NAI Agent**：`tool/nai_agent` 打包为 `assets/nai_agent/runtime.tar.gz`（约 24.7 MB），首用流式解压到 `<app support>/nai_agent/runtime`，由内嵌 libnode（Node 24.5）启动。
   - 手机端 Agent 面板以全屏覆盖生成页（宽屏桌面才是并排侧栏），入口在生成页提示词区的 Agent 按钮与设置 → Agent；关闭面板时只发 `shutdown`，Node 进程保留，下次打开/切换会话复用同一进程重新初始化。
-  - 首次解压约 1.5 万个文件，app 启动后会在后台预热；打开 Agent 时通常已就绪。
+  - 首次解压约 1.67 万个文件（16,716 个），app 启动后会在后台预热；打开 Agent 时通常已就绪。
   - ChatGPT 登录、扩展/包管理、命令/技能清单需要额外 Node 进程或 OAuth 回环，手机端隐藏（`supportsNaiAgentExternalTools == false`）。
   - 翻译微调需要第二个 Node 宿主，手机端菜单项禁用（`supportsTranslationAdjustment`）。
   - 已知限制：Agent 运行在 app 进程内，进入后台后可能被系统回收；长时间任务建议保持前台。MCP 的 stdio 服务器（通过 `npx` 启动）在 Android 不可用。
 
+
+### 8.23 积木多预览图 / 删除确认框 / 输入框选择（2.8.0）
+
+- **积木多预览图（桌面 2.3.4）**：手机竖屏沿用桌面画廊组件，但把编辑弹窗的预览区收成 34dp 缩略图条（`block-edit-preview-bar`），点开走全屏预览弹层（`block-edit-preview-sheet`，高度按编辑区 86% 且不超过 560dp），弹层内可切图、缩放、重置与删除；检查器底部弹层用同款画廊（高 176dp）。从检查器点「编辑」会先 `Navigator.maybePop` 关掉弹层再打开编辑页，避免编辑页被弹层盖住。窄屏（≤360dp）下标签/参数与外观选择改成纵向堆叠，图标网格列数收窄，避免负宽度与溢出。
+- **图库删除确认（桌面 2.3.2）**：删除池/彻底删除改用统一 `GalleryDeleteDialog`；360dp 下由 Dialog 约束收窄到可用宽度（约 328dp），不溢出；桌面右键、查看器、资源窗口与手机长按菜单走同一流程，删除池节点显示待清理数量。
+- **跨行文本选择（桌面 2.3.3）**：Agent 输入框、翻译微调输入框与多行 `ThemedInput` 共用连续高亮组件，触屏跨行选择不再出现行间细缝。
+- **Agent 面板（2.3.3/2.3.4）**：打开时默认收起；缓存保温、空回复、图片超预算在手机上显示与桌面相同的状态/错误文案。
 ### 8.3 本阶段遗留（后续处理）
 
 1. 手机端生成页 / 全屏编辑器 / 翻译浮层 / 查看器 / 编辑器范围内的触控目标已统一到 ≥48dp；

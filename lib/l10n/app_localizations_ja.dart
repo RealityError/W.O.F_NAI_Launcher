@@ -377,6 +377,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get auth_error_unknown => '不明なエラー';
 
   @override
+  String get auth_error_endpointUnavailable => 'API エンドポイントを利用できません';
+
+  @override
+  String get auth_error_endpointUnavailable_hint =>
+      'このアカウントの API アドレスが変更されたか、サービスが停止している可能性があります。アカウントの API アドレスを確認するか、公式 NovelAI アカウントでサインインしてください。';
+
+  @override
   String get auth_autoLogin => '自動ログイン';
 
   @override
@@ -2586,11 +2593,6 @@ class AppLocalizationsJa extends AppLocalizations {
       'コレクションがありません。左の + で作成';
 
   @override
-  String localGallery_confirmDeleteImageContent(Object name) {
-    return '画像「$name」を削除しますか?\n\n画像はすぐにギャラリーから消え、ファイルは次回起動時に完全に削除されます（このセッション内では元に戻せます）。';
-  }
-
-  @override
   String get localGallery_moveTo => '移動先…';
 
   @override
@@ -2683,14 +2685,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get localGallery_protectedDeleteTitle => '保護モード: 削除を再度確認してください';
-
-  @override
-  String localGallery_protectedDeleteImagesContent(Object count) {
-    return 'これにより、$count 個のローカル イメージ ファイルが完全に削除されます。これを元に戻すことはできません。';
-  }
-
-  @override
   String get localGallery_protectedBulkMoveTitle => '保護モード: 一括移動の確認';
 
   @override
@@ -2701,11 +2695,6 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String localGallery_importParamsFailed(Object error) {
     return 'パラメータのインポートに失敗しました: $error';
-  }
-
-  @override
-  String localGallery_protectedDeleteImageContent(Object name) {
-    return 'これにより、イメージ「$name」が完全に削除されます。これを元に戻すことはできません。';
   }
 
   @override
@@ -2959,14 +2948,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get localGallery_redone => 'やり直し';
-
-  @override
-  String get localGallery_confirmBulkDelete => '一括削除の確認';
-
-  @override
-  String localGallery_confirmBulkDeleteContent(Object count) {
-    return '$count 個の選択した画像を削除してもよろしいですか?\n\n画像はすぐにギャラリーから消え、ファイルは次回起動時に完全に削除されます（このセッション内では元に戻せます）。';
-  }
 
   @override
   String localGallery_deletedToPool(Object count) {
@@ -8886,6 +8867,72 @@ class AppLocalizationsJa extends AppLocalizations {
       '更新のインストールに失敗しました。更新ログを確認してください';
 
   @override
+  String get update_androidUnknownSources =>
+      'このアプリに不明なアプリのインストールを許可してから、戻ってもう一度「ダウンロードしてインストール」を押してください。';
+
+  @override
+  String get preciseRef_importTitle => '精密参照をインポート';
+
+  @override
+  String get preciseRef_importTypePrompt => 'この画像の何を参照しますか？';
+
+  @override
+  String get preciseRef_importTypeHint => '項目を選ぶとインポートします';
+
+  @override
+  String get preciseRef_characterDescription => '人物の外見や特徴を参照';
+
+  @override
+  String get preciseRef_styleDescription => '配色、筆致、画面の質感を参照';
+
+  @override
+  String get preciseRef_characterAndStyleDescription => '人物の特徴と画風の両方を参照';
+
+  @override
+  String get localGallery_moveToDeletePool => 'ゴミ箱に移動';
+
+  @override
+  String localGallery_moveToDeletePoolTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 枚の画像をゴミ箱に移動しますか？',
+      one: 'この画像をゴミ箱に移動しますか？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_moveToDeletePoolDescription =>
+      'Studio を再起動するまでは、ゴミ箱から復元できます。次回の起動時にゴミ箱のファイルは完全に削除されます。';
+
+  @override
+  String localGallery_deleteForeverTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'この $count 枚の画像を完全に削除しますか？',
+      one: 'この画像を完全に削除しますか？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_deleteForeverDescription =>
+      'ファイルはディスクから直ちに削除され、復元できません。';
+
+  @override
+  String get imageViewer_movedToTrash => 'ゴミ箱に移動しました';
+
+  @override
+  String get naiAgent_emptyResponse =>
+      'モデルは本文やツール呼び出しを返さずに終了しました。再試行するか、モデルの出力設定を確認してください。';
+
+  @override
+  String get naiAgent_imageRequestTooLarge =>
+      '画像の合計サイズが大きすぎるか、処理できませんでした。枚数やサイズを減らすか、別の形式をお試しください。';
+
+  @override
   String get auth_tokenEmpty => 'トークンが空のため確認できません';
 
   @override
@@ -13083,9 +13130,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get blocks_changeImage => '画像を変更';
 
   @override
-  String get blocks_clearThumb => 'プレビューを削除';
-
-  @override
   String get blocks_cropHint => 'ドラッグ / ホイールで拡大';
 
   @override
@@ -13266,9 +13310,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get imageViewer_dragFrame => '枠をドラッグ';
-
-  @override
-  String get imageViewer_movedToTrash => 'ごみ箱に移動しました';
 
   @override
   String get imageViewer_undo => '元に戻す';
@@ -13541,15 +13582,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get imageViewer_helpUndo => '削除を元に戻す';
-
-  @override
-  String get imageViewer_protectedTitle => 'この画像は保護されています。ごみ箱に移動しますか？';
-
-  @override
-  String get imageViewer_protectedBody => 'ごみ箱から元に戻せます。';
-
-  @override
-  String get imageViewer_cancel => 'キャンセル';
 
   @override
   String get imageViewer_justNow => 'たった今';
@@ -21790,6 +21822,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ag_cacheWarmIdle => '待機中 — 次の実行で開始';
 
   @override
+  String get ag_cacheWarmExpired => '更新のタイミングを過ぎました — 次のモデルリクエストを待機中';
+
+  @override
+  String get ag_cacheWarmContextChanged => 'コンテキストが変わりました — 次のモデルリクエストを待機中';
+
+  @override
+  String get ag_cacheWarmSafetyLimit => '保温の制限時間に達しました — 次のモデルリクエストを待機中';
+
+  @override
+  String get ag_cacheWarmUnavailable => 'このリクエストではキャッシュ保温を利用できません';
+
+  @override
+  String get ag_cacheWarmEconomics => '予想される節約効果が低いため保温を停止しました';
+
+  @override
   String ag_cacheWarmNext(String time) {
     return '$time 後に延長';
   }
@@ -21974,11 +22021,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get localGallery_deleteForever => '完全に削除';
-
-  @override
-  String localGallery_deleteForeverConfirm(int count) {
-    return '選択した $count 個のファイルを完全に削除します。元に戻せません。';
-  }
 
   @override
   String ag_chatAgeMinutes(int count) {

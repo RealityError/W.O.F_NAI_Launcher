@@ -130,6 +130,15 @@ class SettingsSystemActions {
     // Android：下载 APK 并交给系统安装器，进度显示在设置页更新卡片里。
     if (isAndroidPlatform) {
       await ref.read(updateStateProvider.notifier).downloadAndInstall();
+      final state = ref.read(updateStateProvider);
+      if (state.installPermissionRequired && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.update_androidUnknownSources),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
       return;
     }
     // Reuse the established download, integrity, task-idle and restart UI.

@@ -51,6 +51,9 @@ class AuthErrorService {
       case AuthErrorCode.credentialsLoginUnavailable:
         AppLogger.d('Credentials login unavailable', 'AuthErrorService');
         return l10n.auth_error_credentialsLoginUnavailable;
+      case AuthErrorCode.endpointNotFound:
+        AppLogger.d('API endpoint not found', 'AuthErrorService');
+        return l10n.auth_error_endpointUnavailable;
       case AuthErrorCode.serverError:
         AppLogger.d('Server error', 'AuthErrorService');
         if (httpStatusCode == 503) {
@@ -105,6 +108,12 @@ class AuthErrorService {
           'AuthErrorService',
         );
         return l10n.auth_error_credentialsLoginUnavailable_hint;
+      case AuthErrorCode.endpointNotFound:
+        AppLogger.d(
+          'Providing API endpoint unavailable hint',
+          'AuthErrorService',
+        );
+        return l10n.auth_error_endpointUnavailable_hint;
       case AuthErrorCode.serverError:
         if (httpStatusCode == 503) {
           AppLogger.d(

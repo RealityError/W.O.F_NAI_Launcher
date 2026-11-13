@@ -239,13 +239,13 @@ void main() {
     );
     await pump(t, protected);
     await key(t, LogicalKeyboardKey.delete);
-    expect(find.byKey(const Key('viewer-delete')), findsOneWidget);
+    expect(find.byKey(const Key('gallery-delete-dialog')), findsOneWidget);
     expect(rec.calls.where((c) => c.startsWith('delete')), isEmpty);
     await key(t, LogicalKeyboardKey.escape);
-    expect(find.byKey(const Key('viewer-delete')), findsNothing);
+    expect(find.byKey(const Key('gallery-delete-dialog')), findsNothing);
     expect(rec.calls, isNot(contains('close:true')));
     await key(t, LogicalKeyboardKey.delete);
-    await tapKey(t, 'viewer-delete-confirm');
+    await tapKey(t, 'gallery-delete-confirm');
     expect(rec.calls.where((c) => c.startsWith('delete')), ['delete:08']);
     await done(t);
   });

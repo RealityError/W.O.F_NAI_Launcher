@@ -377,6 +377,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get auth_error_unknown => '알 수 없는 오류';
 
   @override
+  String get auth_error_endpointUnavailable => 'API 엔드포인트를 사용할 수 없습니다';
+
+  @override
+  String get auth_error_endpointUnavailable_hint =>
+      '이 계정의 API 주소가 변경되었거나 서비스가 종료되었을 수 있습니다. 계정의 API 주소를 확인하거나 공식 NovelAI 계정으로 로그인하세요.';
+
+  @override
   String get auth_autoLogin => '자동 로그인';
 
   @override
@@ -2580,11 +2587,6 @@ class AppLocalizationsKo extends AppLocalizations {
       '아직 컬렉션이 없습니다. 왼쪽의 +로 만드세요';
 
   @override
-  String localGallery_confirmDeleteImageContent(Object name) {
-    return '\"$name\" 이미지를 삭제하시겠습니까?\n\n이미지는 갤러리에서 즉시 사라지고, 파일은 다음 실행 때 완전히 삭제됩니다(이번 세션에서는 되돌릴 수 있습니다).';
-  }
-
-  @override
   String get localGallery_moveTo => '이동…';
 
   @override
@@ -2676,14 +2678,6 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get localGallery_protectedDeleteTitle => '보호 모드: 삭제 재확인';
-
-  @override
-  String localGallery_protectedDeleteImagesContent(Object count) {
-    return '로컬 이미지 파일 $count개를 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다.';
-  }
-
-  @override
   String get localGallery_protectedBulkMoveTitle => '보호 모드: 일괄 이동 확인';
 
   @override
@@ -2694,11 +2688,6 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String localGallery_importParamsFailed(Object error) {
     return '매개변수를 가져오지 못했습니다: $error';
-  }
-
-  @override
-  String localGallery_protectedDeleteImageContent(Object name) {
-    return '\"$name\" 이미지를 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다.';
   }
 
   @override
@@ -2957,14 +2946,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get localGallery_redone => '다시 실행했습니다';
-
-  @override
-  String get localGallery_confirmBulkDelete => '일괄 삭제 확인';
-
-  @override
-  String localGallery_confirmBulkDeleteContent(Object count) {
-    return '선택한 이미지 $count장을 삭제하시겠습니까?\n\n이미지는 갤러리에서 즉시 사라지고, 파일은 다음 실행 때 완전히 삭제됩니다(이번 세션에서는 되돌릴 수 있습니다).';
-  }
 
   @override
   String localGallery_deletedToPool(Object count) {
@@ -8907,6 +8888,73 @@ class AppLocalizationsKo extends AppLocalizations {
       '업데이트를 설치하지 못했습니다. 업데이트 로그를 확인하세요';
 
   @override
+  String get update_androidUnknownSources =>
+      '이 앱의 알 수 없는 앱 설치를 허용한 뒤 돌아와서 \'다운로드 및 설치\'를 다시 누르세요.';
+
+  @override
+  String get preciseRef_importTitle => '정밀 참조 가져오기';
+
+  @override
+  String get preciseRef_importTypePrompt => '이 이미지에서 무엇을 참고할까요?';
+
+  @override
+  String get preciseRef_importTypeHint => '유형을 선택하면 가져옵니다';
+
+  @override
+  String get preciseRef_characterDescription => '인물의 외모와 특징을 참고';
+
+  @override
+  String get preciseRef_styleDescription => '색감, 붓 터치와 화면 질감을 참고';
+
+  @override
+  String get preciseRef_characterAndStyleDescription =>
+      '인물의 특징과 시각적 스타일을 함께 참고';
+
+  @override
+  String get localGallery_moveToDeletePool => '휴지통으로 이동';
+
+  @override
+  String localGallery_moveToDeletePoolTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '이미지 $count장을 휴지통으로 이동할까요?',
+      one: '이 이미지를 휴지통으로 이동할까요?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_moveToDeletePoolDescription =>
+      'Studio를 다시 시작하기 전까지 휴지통에서 복원할 수 있습니다. 다음 시작 시 휴지통의 파일은 영구 삭제됩니다.';
+
+  @override
+  String localGallery_deleteForeverTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '이 이미지 $count장을 영구 삭제할까요?',
+      one: '이 이미지를 영구 삭제할까요?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_deleteForeverDescription =>
+      '파일이 디스크에서 즉시 삭제되며 복구할 수 없습니다.';
+
+  @override
+  String get imageViewer_movedToTrash => '휴지통으로 이동했어요';
+
+  @override
+  String get naiAgent_emptyResponse =>
+      '모델이 본문이나 도구 호출을 반환하지 않고 종료했습니다. 다시 시도하거나 모델 출력 설정을 확인하세요.';
+
+  @override
+  String get naiAgent_imageRequestTooLarge =>
+      '이미지의 전체 크기가 너무 크거나 처리할 수 없습니다. 이미지 수나 크기를 줄이거나 다른 형식을 시도하세요.';
+
+  @override
   String get auth_tokenEmpty => '토큰이 비어 있어 확인할 수 없습니다';
 
   @override
@@ -13113,9 +13161,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get blocks_changeImage => '이미지 변경';
 
   @override
-  String get blocks_clearThumb => '미리보기 삭제';
-
-  @override
   String get blocks_cropHint => '드래그 / 휠로 확대';
 
   @override
@@ -13296,9 +13341,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get imageViewer_dragFrame => '틀을 드래그';
-
-  @override
-  String get imageViewer_movedToTrash => '휴지통으로 이동함';
 
   @override
   String get imageViewer_undo => '실행 취소';
@@ -13571,15 +13613,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get imageViewer_helpUndo => '삭제 취소';
-
-  @override
-  String get imageViewer_protectedTitle => '보호된 이미지입니다. 휴지통으로 이동할까요?';
-
-  @override
-  String get imageViewer_protectedBody => '휴지통에서 복원할 수 있습니다.';
-
-  @override
-  String get imageViewer_cancel => '취소';
 
   @override
   String get imageViewer_justNow => '방금';
@@ -21860,6 +21893,22 @@ class AppLocalizationsKo extends AppLocalizations {
   String get ag_cacheWarmIdle => '대기 중 — 다음 실행 시 시작';
 
   @override
+  String get ag_cacheWarmExpired => '갱신 시점을 놓쳤습니다 — 다음 모델 요청을 기다리는 중';
+
+  @override
+  String get ag_cacheWarmContextChanged => '컨텍스트가 변경되었습니다 — 다음 모델 요청을 기다리는 중';
+
+  @override
+  String get ag_cacheWarmSafetyLimit =>
+      '캐시 유지 시간 제한에 도달했습니다 — 다음 모델 요청을 기다리는 중';
+
+  @override
+  String get ag_cacheWarmUnavailable => '이 요청에서는 캐시 유지를 사용할 수 없습니다';
+
+  @override
+  String get ag_cacheWarmEconomics => '예상 절감 효과가 낮아 캐시 유지를 일시 중지했습니다';
+
+  @override
   String ag_cacheWarmNext(String time) {
     return '$time 후 연장';
   }
@@ -22044,11 +22093,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get localGallery_deleteForever => '영구 삭제';
-
-  @override
-  String localGallery_deleteForeverConfirm(int count) {
-    return '선택한 파일 $count개를 영구 삭제합니다. 되돌릴 수 없습니다.';
-  }
 
   @override
   String ag_chatAgeMinutes(int count) {

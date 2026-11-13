@@ -149,6 +149,8 @@
   "auth_error_credentialsLoginUnavailable_hint": "NovelAI now requires a web safety check for email/password login. Please use a Persistent API Token instead.",
   "auth_error_serverError": "Server error",
   "auth_error_unknown": "Unknown error",
+  "auth_error_endpointUnavailable": "API endpoint unavailable",
+  "auth_error_endpointUnavailable_hint": "This account's API address may have changed or the service is offline. Check the account's API address, or sign in with an official NovelAI account.",
   "auth_autoLogin": "Auto login",
   "auth_forgotPassword": "Forgot password?",
   "auth_passwordTooShort": "Password must be at least 6 characters",
@@ -1160,12 +1162,6 @@
   },
   "localGallery_unfavorite": "Remove Favorite",
   "localGallery_favoriteMenuEmptyCollections": "No collections yet — create one with + on the left",
-  "localGallery_confirmDeleteImageContent": "Delete image \"{name}\"?\n\nThe image will disappear from the gallery immediately; the file will be removed permanently on the next launch (can be undone in this session).",
-  "@localGallery_confirmDeleteImageContent": {
-    "placeholders": {
-      "name": {}
-    }
-  },
   "localGallery_moveTo": "Move to…",
   "localGallery_copyTo": "Copy to…",
   "localGallery_externalSourceMoveConfirmTitle": "Move External Gallery File",
@@ -1217,13 +1213,6 @@
       "error": {}
     }
   },
-  "localGallery_protectedDeleteTitle": "Protected Mode: Confirm Delete Again",
-  "localGallery_protectedDeleteImagesContent": "This will permanently delete {count} local image files. This cannot be undone.",
-  "@localGallery_protectedDeleteImagesContent": {
-    "placeholders": {
-      "count": {}
-    }
-  },
   "localGallery_protectedBulkMoveTitle": "Protected Mode: Confirm Bulk Move",
   "localGallery_protectedBulkMoveContent": "This will move {count} local image files to the target folder. Confirm this is not a mistake.",
   "@localGallery_protectedBulkMoveContent": {
@@ -1235,12 +1224,6 @@
   "@localGallery_importParamsFailed": {
     "placeholders": {
       "error": {}
-    }
-  },
-  "localGallery_protectedDeleteImageContent": "This will permanently delete image \"{name}\". This cannot be undone.",
-  "@localGallery_protectedDeleteImageContent": {
-    "placeholders": {
-      "name": {}
     }
   },
   "localGallery_saveZipArchive": "Save ZIP Archive",
@@ -1395,13 +1378,6 @@
   "localGallery_gotIt": "Got it",
   "localGallery_undone": "Undone",
   "localGallery_redone": "Redone",
-  "localGallery_confirmBulkDelete": "Confirm Bulk Delete",
-  "localGallery_confirmBulkDeleteContent": "Are you sure you want to delete {count} selected images?\n\nThey will disappear from the gallery immediately; the files will be removed permanently on the next launch (can be undone in this session).",
-  "@localGallery_confirmBulkDeleteContent": {
-    "placeholders": {
-      "count": {}
-    }
-  },
   "localGallery_deletedToPool": "Deleted {count} images. They will be removed permanently on the next launch.",
   "@localGallery_deletedToPool": {
     "placeholders": {
@@ -4893,6 +4869,35 @@
   },
   "update_errorInstallFailed": "Failed to install the update",
   "update_errorInstallFailedSeeLog": "Failed to install the update; see the update log",
+  "update_androidUnknownSources": "Allow this app to install unknown apps, then come back and tap Download and install again.",
+  "preciseRef_importTitle": "Import Precise Reference",
+  "preciseRef_importTypePrompt": "What should this image be used to reference?",
+  "preciseRef_importTypeHint": "Select a type to import",
+  "preciseRef_characterDescription": "Reference the character’s appearance and features",
+  "preciseRef_styleDescription": "Reference colors, brushwork, and visual texture",
+  "preciseRef_characterAndStyleDescription": "Reference both the character and visual style",
+  "localGallery_moveToDeletePool": "Move to Trash",
+  "localGallery_moveToDeletePoolTitle": "{count, plural, =1{Move this image to Trash?} other{Move {count} images to Trash?}}",
+  "localGallery_moveToDeletePoolDescription": "You can restore the images from Trash until Studio restarts. Studio permanently deletes them the next time it starts.",
+  "localGallery_deleteForeverTitle": "{count, plural, =1{Permanently delete this image?} other{Permanently delete these {count} images?}}",
+  "localGallery_deleteForeverDescription": "The files will be deleted from disk immediately and cannot be recovered.",
+  "imageViewer_movedToTrash": "Moved to Trash",
+  "naiAgent_emptyResponse": "The model finished without returning text or a tool call. Retry or check the model output settings.",
+  "naiAgent_imageRequestTooLarge": "This image batch is too large or could not be processed. Send fewer images, reduce their size, or try another format.",
+  "@localGallery_moveToDeletePoolTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@localGallery_deleteForeverTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "auth_tokenEmpty": "The token is empty and cannot be verified",
   "auth_tokenFormatInvalid": "Invalid token format",
   "auth_tokenInvalidOrExpired": "The token is invalid or expired; check that it is correct. A persistent token starts with pst-.",
@@ -7323,7 +7328,6 @@
     }
   },
   "blocks_changeImage": "Change",
-  "blocks_clearThumb": "Remove preview",
   "blocks_cropHint": "Drag · scroll to zoom",
   "blocks_namePlaceholder": "Defaults to the first item",
   "blocks_plainText": "Plain text",
@@ -7402,7 +7406,6 @@
   "imageViewer_hintFit": "Fit to window",
   "imageViewer_hintActual": "Actual size",
   "imageViewer_dragFrame": "Drag the frame",
-  "imageViewer_movedToTrash": "Moved to Recycle Bin",
   "imageViewer_undo": "Undo",
   "imageViewer_details": "Info",
   "imageViewer_generationResult": "Result",
@@ -7541,9 +7544,6 @@
   "imageViewer_keyDouble": "Double-click",
   "imageViewer_helpCopyPrompt": "Copy prompt",
   "imageViewer_helpUndo": "Undo delete",
-  "imageViewer_protectedTitle": "This image is protected. Move to Recycle Bin?",
-  "imageViewer_protectedBody": "You can restore it from the Recycle Bin.",
-  "imageViewer_cancel": "Cancel",
   "imageViewer_justNow": "just now",
   "imageViewer_minutesAgo": "{count} min ago",
   "@imageViewer_minutesAgo": {
@@ -11538,6 +11538,11 @@
   "ag_cacheWarmOff": "Off",
   "ag_cacheWarmRefreshing": "Refreshing the cache…",
   "ag_cacheWarmIdle": "Waiting — starts with the next run",
+  "ag_cacheWarmExpired": "Refresh window missed — waiting for the next model request",
+  "ag_cacheWarmContextChanged": "Context changed — waiting for the next model request",
+  "ag_cacheWarmSafetyLimit": "Warming time limit reached — waiting for the next model request",
+  "ag_cacheWarmUnavailable": "Cache warming is unavailable for this request",
+  "ag_cacheWarmEconomics": "Warming paused because the estimated savings are too low",
   "ag_cacheWarmNext": "Next refresh in {time}",
   "@ag_cacheWarmNext": {
     "placeholders": {
@@ -11645,14 +11650,6 @@
   "localGallery_recentViews": "Recently viewed",
   "localGallery_recentViewsEmpty": "No recently viewed images",
   "localGallery_deleteForever": "Delete permanently",
-  "localGallery_deleteForeverConfirm": "Permanently delete the selected {count} files? This cannot be undone.",
-  "@localGallery_deleteForeverConfirm": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "ag_chatAgeMinutes": "{count}m",
   "@ag_chatAgeMinutes": {
     "placeholders": {

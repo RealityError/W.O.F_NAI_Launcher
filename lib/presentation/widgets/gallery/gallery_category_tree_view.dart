@@ -84,6 +84,9 @@ class GalleryCategoryTreeView extends StatefulWidget {
   /// 资料库「删除池」入口
   final VoidCallback? onOpenTrash;
 
+  /// 删除池内待清理文件数；null 时不显示计数。
+  final int? trashCount;
+
   /// 底部索引状态旁的刷新
   final VoidCallback? onRefresh;
 
@@ -114,6 +117,7 @@ class GalleryCategoryTreeView extends StatefulWidget {
     this.onCollectionReorder,
     this.onMoveCollection,
     this.onOpenTrash,
+    this.trashCount,
     this.onRefresh,
     this.indexedCount = 0,
     this.isRefreshing = false,
@@ -219,6 +223,7 @@ class _GalleryCategoryTreeViewState extends State<GalleryCategoryTreeView> {
           key: const Key('gallery-sidebar-trash'),
           icon: StudioIcons.galleryTrash,
           label: l10n.localGallery_trashTitle,
+          count: widget.trashCount,
           isSelected: widget.selectedCategoryId == 'trash',
           showChevronSlot: false,
           onTap: widget.onOpenTrash!,

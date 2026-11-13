@@ -372,6 +372,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get auth_error_unknown => '未知错误';
 
   @override
+  String get auth_error_endpointUnavailable => '接口地址不可用';
+
+  @override
+  String get auth_error_endpointUnavailable_hint =>
+      '该账号的 API 地址可能已更换或服务已下线。请检查账号里的 API 地址，或改用官方 NovelAI 账号登录。';
+
+  @override
   String get auth_autoLogin => '自动登录';
 
   @override
@@ -2534,11 +2541,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localGallery_favoriteMenuEmptyCollections => '暂无收藏集，左侧 + 创建';
 
   @override
-  String localGallery_confirmDeleteImageContent(Object name) {
-    return '确定要删除图片「$name」吗？\n\n图片会立即从画廊消失，文件将在下次启动时彻底清理（本次会话内可撤销）。';
-  }
-
-  @override
   String get localGallery_moveTo => '移动到…';
 
   @override
@@ -2628,14 +2630,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get localGallery_protectedDeleteTitle => '保护模式：再次确认删除';
-
-  @override
-  String localGallery_protectedDeleteImagesContent(Object count) {
-    return '将永久删除 $count 张本地图片文件。此操作无法撤销。';
-  }
-
-  @override
   String get localGallery_protectedBulkMoveTitle => '保护模式：确认批量移动';
 
   @override
@@ -2646,11 +2640,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String localGallery_importParamsFailed(Object error) {
     return '导入参数失败: $error';
-  }
-
-  @override
-  String localGallery_protectedDeleteImageContent(Object name) {
-    return '将永久删除图片「$name」。此操作无法撤销。';
   }
 
   @override
@@ -2903,14 +2892,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get localGallery_redone => '已重做';
-
-  @override
-  String get localGallery_confirmBulkDelete => '确认批量删除';
-
-  @override
-  String localGallery_confirmBulkDeleteContent(Object count) {
-    return '确定要删除选中的 $count 张图片吗？\n\n图片会立即从画廊消失，文件将在下次启动时彻底清理（本次会话内可撤销）。';
-  }
 
   @override
   String localGallery_deletedToPool(Object count) {
@@ -8707,6 +8688,69 @@ class AppLocalizationsZh extends AppLocalizations {
   String get update_errorInstallFailedSeeLog => '安装更新失败，请查看更新日志';
 
   @override
+  String get update_androidUnknownSources => '请允许本应用安装未知来源应用，然后返回再点一次「下载并安装」。';
+
+  @override
+  String get preciseRef_importTitle => '导入精准参考';
+
+  @override
+  String get preciseRef_importTypePrompt => '想让这张图片提供哪一类参考？';
+
+  @override
+  String get preciseRef_importTypeHint => '点击选项即可导入';
+
+  @override
+  String get preciseRef_characterDescription => '参考人物的外观与特征';
+
+  @override
+  String get preciseRef_styleDescription => '参考配色、笔触与画面质感';
+
+  @override
+  String get preciseRef_characterAndStyleDescription => '同时参考人物特征与视觉风格';
+
+  @override
+  String get localGallery_moveToDeletePool => '移入删除池';
+
+  @override
+  String localGallery_moveToDeletePoolTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '将 $count 张图片移入删除池？',
+      one: '将这张图片移入删除池？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_moveToDeletePoolDescription =>
+      '重启前可在删除池恢复。下次启动 Studio 时，池内文件会被彻底删除。';
+
+  @override
+  String localGallery_deleteForeverTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '彻底删除这 $count 张图片？',
+      one: '彻底删除这张图片？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_deleteForeverDescription => '文件会立即从磁盘删除，无法恢复。';
+
+  @override
+  String get imageViewer_movedToTrash => '已移入删除池';
+
+  @override
+  String get naiAgent_emptyResponse => '模型结束了请求，但没有返回正文或工具调用。请重试，或检查模型输出设置。';
+
+  @override
+  String get naiAgent_imageRequestTooLarge =>
+      '本次图片总量过大或无法处理。请减少图片数量、缩小图片或更换格式后重试。';
+
+  @override
   String get auth_tokenEmpty => 'Token 为空，无法验证';
 
   @override
@@ -12879,9 +12923,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get blocks_changeImage => '换图';
 
   @override
-  String get blocks_clearThumb => '清除预览图';
-
-  @override
   String get blocks_cropHint => '拖动 / 滚轮缩放';
 
   @override
@@ -13062,9 +13103,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get imageViewer_dragFrame => '拖框移动';
-
-  @override
-  String get imageViewer_movedToTrash => '已移到回收站';
 
   @override
   String get imageViewer_undo => '撤销';
@@ -13337,15 +13375,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get imageViewer_helpUndo => '撤销删除';
-
-  @override
-  String get imageViewer_protectedTitle => '这张图受保护，移到回收站？';
-
-  @override
-  String get imageViewer_protectedBody => '移到回收站后可以在回收站里还原。';
-
-  @override
-  String get imageViewer_cancel => '取消';
 
   @override
   String get imageViewer_justNow => '刚刚';
@@ -21538,6 +21567,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ag_cacheWarmIdle => '待机，下次运行时开始';
 
   @override
+  String get ag_cacheWarmExpired => '已错过保温时机，等待下一次模型请求';
+
+  @override
+  String get ag_cacheWarmContextChanged => '上下文已变化，等待下一次模型请求';
+
+  @override
+  String get ag_cacheWarmSafetyLimit => '已到保温时长上限，等待下一次模型请求';
+
+  @override
+  String get ag_cacheWarmUnavailable => '当前请求不支持缓存保温';
+
+  @override
+  String get ag_cacheWarmEconomics => '预计收益不足，本次保温已暂停';
+
+  @override
   String ag_cacheWarmNext(String time) {
     return '$time 后续期';
   }
@@ -21718,11 +21762,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get localGallery_deleteForever => '彻底删除';
-
-  @override
-  String localGallery_deleteForeverConfirm(int count) {
-    return '将立即物理删除选中的 $count 个文件，不可恢复。';
-  }
 
   @override
   String ag_chatAgeMinutes(int count) {
@@ -22195,6 +22234,13 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get auth_error_unknown => '未知錯誤';
+
+  @override
+  String get auth_error_endpointUnavailable => '介面地址不可用';
+
+  @override
+  String get auth_error_endpointUnavailable_hint =>
+      '該帳號的 API 地址可能已更換或服務已下線。請檢查帳號裡的 API 地址，或改用官方 NovelAI 帳號登入。';
 
   @override
   String get auth_autoLogin => '自動登入';
@@ -24359,11 +24405,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get localGallery_favoriteMenuEmptyCollections => '暫無收藏集，左側 + 建立';
 
   @override
-  String localGallery_confirmDeleteImageContent(Object name) {
-    return '確定要刪除圖片「$name」嗎？\n\n圖片會立即從畫廊消失，檔案將在下次啟動時徹底清理（本次會話內可復原）。';
-  }
-
-  @override
   String get localGallery_moveTo => '移動到…';
 
   @override
@@ -24453,14 +24494,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   }
 
   @override
-  String get localGallery_protectedDeleteTitle => '保護模式：再次確認刪除';
-
-  @override
-  String localGallery_protectedDeleteImagesContent(Object count) {
-    return '將永久刪除 $count 張本地圖片檔案。此操作無法復原。';
-  }
-
-  @override
   String get localGallery_protectedBulkMoveTitle => '保護模式：確認批次移動';
 
   @override
@@ -24471,11 +24504,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   @override
   String localGallery_importParamsFailed(Object error) {
     return '匯入參數失敗: $error';
-  }
-
-  @override
-  String localGallery_protectedDeleteImageContent(Object name) {
-    return '將永久刪除圖片「$name」。此操作無法復原。';
   }
 
   @override
@@ -24728,14 +24756,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get localGallery_redone => '已重做';
-
-  @override
-  String get localGallery_confirmBulkDelete => '確認批次刪除';
-
-  @override
-  String localGallery_confirmBulkDeleteContent(Object count) {
-    return '確定要刪除選中的 $count 張圖片嗎？\n\n圖片會立即從畫廊消失，檔案將在下次啟動時徹底清理（本次會話內可復原）。';
-  }
 
   @override
   String localGallery_deletedToPool(Object count) {
@@ -30532,6 +30552,69 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get update_errorInstallFailedSeeLog => '安裝更新失敗，請檢視更新日誌';
 
   @override
+  String get update_androidUnknownSources => '請允許本應用安裝未知來源應用，然後返回再點一次「下載並安裝」。';
+
+  @override
+  String get preciseRef_importTitle => '匯入精準參考';
+
+  @override
+  String get preciseRef_importTypePrompt => '想讓這張圖片提供哪一類參考？';
+
+  @override
+  String get preciseRef_importTypeHint => '點選選項即可匯入';
+
+  @override
+  String get preciseRef_characterDescription => '參考人物的外觀與特徵';
+
+  @override
+  String get preciseRef_styleDescription => '參考配色、筆觸與畫面質感';
+
+  @override
+  String get preciseRef_characterAndStyleDescription => '同時參考人物特徵與視覺風格';
+
+  @override
+  String get localGallery_moveToDeletePool => '移入刪除池';
+
+  @override
+  String localGallery_moveToDeletePoolTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '將 $count 張圖片移入刪除池？',
+      one: '將這張圖片移入刪除池？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_moveToDeletePoolDescription =>
+      '重啟前可在刪除池恢復。下次啟動 Studio 時，池內檔案會被徹底刪除。';
+
+  @override
+  String localGallery_deleteForeverTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '徹底刪除這 $count 張圖片？',
+      one: '徹底刪除這張圖片？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_deleteForeverDescription => '檔案會立即從磁碟刪除，無法恢復。';
+
+  @override
+  String get imageViewer_movedToTrash => '已移入刪除池';
+
+  @override
+  String get naiAgent_emptyResponse => '模型結束了請求，但沒有返回正文或工具呼叫。請重試，或檢查模型輸出設定。';
+
+  @override
+  String get naiAgent_imageRequestTooLarge =>
+      '本次圖片總量過大或無法處理。請減少圖片數量、縮小圖片或更換格式後重試。';
+
+  @override
   String get auth_tokenEmpty => 'Token 為空，無法驗證';
 
   @override
@@ -34704,9 +34787,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get blocks_changeImage => '換圖';
 
   @override
-  String get blocks_clearThumb => '清除預覽圖';
-
-  @override
   String get blocks_cropHint => '拖動 / 滾輪縮放';
 
   @override
@@ -34887,9 +34967,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get imageViewer_dragFrame => '拖框移動';
-
-  @override
-  String get imageViewer_movedToTrash => '已移到回收站';
 
   @override
   String get imageViewer_undo => '復原';
@@ -35162,15 +35239,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get imageViewer_helpUndo => '復原刪除';
-
-  @override
-  String get imageViewer_protectedTitle => '這張圖受保護，移到回收站？';
-
-  @override
-  String get imageViewer_protectedBody => '移到回收站後可以在回收站裡還原。';
-
-  @override
-  String get imageViewer_cancel => '取消';
 
   @override
   String get imageViewer_justNow => '剛剛';
@@ -43363,6 +43431,21 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get ag_cacheWarmIdle => '待機，下次執行時開始';
 
   @override
+  String get ag_cacheWarmExpired => '已錯過保溫時機，等待下一次模型請求';
+
+  @override
+  String get ag_cacheWarmContextChanged => '上下文已變化，等待下一次模型請求';
+
+  @override
+  String get ag_cacheWarmSafetyLimit => '已到保溫時長上限，等待下一次模型請求';
+
+  @override
+  String get ag_cacheWarmUnavailable => '當前請求不支援快取保溫';
+
+  @override
+  String get ag_cacheWarmEconomics => '預計收益不足，本次保溫已暫停';
+
+  @override
   String ag_cacheWarmNext(String time) {
     return '$time 後續期';
   }
@@ -43543,11 +43626,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get localGallery_deleteForever => '徹底刪除';
-
-  @override
-  String localGallery_deleteForeverConfirm(int count) {
-    return '將立即物理刪除選中的 $count 個檔案，不可恢復。';
-  }
 
   @override
   String ag_chatAgeMinutes(int count) {

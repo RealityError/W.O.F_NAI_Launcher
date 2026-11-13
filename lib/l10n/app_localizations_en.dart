@@ -385,6 +385,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get auth_error_unknown => 'Unknown error';
 
   @override
+  String get auth_error_endpointUnavailable => 'API endpoint unavailable';
+
+  @override
+  String get auth_error_endpointUnavailable_hint =>
+      'This account\'s API address may have changed or the service is offline. Check the account\'s API address, or sign in with an official NovelAI account.';
+
+  @override
   String get auth_autoLogin => 'Auto login';
 
   @override
@@ -2642,11 +2649,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No collections yet — create one with + on the left';
 
   @override
-  String localGallery_confirmDeleteImageContent(Object name) {
-    return 'Delete image \"$name\"?\n\nThe image will disappear from the gallery immediately; the file will be removed permanently on the next launch (can be undone in this session).';
-  }
-
-  @override
   String get localGallery_moveTo => 'Move to…';
 
   @override
@@ -2742,15 +2744,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get localGallery_protectedDeleteTitle =>
-      'Protected Mode: Confirm Delete Again';
-
-  @override
-  String localGallery_protectedDeleteImagesContent(Object count) {
-    return 'This will permanently delete $count local image files. This cannot be undone.';
-  }
-
-  @override
   String get localGallery_protectedBulkMoveTitle =>
       'Protected Mode: Confirm Bulk Move';
 
@@ -2762,11 +2755,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String localGallery_importParamsFailed(Object error) {
     return 'Failed to import parameters: $error';
-  }
-
-  @override
-  String localGallery_protectedDeleteImageContent(Object name) {
-    return 'This will permanently delete image \"$name\". This cannot be undone.';
   }
 
   @override
@@ -3040,14 +3028,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localGallery_redone => 'Redone';
-
-  @override
-  String get localGallery_confirmBulkDelete => 'Confirm Bulk Delete';
-
-  @override
-  String localGallery_confirmBulkDeleteContent(Object count) {
-    return 'Are you sure you want to delete $count selected images?\n\nThey will disappear from the gallery immediately; the files will be removed permanently on the next launch (can be undone in this session).';
-  }
 
   @override
   String localGallery_deletedToPool(Object count) {
@@ -9194,6 +9174,76 @@ class AppLocalizationsEn extends AppLocalizations {
       'Failed to install the update; see the update log';
 
   @override
+  String get update_androidUnknownSources =>
+      'Allow this app to install unknown apps, then come back and tap Download and install again.';
+
+  @override
+  String get preciseRef_importTitle => 'Import Precise Reference';
+
+  @override
+  String get preciseRef_importTypePrompt =>
+      'What should this image be used to reference?';
+
+  @override
+  String get preciseRef_importTypeHint => 'Select a type to import';
+
+  @override
+  String get preciseRef_characterDescription =>
+      'Reference the character’s appearance and features';
+
+  @override
+  String get preciseRef_styleDescription =>
+      'Reference colors, brushwork, and visual texture';
+
+  @override
+  String get preciseRef_characterAndStyleDescription =>
+      'Reference both the character and visual style';
+
+  @override
+  String get localGallery_moveToDeletePool => 'Move to Trash';
+
+  @override
+  String localGallery_moveToDeletePoolTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Move $count images to Trash?',
+      one: 'Move this image to Trash?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_moveToDeletePoolDescription =>
+      'You can restore the images from Trash until Studio restarts. Studio permanently deletes them the next time it starts.';
+
+  @override
+  String localGallery_deleteForeverTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Permanently delete these $count images?',
+      one: 'Permanently delete this image?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get localGallery_deleteForeverDescription =>
+      'The files will be deleted from disk immediately and cannot be recovered.';
+
+  @override
+  String get imageViewer_movedToTrash => 'Moved to Trash';
+
+  @override
+  String get naiAgent_emptyResponse =>
+      'The model finished without returning text or a tool call. Retry or check the model output settings.';
+
+  @override
+  String get naiAgent_imageRequestTooLarge =>
+      'This image batch is too large or could not be processed. Send fewer images, reduce their size, or try another format.';
+
+  @override
   String get auth_tokenEmpty => 'The token is empty and cannot be verified';
 
   @override
@@ -13476,9 +13526,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get blocks_changeImage => 'Change';
 
   @override
-  String get blocks_clearThumb => 'Remove preview';
-
-  @override
   String get blocks_cropHint => 'Drag · scroll to zoom';
 
   @override
@@ -13665,9 +13712,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get imageViewer_dragFrame => 'Drag the frame';
-
-  @override
-  String get imageViewer_movedToTrash => 'Moved to Recycle Bin';
 
   @override
   String get imageViewer_undo => 'Undo';
@@ -13940,17 +13984,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get imageViewer_helpUndo => 'Undo delete';
-
-  @override
-  String get imageViewer_protectedTitle =>
-      'This image is protected. Move to Recycle Bin?';
-
-  @override
-  String get imageViewer_protectedBody =>
-      'You can restore it from the Recycle Bin.';
-
-  @override
-  String get imageViewer_cancel => 'Cancel';
 
   @override
   String get imageViewer_justNow => 'just now';
@@ -22568,6 +22601,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ag_cacheWarmIdle => 'Waiting — starts with the next run';
 
   @override
+  String get ag_cacheWarmExpired =>
+      'Refresh window missed — waiting for the next model request';
+
+  @override
+  String get ag_cacheWarmContextChanged =>
+      'Context changed — waiting for the next model request';
+
+  @override
+  String get ag_cacheWarmSafetyLimit =>
+      'Warming time limit reached — waiting for the next model request';
+
+  @override
+  String get ag_cacheWarmUnavailable =>
+      'Cache warming is unavailable for this request';
+
+  @override
+  String get ag_cacheWarmEconomics =>
+      'Warming paused because the estimated savings are too low';
+
+  @override
   String ag_cacheWarmNext(String time) {
     return 'Next refresh in $time';
   }
@@ -22757,11 +22810,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localGallery_deleteForever => 'Delete permanently';
-
-  @override
-  String localGallery_deleteForeverConfirm(int count) {
-    return 'Permanently delete the selected $count files? This cannot be undone.';
-  }
 
   @override
   String ag_chatAgeMinutes(int count) {

@@ -24,6 +24,7 @@ class UiColors {
     required this.brand,
     required this.onBrand,
     required this.error,
+    required this.onError,
     required this.ok,
     required this.amber,
     required this.quotaReserve,
@@ -79,6 +80,7 @@ class UiColors {
       brand: const Color(0xFF005DFF),
       onBrand: Colors.white,
       error: s.error,
+      onError: s.onError,
       ok: dark ? const Color(0xFF3DD68C) : const Color(0xFF2B9A66),
       amber: dark ? const Color(0xFFF5B546) : const Color(0xFFF0A020),
       quotaReserve: dark ? const Color(0xFFB49AFF) : const Color(0xFF7C3AED),
@@ -152,6 +154,7 @@ class UiColors {
   final Color onBrand;
 
   final Color error;
+  final Color onError;
 
   /// 上涨。
   final Color ok;

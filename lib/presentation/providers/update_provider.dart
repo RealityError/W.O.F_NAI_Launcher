@@ -41,6 +41,9 @@ class UpdateState {
   /// 是否显示全局更新提示；状态本身保留，以便设置页仍能重新打开。
   final bool notificationVisible;
 
+  /// Android：系统安装器要求先授权「安装未知来源应用」，本次安装没有启动。
+  final bool installPermissionRequired;
+
   const UpdateState({
     this.status = UpdateStatus.idle,
     this.versionInfo,
@@ -52,6 +55,7 @@ class UpdateState {
     this.downloadBytesPerSecond = 0,
     this.downloadedUpdate,
     this.notificationVisible = false,
+    this.installPermissionRequired = false,
   });
 
   UpdateState copyWith({
@@ -65,6 +69,7 @@ class UpdateState {
     int? downloadBytesPerSecond,
     DownloadedUpdate? downloadedUpdate,
     bool? notificationVisible,
+    bool? installPermissionRequired,
   }) {
     return UpdateState(
       status: status ?? this.status,
@@ -78,6 +83,8 @@ class UpdateState {
           downloadBytesPerSecond ?? this.downloadBytesPerSecond,
       downloadedUpdate: downloadedUpdate ?? this.downloadedUpdate,
       notificationVisible: notificationVisible ?? this.notificationVisible,
+      installPermissionRequired:
+          installPermissionRequired ?? this.installPermissionRequired,
     );
   }
 
@@ -399,11 +406,24 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
       status: UpdateStatus.installing,
       errorMessage: null,
       notificationVisible: true,
+      installPermissionRequired: false,
     );
     try {
       if (isAndroidPlatform) {
-        await ref.read(androidUpdateServiceProvider).install(downloaded);
+        final installStatus = await ref
+            .read(androidUpdateServiceProvider)
+            .install(downloaded);
         if (_disposed) return;
+        if (installStatus == AndroidApkInstallStatus.permissionRequired) {
+          // 原生侧已经跳到「安装未知应用」设置页；应用内给一次明确说明。
+          state = state.copyWith(
+            status: UpdateStatus.downloaded,
+            downloadProgress: 1,
+            notificationVisible: false,
+            installPermissionRequired: true,
+          );
+          return;
+        }
         // 系统安装器已经在前台；应用本身保持可用，安装完成后由用户返回。
         state = state.copyWith(
           status: UpdateStatus.downloaded,

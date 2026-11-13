@@ -79,6 +79,20 @@ void main() {
     expect(await store.load(), isEmpty);
   });
 
+  test('changes reports every pool mutation for count watchers', () async {
+    final events = <void>[];
+    final subscription = store.changes.listen(events.add);
+    addTearDown(subscription.cancel);
+
+    await store.addAll(['a.png']);
+    await store.removeAll(['a.png']);
+    await store.addAll(['b.png']);
+    await store.clear();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(events.length, 4);
+  });
+
   test('corrupted stored value degrades to empty pool', () async {
     SharedPreferences.setMockInitialValues({
       'gallery_delete_pool_v1': 'not-json[',

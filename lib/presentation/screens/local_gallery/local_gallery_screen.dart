@@ -76,6 +76,7 @@ import '../../widgets/gallery/gallery_floating_bulk_bar.dart';
 import '../../widgets/gallery/gallery_inspector_panel.dart';
 import '../../widgets/gallery/gallery_state_views.dart';
 import '../../../data/services/gallery/gallery_delete_pool_store.dart';
+import '../../ui/gallery/gallery_delete_dialog.dart';
 import '../../widgets/gallery/local_gallery_filter_bar.dart';
 import '../../widgets/gallery/local_gallery_toolbar.dart';
 import '../../widgets/gallery/local_image_context_menu.dart';
@@ -637,6 +638,7 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
                 categories: categoryState.categories,
                 totalImageCount: totalCount,
                 favoriteCount: favoriteTotal,
+                trashCount: ref.watch(galleryTrashCountProvider).value,
                 selectedCategoryId: categoryState.selectedCategoryId,
                 onCategorySelected: _handleCategorySelected,
                 onCategoryRename: (id, newName) => ref
@@ -820,14 +822,10 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
   Future<void> _purgeTrash(List<String> paths) async {
     if (_trashBusy || paths.isEmpty || !mounted) return;
     final l = context.l10n;
-    final confirmed = await ThemedConfirmDialog.show(
-      context: context,
-      title: l.localGallery_deleteForever,
-      content: l.localGallery_deleteForeverConfirm(paths.length),
-      confirmText: l.localGallery_deleteForever,
-      cancelText: l.common_cancel,
-      type: ThemedConfirmDialogType.danger,
-      icon: Icons.delete_forever_outlined,
+    final confirmed = await GalleryDeleteDialog.show(
+      context,
+      count: paths.length,
+      permanent: true,
     );
     if (!confirmed || !mounted || _trashBusy) return;
     setState(() => _trashBusy = true);
@@ -1388,8 +1386,6 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
       return;
     }
     final selectionState = ref.read(localGallerySelectionNotifierProvider);
-    // 保存 context 相关数据（必须在任何 await 之前）
-    final l10n = context.l10n;
 
     // 从数据库获取所有选中项的完整记录（支持跨页）
     final service = await ref
@@ -1398,44 +1394,31 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
     final selectedImages = await service.getRecordsByPaths(
       selectionState.selectedIds.toList(),
     );
+    await _moveImagesToDeletePool(selectedImages, exitSelection: true);
+  }
 
-    if (selectedImages.isEmpty) return;
-
-    final confirmed = await ThemedConfirmDialog.show(
-      // ignore: use_build_context_synchronously
-      context: context,
-      title: l10n.localGallery_confirmBulkDelete,
-      content: l10n.localGallery_confirmBulkDeleteContent(
-        selectedImages.length,
-      ),
-      confirmText: l10n.common_delete,
-      cancelText: l10n.common_cancel,
-      type: ThemedConfirmDialogType.danger,
-      icon: Icons.delete_forever_outlined,
+  Future<bool> _moveImagesToDeletePool(
+    List<LocalImageRecord> images, {
+    bool exitSelection = false,
+  }) async {
+    if (images.isEmpty || !mounted) return false;
+    final confirmed = await GalleryDeleteDialog.show(
+      context,
+      count: images.length,
+      fileName: images.length == 1 ? path.basename(images.single.path) : null,
     );
-
-    if (!confirmed || !mounted) return;
-
-    final protected = await AssetProtectionGuard.confirmDangerousAction(
-      context: context,
-      ref: ref,
-      title: l10n.localGallery_protectedDeleteTitle,
-      content: l10n.localGallery_protectedDeleteImagesContent(
-        selectedImages.length,
-      ),
-      confirmText: l10n.common_delete,
-      icon: Icons.delete_forever_outlined,
-    );
-    if (!protected || !mounted) return;
+    if (!confirmed || !mounted) return false;
 
     // 软删：DB is_deleted=1 + 入删除池 + 内存即时移除，无物理 IO，
     // 瞬时完成；文件在下次启动时彻底清理。
-    final imagePaths = selectedImages.map((image) => image.path).toList();
+    final imagePaths = images.map((image) => image.path).toList();
     final result = await ref
         .read(bulkOperationNotifierProvider.notifier)
         .bulkDelete(imagePaths);
 
-    ref.read(localGallerySelectionNotifierProvider.notifier).exit();
+    if (exitSelection) {
+      ref.read(localGallerySelectionNotifierProvider.notifier).exit();
+    }
 
     // 兜底重载：从（已摘除被删文件的）服务层内存列表重读条目，
     // 保证视图与内存状态一致——即使内存即时移除被任何竞态吞掉。
@@ -1453,6 +1436,7 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
     if (mounted && result.success > 0) {
       _showDeletePoolSnackBar(result.success);
     }
+    return result.success > 0;
   }
 
   /// 删除池 SnackBar：短时轻提示（撤销入口在工具栏垃圾桶里）。
@@ -2446,70 +2430,11 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
     }
   }
 
-  /// 单图删除（确认框→保护守卫→软删池→刷新）；返回是否删除成功，
+  /// 单图删除（确认框→软删池→刷新）；返回是否删除成功，
   /// 大图查看器据此决定是否从列表移除并翻页
   Future<bool> _confirmDeleteImage(LocalImageRecord record) async {
-    final l10n = context.l10n;
-
     if (!mounted) return false;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.common_confirmDelete),
-        content: Text(
-          l10n.localGallery_confirmDeleteImageContent(
-            path.basename(record.path),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.common_cancel),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            child: Text(l10n.common_delete),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final protected = await AssetProtectionGuard.confirmDangerousAction(
-        context: context,
-        ref: ref,
-        title: l10n.localGallery_protectedDeleteTitle,
-        content: l10n.localGallery_protectedDeleteImageContent(
-          path.basename(record.path),
-        ),
-        confirmText: l10n.localGallery_confirmDelete,
-        icon: Icons.delete_outline,
-      );
-      if (!protected || !mounted) return false;
-      // 软删：DB is_deleted=1 + 入删除池 + 内存即时移除，无物理 IO；
-      // 文件在下次启动时彻底清理，撤销入口在工具栏垃圾桶里。
-      final result = await ref
-          .read(bulkOperationNotifierProvider.notifier)
-          .bulkDelete([record.path]);
-      // 兜底重载：与批量删除同保险——视图与内存状态强制对齐
-      if (result.success > 0) {
-        await ref.read(localGalleryNotifierProvider.notifier).reloadTimeline();
-      }
-      await ref.read(collectionNotifierProvider.notifier).refresh();
-      await ref
-          .read(galleryCategoryNotifierProvider.notifier)
-          .applyDeletedPaths([record.path]);
-      if (mounted && result.success > 0) {
-        _showDeletePoolSnackBar(1);
-      }
-      return result.success > 0;
-    }
-    return false;
+    return _moveImagesToDeletePool([record]);
   }
 
   void _toggleCategoryPanel() {

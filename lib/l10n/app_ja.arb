@@ -148,6 +148,8 @@
   "auth_error_credentialsLoginUnavailable_hint": "NovelAI ではメールアドレス/パスワードログインに Web の安全確認が必要になりました。代わりに Persistent API Token を使用してください。",
   "auth_error_serverError": "サーバーエラー",
   "auth_error_unknown": "不明なエラー",
+  "auth_error_endpointUnavailable": "API エンドポイントを利用できません",
+  "auth_error_endpointUnavailable_hint": "このアカウントの API アドレスが変更されたか、サービスが停止している可能性があります。アカウントの API アドレスを確認するか、公式 NovelAI アカウントでサインインしてください。",
   "auth_autoLogin": "自動ログイン",
   "auth_forgotPassword": "パスワードをお忘れですか?",
   "auth_passwordTooShort": "パスワードは 6 文字以上である必要があります",
@@ -1160,12 +1162,6 @@
   },
   "localGallery_unfavorite": "お気に入り解除",
   "localGallery_favoriteMenuEmptyCollections": "コレクションがありません。左の + で作成",
-  "localGallery_confirmDeleteImageContent": "画像「{name}」を削除しますか?\n\n画像はすぐにギャラリーから消え、ファイルは次回起動時に完全に削除されます（このセッション内では元に戻せます）。",
-  "@localGallery_confirmDeleteImageContent": {
-    "placeholders": {
-      "name": {}
-    }
-  },
   "localGallery_moveTo": "移動先…",
   "localGallery_copyTo": "コピー先…",
   "localGallery_externalSourceMoveConfirmTitle": "外部ギャラリーソースファイルの移動",
@@ -1217,13 +1213,6 @@
       "error": {}
     }
   },
-  "localGallery_protectedDeleteTitle": "保護モード: 削除を再度確認してください",
-  "localGallery_protectedDeleteImagesContent": "これにより、{count} 個のローカル イメージ ファイルが完全に削除されます。これを元に戻すことはできません。",
-  "@localGallery_protectedDeleteImagesContent": {
-    "placeholders": {
-      "count": {}
-    }
-  },
   "localGallery_protectedBulkMoveTitle": "保護モード: 一括移動の確認",
   "localGallery_protectedBulkMoveContent": "これにより、{count} ローカル画像ファイルがターゲット フォルダに移動されます。これが間違いではないことを確認してください。",
   "@localGallery_protectedBulkMoveContent": {
@@ -1235,12 +1224,6 @@
   "@localGallery_importParamsFailed": {
     "placeholders": {
       "error": {}
-    }
-  },
-  "localGallery_protectedDeleteImageContent": "これにより、イメージ「{name}」が完全に削除されます。これを元に戻すことはできません。",
-  "@localGallery_protectedDeleteImageContent": {
-    "placeholders": {
-      "name": {}
     }
   },
   "localGallery_saveZipArchive": "ZIP アーカイブを保存",
@@ -1395,13 +1378,6 @@
   "localGallery_gotIt": "わかりました",
   "localGallery_undone": "元に戻しました",
   "localGallery_redone": "やり直し",
-  "localGallery_confirmBulkDelete": "一括削除の確認",
-  "localGallery_confirmBulkDeleteContent": "{count} 個の選択した画像を削除してもよろしいですか?\n\n画像はすぐにギャラリーから消え、ファイルは次回起動時に完全に削除されます（このセッション内では元に戻せます）。",
-  "@localGallery_confirmBulkDeleteContent": {
-    "placeholders": {
-      "count": {}
-    }
-  },
   "localGallery_deletedToPool": "{count} 個の画像を削除しました。次回起動時に完全に削除されます。",
   "@localGallery_deletedToPool": {
     "placeholders": {
@@ -4893,6 +4869,34 @@
   },
   "update_errorInstallFailed": "更新のインストールに失敗しました",
   "update_errorInstallFailedSeeLog": "更新のインストールに失敗しました。更新ログを確認してください",
+  "update_androidUnknownSources": "このアプリに不明なアプリのインストールを許可してから、戻ってもう一度「ダウンロードしてインストール」を押してください。",
+  "preciseRef_importTitle": "精密参照をインポート",
+  "preciseRef_importTypePrompt": "この画像の何を参照しますか？",
+  "preciseRef_importTypeHint": "項目を選ぶとインポートします",
+  "preciseRef_characterDescription": "人物の外見や特徴を参照",
+  "preciseRef_styleDescription": "配色、筆致、画面の質感を参照",
+  "preciseRef_characterAndStyleDescription": "人物の特徴と画風の両方を参照",
+  "localGallery_moveToDeletePool": "ゴミ箱に移動",
+  "localGallery_moveToDeletePoolTitle": "{count, plural, =1{この画像をゴミ箱に移動しますか？} other{{count} 枚の画像をゴミ箱に移動しますか？}}",
+  "localGallery_moveToDeletePoolDescription": "Studio を再起動するまでは、ゴミ箱から復元できます。次回の起動時にゴミ箱のファイルは完全に削除されます。",
+  "@localGallery_moveToDeletePoolTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@localGallery_deleteForeverTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },  "localGallery_deleteForeverTitle": "{count, plural, =1{この画像を完全に削除しますか？} other{この {count} 枚の画像を完全に削除しますか？}}",
+  "localGallery_deleteForeverDescription": "ファイルはディスクから直ちに削除され、復元できません。",
+  "imageViewer_movedToTrash": "ゴミ箱に移動しました",
+  "naiAgent_emptyResponse": "モデルは本文やツール呼び出しを返さずに終了しました。再試行するか、モデルの出力設定を確認してください。",
+  "naiAgent_imageRequestTooLarge": "画像の合計サイズが大きすぎるか、処理できませんでした。枚数やサイズを減らすか、別の形式をお試しください。",
   "auth_tokenEmpty": "トークンが空のため確認できません",
   "auth_tokenFormatInvalid": "トークンの形式が無効です",
   "auth_tokenInvalidOrExpired": "トークンが無効か期限切れです。正しいか確認してください。Persistent Token は pst- で始まります。",
@@ -7301,8 +7305,27 @@
 "blocks_previousPreview": "前のプレビュー画像",
 "blocks_nextPreview": "次のプレビュー画像",
 "blocks_removePreview": "このプレビューを削除",
-  "blocks_changeImage": "画像を変更",
-  "blocks_clearThumb": "プレビューを削除",
+  "@blocks_cropRange": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_previewCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_previewNumber": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },  "blocks_changeImage": "画像を変更",
   "blocks_cropHint": "ドラッグ / ホイールで拡大",
   "blocks_namePlaceholder": "空欄なら最初の項目",
   "blocks_plainText": "テキスト",
@@ -7381,7 +7404,6 @@
   "imageViewer_hintFit": "フィットに戻す",
   "imageViewer_hintActual": "原寸",
   "imageViewer_dragFrame": "枠をドラッグ",
-  "imageViewer_movedToTrash": "ごみ箱に移動しました",
   "imageViewer_undo": "元に戻す",
   "imageViewer_details": "詳細",
   "imageViewer_generationResult": "生成結果",
@@ -7520,9 +7542,6 @@
   "imageViewer_keyDouble": "ダブルクリック",
   "imageViewer_helpCopyPrompt": "プロンプトをコピー",
   "imageViewer_helpUndo": "削除を元に戻す",
-  "imageViewer_protectedTitle": "この画像は保護されています。ごみ箱に移動しますか？",
-  "imageViewer_protectedBody": "ごみ箱から元に戻せます。",
-  "imageViewer_cancel": "キャンセル",
   "imageViewer_justNow": "たった今",
   "imageViewer_minutesAgo": "{count} 分前",
   "@imageViewer_minutesAgo": {
@@ -11505,6 +11524,11 @@
   "ag_cacheWarmOff": "オフ",
   "ag_cacheWarmRefreshing": "キャッシュを延長中…",
   "ag_cacheWarmIdle": "待機中 — 次の実行で開始",
+  "ag_cacheWarmExpired": "更新のタイミングを過ぎました — 次のモデルリクエストを待機中",
+  "ag_cacheWarmContextChanged": "コンテキストが変わりました — 次のモデルリクエストを待機中",
+  "ag_cacheWarmSafetyLimit": "保温の制限時間に達しました — 次のモデルリクエストを待機中",
+  "ag_cacheWarmUnavailable": "このリクエストではキャッシュ保温を利用できません",
+  "ag_cacheWarmEconomics": "予想される節約効果が低いため保温を停止しました",
   "ag_cacheWarmNext": "{time} 後に延長",
   "@ag_cacheWarmNext": {
     "placeholders": {
@@ -11612,14 +11636,6 @@
   "localGallery_recentViews": "最近見た画像",
   "localGallery_recentViewsEmpty": "閲覧履歴はありません",
   "localGallery_deleteForever": "完全に削除",
-  "localGallery_deleteForeverConfirm": "選択した {count} 個のファイルを完全に削除します。元に戻せません。",
-  "@localGallery_deleteForeverConfirm": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "ag_chatAgeMinutes": "{count}m",
   "@ag_chatAgeMinutes": {
     "placeholders": {
