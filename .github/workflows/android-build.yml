@@ -100,7 +100,10 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      # 鍜?release.yml 鐢ㄥ悓涓€鎶婂瘑閽ョ鍚嶏紝浜у嚭鐨?APK 鎵嶈兘瑕嗙洊宸插彂甯冪増鏈€?      # 璇ュ伐浣滄祦鍙仛鏋勫缓楠岃瘉锛圥R 鏉ヨ嚜 fork 鏃舵嬁涓嶅埌 secret锛夛紝缂?secret 鏃?      # 閫€鍥?debug 绛惧悕锛屼笉闃绘柇鏋勫缓銆?      - name: Restore signing keystore
+      # 和 release.yml 用同一把密钥签名，产出的 APK 才能覆盖已发布版本。
+      # 该工作流只做构建验证（PR 来自 fork 时拿不到 secret），缺 secret 时
+      # 退回 debug 签名，不阻断构建。
+      - name: Restore signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -108,7 +111,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::warning::ANDROID_KEYSTORE_BASE64 鏈厤缃紝鏈閫€鍥?debug 绛惧悕锛堜粎渚涙瀯寤洪獙璇侊級"
+            echo "::warning::ANDROID_KEYSTORE_BASE64 未配置，本次退回 debug 签名（仅供构建验证）"
             exit 0
           fi
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/app/wof-release.jks

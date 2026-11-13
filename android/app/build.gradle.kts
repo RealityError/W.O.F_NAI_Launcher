@@ -54,7 +54,12 @@ android {
             // NAI Agent embeds nodejs-mobile's libnode.so and the local upscale
             // model needs libonnxruntime.so; both ship for arm64-v8a only.
             abiFilters.clear()
-            abiFilters.add("arm64-v8a")
+            // Flutter passes -Psplit-per-abi=true for split builds and derives
+            // its own ABI filters; Gradle rejects a build that also declares
+            // ndk abiFilters in that case.
+            if (!providers.gradleProperty("split-per-abi").isPresent) {
+                abiFilters.add("arm64-v8a")
+            }
         }
     }
 
