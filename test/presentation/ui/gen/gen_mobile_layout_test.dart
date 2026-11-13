@@ -239,4 +239,33 @@ void main() {
     expect(find.byKey(const Key('gen-bridge')), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Agent 画布提示浮在动作条上方，不挤压动作条', (tester) async {
+    await pumpGen(
+      tester,
+      data: GenFixture.view(),
+      window: 360 + genRail,
+      height: 780,
+      slots: GenSlots(
+        editor: (_, _) => const SizedBox.shrink(),
+        canvasNotice: const SizedBox(
+          key: Key('test-canvas-notice'),
+          height: 38,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final notice = find.byKey(const Key('test-canvas-notice'));
+    final bar = find.byKey(const Key('gen-bar-mobile'));
+    expect(notice, findsOneWidget);
+    expect(bar, findsOneWidget);
+    final noticeRect = tester.getRect(notice);
+    final barRect = tester.getRect(bar);
+    // 提示在动作条上方、水平居中、不超过 440dp。
+    expect(noticeRect.bottom, lessThanOrEqualTo(barRect.top));
+    expect(noticeRect.width, lessThanOrEqualTo(440));
+    expect(noticeRect.center.dx, closeTo(barRect.center.dx, 1));
+    expect(tester.takeException(), isNull);
+  });
 }

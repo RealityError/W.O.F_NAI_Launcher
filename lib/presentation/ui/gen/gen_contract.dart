@@ -1433,6 +1433,7 @@ class GenSlots {
     this.emptyCanvas,
     this.translationGuide,
     this.agentToggle,
+    this.canvasNotice,
     this.viewerControls,
     this.mobileHeaderActions = const <Widget>[],
     this.historyCaptionInset = true,
@@ -1450,6 +1451,9 @@ class GenSlots {
 
   /// 仅应用启用 Agent 集成时提供。
   final Widget? agentToggle;
+
+  /// Agent 动过画布时浮在操作条上方的提示（手机端独占）。
+  final Widget? canvasNotice;
 
   /// 简洁查看器的展示选项，不改变画布数据。
   final Widget? viewerControls;

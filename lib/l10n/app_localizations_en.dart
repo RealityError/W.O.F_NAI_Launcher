@@ -21013,6 +21013,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ag_compacting => 'Compacting…';
 
   @override
+  String get ag_canvasUpdated => 'Canvas updated';
+
+  @override
+  String get ag_canvasView => 'View';
+
+  @override
   String get ag_starting => 'Opening chat';
 
   @override

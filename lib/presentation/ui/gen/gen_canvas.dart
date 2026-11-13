@@ -182,25 +182,29 @@ class _GenCanvasState extends State<GenCanvas> {
             if (!cv.positioning) ...[
               if (scope.slots.viewerControls case final controls?)
                 Positioned(top: 10, right: 10, child: controls),
-              if (bar) ...[
-                Positioned(
-                  top: GenCanvas._topBarOffset,
-                  left: 0,
-                  right: 0,
-                  child: _CanvasBarViewport(
-                    child: SizeChangedLayoutNotifier(
-                      key: _topBarKey,
-                      child: _TopBar(
-                        enhanceLink: _enhanceLink,
-                        upscaleLink: _upscaleLink,
+              if (bar || scope.slots.canvasNotice != null) ...[
+                if (bar) ...[
+                  Positioned(
+                    top: GenCanvas._topBarOffset,
+                    left: 0,
+                    right: 0,
+                    child: _CanvasBarViewport(
+                      child: SizeChangedLayoutNotifier(
+                        key: _topBarKey,
+                        child: _TopBar(
+                          enhanceLink: _enhanceLink,
+                          upscaleLink: _upscaleLink,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
                 Positioned.fill(
                   child: _BottomBars(
                     infoKey: _infoBarKey,
                     actionKey: _actionBarKey,
+                    showBars: bar,
+                    notice: scope.slots.canvasNotice,
                   ),
                 ),
               ],
@@ -1382,7 +1386,12 @@ class _CanvasBarViewport extends StatelessWidget {
 }
 
 class _BottomBars extends StatelessWidget {
-  const _BottomBars({required this.infoKey, required this.actionKey});
+  const _BottomBars({
+    required this.infoKey,
+    required this.actionKey,
+    this.showBars = true,
+    this.notice,
+  });
 
   static const _bottom = 14.0;
   static const _gap = 8.0;
@@ -1397,13 +1406,19 @@ class _BottomBars extends StatelessWidget {
 
   final Key infoKey;
   final Key actionKey;
+  final bool showBars;
+
+  /// Agent 动过画布时浮在操作条上方的一条提示（手机端独占）。
+  final Widget? notice;
 
   @override
   Widget build(BuildContext context) {
-    final hasOriginal = GenScope.of(
-      context,
-      GenAspect.canvas,
-    ).data.canvas.info!.canCompareOriginal;
+    final hasOriginal =
+        GenScope.of(
+          context,
+          GenAspect.canvas,
+        ).data.canvas.info?.canCompareOriginal ??
+        false;
     final info = SizeChangedLayoutNotifier(
       key: infoKey,
       child: const _InfoBar(),
@@ -1417,22 +1432,31 @@ class _BottomBars extends StatelessWidget {
       // 窄窗口的桌面布局仍按宽度叠放两条浮条。
       builder: (context, box) {
         if (usesMobileLayout) {
-          return Stack(
+          if (!showBars && notice == null) return const SizedBox.shrink();
+          // 提示条浮在动作条上方，动作条位置不动（不挤画布、也不上跳）。
+          return CustomMultiChildLayout(
+            delegate: _MobileNoticeLayout(
+              showBars: showBars,
+              bottom: _bottom,
+              gap: _gap,
+            ),
             children: [
-              Positioned(
-                left: 8,
-                right: 8,
-                bottom: _bottom,
-                child: _CanvasBarViewport(
-                  child: SizeChangedLayoutNotifier(
-                    key: actionKey,
-                    child: const _MobileBar(),
+              if (showBars)
+                LayoutId(
+                  id: _MobileItem.bar,
+                  child: _CanvasBarViewport(
+                    child: SizeChangedLayoutNotifier(
+                      key: actionKey,
+                      child: const _MobileBar(),
+                    ),
                   ),
                 ),
-              ),
+              if (notice case final notice?)
+                LayoutId(id: _MobileItem.notice, child: notice),
             ],
           );
         }
+        if (!showBars) return const SizedBox.shrink();
         return box.maxWidth < _stackWidth
             ? Stack(
                 children: [
@@ -1481,6 +1505,52 @@ class _ActionBar extends StatelessWidget {
 ///
 /// 尺寸/种子不再单独占一条信息条，收进 [ _DisplayPopover ] 顶部，手机画布
 /// 因此只被一条工具条占位，图片可视高度多出约 46dp。
+enum _MobileItem { bar, notice }
+
+/// 手机端底部：动作条贴底，提示条浮在它上面，用实测高度定位，不挤压画布。
+class _MobileNoticeLayout extends MultiChildLayoutDelegate {
+  _MobileNoticeLayout({
+    required this.showBars,
+    required this.bottom,
+    required this.gap,
+  });
+
+  final bool showBars;
+  final double bottom;
+  final double gap;
+
+  @override
+  void performLayout(Size size) {
+    var barTop = size.height - bottom;
+    if (showBars && hasChild(_MobileItem.bar)) {
+      final bar = layoutChild(
+        _MobileItem.bar,
+        BoxConstraints.tightFor(width: math.max(0, size.width - 16)),
+      );
+      barTop = size.height - bottom - bar.height;
+      positionChild(_MobileItem.bar, Offset(8, barTop));
+    }
+    if (!hasChild(_MobileItem.notice)) return;
+    final notice = layoutChild(
+      _MobileItem.notice,
+      BoxConstraints.loose(
+        Size(math.min(440, math.max(0, size.width - 32)), size.height),
+      ),
+    );
+    positionChild(
+      _MobileItem.notice,
+      Offset(
+        (size.width - notice.width) / 2,
+        math.max(0, barTop - (showBars ? gap : 0) - notice.height),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRelayout(_MobileNoticeLayout old) =>
+      showBars != old.showBars || bottom != old.bottom || gap != old.gap;
+}
+
 class _MobileBar extends StatelessWidget {
   const _MobileBar();
 

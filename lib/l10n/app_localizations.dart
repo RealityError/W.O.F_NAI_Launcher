@@ -36460,6 +36460,18 @@ abstract class AppLocalizations {
   /// **'Compacting…'**
   String get ag_compacting;
 
+  /// No description provided for @ag_canvasUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas updated'**
+  String get ag_canvasUpdated;
+
+  /// No description provided for @ag_canvasView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get ag_canvasView;
+
   /// No description provided for @ag_starting.
   ///
   /// In en, this message translates to:

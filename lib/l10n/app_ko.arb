@@ -10852,6 +10852,8 @@
   "ag_copied": "복사했습니다",
   "ag_regenerate": "답변 다시 생성",
   "ag_compacting": "압축 중…",
+  "ag_canvasUpdated": "캔버스가 업데이트되었습니다",
+  "ag_canvasView": "보기",
   "ag_starting": "채팅 여는 중",
   "ag_waitingSlot": "서비스 요청 슬롯 대기 중",
   "ag_waitingYou": "처리 대기",

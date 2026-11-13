@@ -20361,6 +20361,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get ag_compacting => '압축 중…';
 
   @override
+  String get ag_canvasUpdated => '캔버스가 업데이트되었습니다';
+
+  @override
+  String get ag_canvasView => '보기';
+
+  @override
   String get ag_starting => '채팅 여는 중';
 
   @override

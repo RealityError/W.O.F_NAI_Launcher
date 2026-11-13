@@ -10864,6 +10864,8 @@
   "ag_copied": "Copied",
   "ag_regenerate": "Regenerate",
   "ag_compacting": "Compacting…",
+  "ag_canvasUpdated": "Canvas updated",
+  "ag_canvasView": "View",
   "ag_starting": "Opening chat",
   "ag_waitingSlot": "Waiting for provider",
   "ag_waitingYou": "Waiting for you",

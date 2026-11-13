@@ -20049,6 +20049,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ag_compacting => '压缩中…';
 
   @override
+  String get ag_canvasUpdated => '画布已更新';
+
+  @override
+  String get ag_canvasView => '查看';
+
+  @override
   String get ag_starting => '正在打开聊天';
 
   @override
@@ -41827,6 +41833,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get ag_compacting => '壓縮中…';
+
+  @override
+  String get ag_canvasUpdated => '畫布已更新';
+
+  @override
+  String get ag_canvasView => '檢視';
 
   @override
   String get ag_starting => '正在開啟聊天';

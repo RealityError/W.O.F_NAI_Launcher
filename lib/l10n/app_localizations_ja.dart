@@ -20293,6 +20293,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ag_compacting => '圧縮中…';
 
   @override
+  String get ag_canvasUpdated => 'キャンバスを更新しました';
+
+  @override
+  String get ag_canvasView => '表示';
+
+  @override
   String get ag_starting => 'チャットを開いています';
 
   @override
