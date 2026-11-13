@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/models/nai_agent/agent_canvas_notice_event.dart';
 import '../../../core/utils/localization_extension.dart';
-import '../../providers/nai_agent/nai_agent_canvas_notice.dart';
 import '../../widgets/common/studio_glass_surface.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_text.dart';

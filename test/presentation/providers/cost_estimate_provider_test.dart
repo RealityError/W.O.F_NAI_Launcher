@@ -75,8 +75,8 @@ void main() {
         expect(container.read(generationParamsNotifierProvider), same(before));
         final request = container.read(generationRequestParamsProvider);
         final expected = AnlasCalculator.calculateRequestCost(
-          width: 1248,
-          height: 1824,
+          width: 1280,
+          height: 1856,
           strength: .7,
           steps: request.steps,
           batchCount: request.nSamples,
