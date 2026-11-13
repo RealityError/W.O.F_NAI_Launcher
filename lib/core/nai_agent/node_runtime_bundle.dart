@@ -20,12 +20,12 @@ class AndroidNodeRuntimeBundle {
   final AssetBundle _assets;
 
   /// Bump when the packed runtime changes; the marker forces re-extraction.
-  static const bundleVersion = '2026-11-10.2';
+  static const bundleVersion = '2026-11-13.1';
   static const assetPath = 'assets/nai_agent/runtime.tar.gz';
   static const _markerName = '.runtime-version';
 
   /// Rough number of files in the packed runtime; used for coarse progress.
-  static const _expectedFiles = 15300;
+  static const _expectedFiles = 16700;
 
   String get hostScript => p.join(root.path, 'host.mjs');
 
