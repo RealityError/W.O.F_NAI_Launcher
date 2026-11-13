@@ -15,6 +15,7 @@ $source = Join-Path $PSScriptRoot 'nai_agent'
 $output = Join-Path $root 'assets\nai_agent\runtime.tar.gz'
 $entries = @(
   'host.mjs',
+  'android-host.mjs',
   'lib',
   'skills',
   'node_modules',
